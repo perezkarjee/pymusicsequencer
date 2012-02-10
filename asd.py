@@ -28,10 +28,13 @@ wf.setframerate(44100)
 
 for ii in range(2):
     sT = time.time()
-    freq = 440.0*(ii+1)
+    freqs = [440.0, 330.0, 220.0, 110.0, 40.0]
     theta = 2.0 * math.pi * freq/44100.0
         # write data
+
     for i in range(int(44100.0/512.0)*1):
+        iii = i/18
+        theta = 2.0 * math.pi * freqs[iii]/44100.0
         sT = time.time()
         interleaved = numpy.zeros(bufferSize, dtype=numpy.float32)
         interleaved2 = numpy.zeros(bufferSize, dtype=numpy.int16)
