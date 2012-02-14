@@ -136,8 +136,8 @@ badd +275 TheorySequencer.py
 badd +43 asd.py
 badd +167 pysynth.py
 badd +61 exportmy.py
-badd +132 simpleAdv.py
-badd +1011 digdig.py
+badd +99 simpleAdv.py
+badd +4239 digdig.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
@@ -190,7 +190,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -243,12 +243,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 192 - ((42 * winheight(0) + 24) / 49)
+let s:l = 145 - ((20 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-192
-normal! 0319l
+145
+normal! 034l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

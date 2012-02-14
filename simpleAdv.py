@@ -92,6 +92,7 @@ class Floor:
             self.oreOrHerb[i] = random.randint(1,2)
         self.monster = True
         self.quality = 0
+        self.gatherCounter = 0
 
 class Game:
     def __init__(self):
@@ -120,6 +121,66 @@ class Game:
                 num = 3
             self.floors[i+8].quality = num
 
+
+        
+        self.hp = 50
+        self.atk = 10
+        self.dfn = 10
+        self.exp = 0
+        self.level = 1
+        self.monsterLvl = 1
+
+
+    def GetMHP(self): # monster hp, etc
+        return (self.monsterLvl ** 1.3)*100
+    def GetMATK(self): # monster hp, etc
+        return (self.monsterLvl ** 1.3)*100
+    def GetMDFN(self): # monster hp, etc
+        return (self.monsterLvl ** 1.3)*50
+    def GetWinEXP(self):
+        return (self.monsterLvl ** 1.4)*50
+    def GetNextPoint(self):
+        return int((self.level ** 1.5)*3.0)
+    def GetNextExp(self):
+        return int((self.level ** 2.5)*50.0)
+
+    def Fight(self):
+        if self.monsterLvl >= 11:
+            return
+        self.gold -= (self.monsterLvl**1.8) * 500
+        hp = self.hp
+        atk = self.atk
+        dfn = self.dfn
+        mhp = self.GetMHP()
+        matk = self.GetMATK()
+        mdfn = self.GetMDFN()
+        exp = self.GetMDFN()
+
+        while (hp >= 0 and mhp >= 0):
+            mhp -= atk * float(mdfn)/(mdfn**1.2)
+            hp -= matk * float(dfn)/(dfn**1.2)
+        if mhp <= 0:
+            self.GetExp(exp)
+            self.floors[self.monsterLvl].monster = False
+            try:
+                self.floors[self.monsterLvl+1].open = True
+            except:
+                pass
+            self.monsterLvl += 1
+            print self.monsterLvl
+        else:
+            self.GetExp(exp*(float(mhp)/float(self.GetMHP())))
+
+
+    def GetExp(self, exp):
+        self.exp += exp
+        if self.exp >= self.GetNextExp():
+            self.level += 1
+            self.atk += self.GetNextPoint()
+            self.dfn += self.GetNextPoint()
+            self.hp += self.GetNextPoint()
+
+
 def InRect(x,y,w,h, x2, y2):
     if x <= x2 < x+w and y <= y2 < y+h:
         return True
@@ -137,12 +198,34 @@ def OnMouseDown(evt, g):
                 if i == 1: # work
                     pass
                 if i == 2: # training
-                    pass
+                    g.GetExp(((g.monsterLvl**1.4)*5))
                 if i >= 3: # grounds, 여기부터만 의미가 있도록 하자. 나머지는 클릭해도 소용없고 자원을 계속 자동으로 소모하면서 포션과 무기를 만든다.
                     # 트레이닝은 다른 버튼을 따로 만들까? Click! 이라고 써두자 트레이닝에다가.
                     # 여기는 fight monster 전용
-                    pass
+                    if i-3 == g.monsterLvl:
+                        #g.Fight()
+                        break
             y += 40
+
+def Sell(g):
+    numCustomers = random.randint(0,4)
+    for i in range(numCustomers):
+        sellPot = random.randint(1,100)
+        sellEqs = random.randint(1,100)
+        if sellPot > g.potions:
+            sellPot = g.potions
+        g.potions -= sellPot
+        if sellEqs > g.eqs:
+            sellEqs = g.eqs
+        g.eqs -= sellEqs
+
+        for j in range(sellPot):
+            g.gold += random.randint(20,80)
+        for j in range(sellEqs):
+            g.gold += random.randint(20,80)
+    g.customers += numCustomers
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((400, 600))
@@ -161,7 +244,16 @@ def main():
 
     font = pygame.font.Font("./fonts/FanwoodText.ttf", 16)
     g = Game()
+    startTick = pygame.time.get_ticks()
+    endTick = pygame.time.get_ticks()
+    gatherCountTick = 0
+    craftCountTick = 0
+    fightCountTick = 0
     while not done:
+        gatherCountTick += endTick-startTick
+        craftCountTick += endTick-startTick
+        fightCountTick += endTick-startTick
+        startTick = pygame.time.get_ticks()
         for event in pygame.event.get():
             if event.type == QUIT:
                 done = True
@@ -171,6 +263,59 @@ def main():
             elif event.type == MOUSEBUTTONUP:
                 fist.unpunch()
                 """
+
+
+
+        if fightCountTick >= 8000:
+            fightCountTick -= 8000
+            g.Fight()
+        if craftCountTick >= 5000:
+            craftCountTick -= 5000
+            if g.ore:
+                g.eqs += g.ore
+                g.ore = 0
+            if g.mOre:
+                g.eqs += g.mOre*2
+                g.mOre = 0
+            if g.eOre:
+                g.eqs += g.eOre*3
+                g.eOre = 0
+
+            if g.herb:
+                g.potions += g.herb
+                g.herb = 0
+            if g.mHerb:
+                g.potions += g.mHerb*2
+                g.mHerb = 0
+            if g.eHerb:
+                g.potions += g.eHerb*3
+                g.eHerb = 0
+            if random.randint(1,2) == 1:
+                Sell(g)
+
+        if gatherCountTick >= 1000:
+            gatherCountTick -= 1000
+            for j in range(12):
+                if g.floors[j].open and not g.floors[j].monster:
+                    for i in range(4):
+                        if g.floors[j].oreOrHerb[i] == Floor.HERB:
+                            if g.floors[j].quality == 1:
+                                g.herb += 1
+                            if g.floors[j].quality == 2:
+                                g.mHerb += 1
+                            if g.floors[j].quality == 3:
+                                g.eHerb += 1
+
+                        if g.floors[j].oreOrHerb[i] == Floor.ORE:
+                            if g.floors[j].quality == 1:
+                                g.ore += 1
+                            if g.floors[j].quality == 2:
+                                g.mOre += 1
+                            if g.floors[j].quality == 3:
+                                g.eOre += 1
+
+
+
 
         screen.fill((0,0,0))
         screen.blit(imgs['shop'], (0,0,160,40))
@@ -189,8 +334,8 @@ def main():
                         else:
                             screen.blit(imgs['herb'], (4+40*k,4+80+i,32,32))
                 else:
-                    screen.blit(*Text.GetSurf(font, "Click here to", (40, 80+i+2), color=color, border=True, borderColor=bcolor))
-                    screen.blit(*Text.GetSurf(font, "Kill Monster!", (40, 80+i+20), color=color, border=True, borderColor=bcolor))
+                    screen.blit(*Text.GetSurf(font, "Now Fighting", (40, 80+i+2), color=color, border=True, borderColor=bcolor))
+                    screen.blit(*Text.GetSurf(font, "  Monsters!", (40, 80+i+20), color=color, border=True, borderColor=bcolor))
 
             else:
                 screen.blit(imgs['rock'], (0,80+i,160,40))
@@ -198,7 +343,10 @@ def main():
         color = 200,200,128
         bcolor = 170, 170, 170
         i = 0
-        screen.blit(*Text.GetSurf(font, "Gold", (170, 10), color=color, border=False, borderColor=bcolor))
+        screen.blit(*Text.GetSurf(font, "Reach 100000 Gold to Win!", (170, 10+i), color=(230,200,128), border=False, borderColor=bcolor))
+
+        i += 35
+        screen.blit(*Text.GetSurf(font, "Gold", (170, 10+i), color=color, border=False, borderColor=bcolor))
         i += 18
         screen.blit(*Text.GetSurf(font, ": %d" % g.gold , (180, 10+i), color=color, border=False, borderColor=bcolor))
         i += 25
@@ -227,6 +375,18 @@ def main():
         screen.blit(*Text.GetSurf(font, "Equipments: %d" % g.eqs , (170, 10+i), color=color, border=False, borderColor=bcolor))
         i += 25
 
+        i += 10
+        screen.blit(*Text.GetSurf(font, "Level: %d" % g.level , (170, 10+i), color=color, border=False, borderColor=bcolor))
+        i += 25
+        screen.blit(*Text.GetSurf(font, "Exp Point: %d/%d" % (g.exp, g.GetNextExp()) , (170, 10+i), color=color, border=False, borderColor=bcolor))
+        i += 25
+        screen.blit(*Text.GetSurf(font, "HP: %d" % g.hp , (170, 10+i), color=color, border=False, borderColor=bcolor))
+        i += 25
+        screen.blit(*Text.GetSurf(font, "Attack: %d" % g.atk , (170, 10+i), color=color, border=False, borderColor=bcolor))
+        i += 25
+        screen.blit(*Text.GetSurf(font, "Defense: %d" % g.dfn , (170, 10+i), color=color, border=False, borderColor=bcolor))
+        i += 25
+
 
         color = 200,200,128
         bcolor = 40, 50, 24
@@ -234,6 +394,7 @@ def main():
 
 
         pygame.display.flip()
+        endTick = pygame.time.get_ticks()
 
 if __name__ == "__main__":
     main()
