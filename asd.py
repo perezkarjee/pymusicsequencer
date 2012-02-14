@@ -32,6 +32,7 @@ for ii in range(2):
     theta = 2.0 * math.pi * freq/44100.0
         # write data
 
+    prevTheta = 0
     for i in range(int(44100.0/512.0)*1):
         iii = i/18
         sT = time.time()
@@ -40,11 +41,15 @@ for ii in range(2):
 
         freq1 = freqs[i/18]/44100.0
         freq2 = freqs[(i/18)+1]/44100.0
+        theta = 0
         for j in range(512):
-            theta = 2.0 * math.pi * (freq1+(freq2-freq1)*(float(j)/512.0))
+            theta = 2.0 * math.pi * (freq1+(freq2-freq1)*(float(j)/512.0)) # freq가 바껴도 theta가 같은 값에서 시작해야 하므로 이전값과 현재값의 차이점을 저장해두고 그 차이점만큼을 더해준다.
+            #theta += theta-prevTheta
             interleaved[j] = math.sin(theta*(j+i*512))*0.5
             timer += 1
             timer %= 512
+        prevTheta = theta 
+        prevTheta %= 2.0*math.pi
        
 
         for j in range(512):
