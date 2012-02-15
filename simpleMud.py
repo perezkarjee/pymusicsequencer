@@ -199,17 +199,34 @@ class TextBox(object):
         self.w = w
         self.h = h
         self.texts = []
+        self.dragStart = None
+        self.curPos = None
+        self.scrollPosScr = 0.0
 
+    def OnMouseDown(self,evt):
+        if evt.button == LMB and InRect(self.x+self.w-32, self.y, 32, 32,evt.pos[0], evt.pos[1]):
+            self.scrollPos -= (self.h/self.fontH)
+        elif evt.button == LMB and InRect(self.x+self.w-32, self.y+self.h-32, 32, 32, evt.pos[0], evt.pos[1]):
+            self.scrollPos += (self.h/self.fontH)
+        if self.scrollPos < 0:
+            self.scrollPos = 0
+        if self.scrollPos > len(self.texts) - (self.h/self.fontH):
+            self.scrollPos = len(self.texts) - (self.h/self.fontH)
     def Clear(self):
         self.texts = []
     def AddText(self, txt, color):
         self.texts += [(txt, color)]
+        self.scrollPos = len(self.texts) - (self.h/self.fontH)
+
+    def DrawScrollBar(self, scr):
+        scr.fill((80,80,80), pygame.Rect(self.x+self.w-32,self.y,32,self.h))
+        scr.fill((160,160,160), pygame.Rect(self.x+self.w-32,self.y+self.h-32,32,32))
+        scr.fill((160,160,160), pygame.Rect(self.x+self.w-32,self.y,32,32))
     def Render(self, scr):
         ii = 0
         scr.fill((20,20,20), pygame.Rect(self.x,self.y,self.w,self.h))
         if len(self.texts) > self.h/self.fontH:
-            ofs = len(self.texts) - (self.h/self.fontH)
-            for txtc in self.texts[ofs:]:
+            for txtc in self.texts[self.scrollPos:self.scrollPos+(self.h/self.fontH)]:
                 txt, color = txtc
                 scr.blit(*Text.GetSurf(self.font, txt, (self.x, self.y + ii), color))
                 ii += self.fontH
@@ -218,6 +235,7 @@ class TextBox(object):
                 txt, color = txtc
                 scr.blit(*Text.GetSurf(self.font, txt, (self.x, self.y + ii), color))
                 ii += self.fontH
+        self.DrawScrollBar(scr)
 
 def Sell(g):
     numCustomers = random.randint(0,4)
@@ -843,6 +861,7 @@ Because of the explosion, it is closed down for now''')
             if event.type == QUIT:
                 done = True
             elif event.type == MOUSEBUTTONDOWN:
+                txtBox.OnMouseDown(event)
                 topButtons.OnMouse(event, font, g)
                 #OnMouseDown(event, g)
                 if g.TabMode == MAIN:
@@ -853,10 +872,10 @@ Because of the explosion, it is closed down for now''')
                     map.OnCharClick(event, g)
                 if g.TabMode == SHOP:
                     map.OnShopClick(event, g)
-                """
+            elif event.type == MOUSEMOTION:
+                pass
             elif event.type == MOUSEBUTTONUP:
-                fist.unpunch()
-                """
+                pass
 
         if g.placeChanged == True:
             g.placeChanged = False
@@ -865,6 +884,7 @@ Because of the explosion, it is closed down for now''')
             txtBox.AddText('', (200,200,200))
             for txt in map.GetCurPlace().desc.split('\n'):
                 txtBox.AddText(txt, (200,200,200))
+            txtBox.AddText('', (200,200,200))
 
             # 아이템이나 인물은 네모 상자에 넣어 따로 렌더링하고 클릭가능한 버튼으로 하고 배경을 좀 진한색으로 한다.
         """
@@ -1017,5 +1037,9 @@ if __name__ == "__main__":
 걍 단순히 머드게임을 만든다.
 울온의 기능을 완전히 넣고 스킬을 올리려면 단순하게 퀘스트를 수행하면 할 수 있도록 한다.
 스토리를 넣어볼까?
+
+텍스트박스에 스크롤바를 넣어야 한다.
+------------
+여기에 떠오르는 아이디어를 적고 그걸 구현한다. 한개씩.
 """
 
