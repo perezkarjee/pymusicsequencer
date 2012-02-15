@@ -97,41 +97,15 @@ class Floor:
 class Game:
     def __init__(self):
         self.gold = 0
-        self.ore = 0
-        self.mOre = 0
-        self.eOre = 0
-        self.herb = 0
-        self.mHerb = 0
-        self.eHerb = 0
-        self.customers = 0
-        self.potions = 0
-        self.eqs = 0
-        self.floors = [Floor() for i in range(12)]
-        self.floors[0].open = True
-        self.floors[0].monster = False
-        self.floors[1].open = True
-        self.floors[1].monster = True
-        for i in range(4):
-            self.floors[i].quality = random.randint(1,2)
-        for i in range(4):
-            self.floors[i+4].quality = random.randint(2,3)
-        for i in range(4):
-            num = random.randint(2,4)
-            if num >= 4:
-                num = 3
-            self.floors[i+8].quality = num
-
-
         
         self.hp = 50
         self.atk = 10
         self.dfn = 10
         self.exp = 0
         self.level = 1
-        self.monsterLvl = 1
-
-
-
+        self.statPoint = 5
+        self.skillPoint = 1
+        self.nextExp = self.GetNextExp()
 
         self.TabMode = 0
         self.inventory = []
@@ -148,16 +122,9 @@ class Game:
         self.ring3 = None
         self.ring4 = None
 
-    def GetMHP(self): # monster hp, etc
-        return (self.monsterLvl ** 1.3)*100
-    def GetMATK(self): # monster hp, etc
-        return (self.monsterLvl ** 1.3)*100
-    def GetMDFN(self): # monster hp, etc
-        return (self.monsterLvl ** 1.3)*50
-    def GetWinEXP(self):
-        return (self.monsterLvl ** 1.4)*50
-    def GetNextPoint(self):
-        return int((self.level ** 1.5)*3.0)
+
+        self.placeChanged = True
+
     def GetNextExp(self):
         return int((self.level ** 1.5)*50.0)
 
@@ -190,11 +157,11 @@ class Game:
 
     def GetExp(self, exp):
         self.exp += exp
-        if self.exp >= self.GetNextExp():
+        if self.exp >= self.nextexp:
+            self.nextexp += self.GetNextExp()
             self.level += 1
-            self.atk += self.GetNextPoint()
-            self.dfn += self.GetNextPoint()
-            self.hp += self.GetNextPoint()
+            self.statPoint += 5
+            self.skillPoint += 1
 
 
 def InRect(x,y,w,h, x2, y2):
@@ -522,6 +489,21 @@ class Map(object):
 
             x += rect[2]+10
 
+        x = 5
+        y = 400
+        for link in self.places[self.curPlace].links:
+            name, rect = Text.GetSurf(self.font, self.places[link].name, (x, y), (240,240,240))
+            if rect[0] + rect[2] > SW:
+                x = 5
+                y += 30
+            rect = x,y,rect[2],rect[3]
+            if evt.button == LMB and InRect(*(rect+evt.pos)):
+                self.curPlace = link
+                g.placeChanged = True
+                break
+            x += rect[2]+10
+
+
     def Render(self, font, screen):
         x = 5
         y = 300
@@ -536,6 +518,22 @@ class Map(object):
             screen.fill((40,40,40), rect)
             screen.blit(name, rect)
             x += rect[2]+10
+
+
+        x = 5
+        y = 400
+        name, rect = Text.GetSurf(font, 'Places you could go: ', (5, 370), (240,240,240))
+        screen.blit(name, rect)
+        for link in self.places[self.curPlace].links:
+            name, rect = Text.GetSurf(font, self.places[link].name, (x, y), (240,240,240))
+            if rect[0] + rect[2] > SW:
+                x = 5
+                y += 30
+            rect = x,y,rect[2],rect[3]
+            screen.fill((40,40,40), rect)
+            screen.blit(name, rect)
+            x += rect[2]+10
+
 
     def RenderInv(self, font, screen, g):
         y = 22
@@ -820,14 +818,21 @@ From the news on your MagicElectronics TV, there was an explosion at the mana st
 You remember loud noise in the earlier morning you ignored while you slept through.''')
     map.places[place.placeID] = place
     map.places[place.placeID].items = [item.SpawnItem() for item in items]
-    map.places[place.placeID].items += [items[-1].SpawnItem()]*8
+    #map.places[place.placeID].items += [items[-1].SpawnItem()]*1
     map.curPlace = place.placeID
-    g.weapon = None
 
-    place1 = map.GetCurPlace()
+    place = Place('ManaStation', 'Mana Station', '''Mana Station is where you can buy up some manas or mana potions for journey.
+Because of the explosion, it is closed down for now''')
+    map.places[place.placeID] = place
 
-    txtBox = TextBox(font, 16, 0, 22, SW, 400)
-    placeChanged = True
+    map.places['StartingPoint'].links += ['ManaStation']
+    map.places['ManaStation'].links += ['StartingPoint']
+
+
+
+    #place1 = map.GetCurPlace()
+
+    txtBox = TextBox(font, 16, 0, 22, SW, 240)
     map.txtBox = txtBox
     while not done:
         gatherCountTick += endTick-startTick
@@ -853,8 +858,8 @@ You remember loud noise in the earlier morning you ignored while you slept throu
                 fist.unpunch()
                 """
 
-        if placeChanged == True:
-            placeChanged = False
+        if g.placeChanged == True:
+            g.placeChanged = False
             txtBox.Clear()
             txtBox.AddText(map.GetCurPlace().name, (200,200,200))
             txtBox.AddText('', (200,200,200))
