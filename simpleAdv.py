@@ -142,10 +142,10 @@ class Game:
     def GetNextPoint(self):
         return int((self.level ** 1.5)*3.0)
     def GetNextExp(self):
-        return int((self.level ** 2.5)*50.0)
+        return int((self.level ** 1.5)*50.0)
 
     def Fight(self):
-        if self.monsterLvl >= 11:
+        if self.monsterLvl >= 12:
             return
         self.gold -= (self.monsterLvl**1.8) * 500
         hp = self.hp
@@ -198,7 +198,7 @@ def OnMouseDown(evt, g):
                 if i == 1: # work
                     pass
                 if i == 2: # training
-                    g.GetExp(((g.monsterLvl**1.4)*5))
+                    g.GetExp(g.GetWinEXP()/10.0)
                 if i >= 3: # grounds, 여기부터만 의미가 있도록 하자. 나머지는 클릭해도 소용없고 자원을 계속 자동으로 소모하면서 포션과 무기를 만든다.
                     # 트레이닝은 다른 버튼을 따로 만들까? Click! 이라고 써두자 트레이닝에다가.
                     # 여기는 fight monster 전용
@@ -228,7 +228,7 @@ def Sell(g):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((400, 600))
+    screen = pygame.display.set_mode((SW, SH))
     pygame.display.set_caption('DigDig2')
     #screen.blit(background, (0, 0))
     done = False
@@ -266,11 +266,11 @@ def main():
 
 
 
-        if fightCountTick >= 8000:
-            fightCountTick -= 8000
+        if fightCountTick >= 800:
+            fightCountTick -= 800
             g.Fight()
-        if craftCountTick >= 5000:
-            craftCountTick -= 5000
+        if craftCountTick >= 500:
+            craftCountTick -= 500
             if g.ore:
                 g.eqs += g.ore
                 g.ore = 0
@@ -293,8 +293,8 @@ def main():
             if random.randint(1,2) == 1:
                 Sell(g)
 
-        if gatherCountTick >= 1000:
-            gatherCountTick -= 1000
+        if gatherCountTick >= 100:
+            gatherCountTick -= 100
             for j in range(12):
                 if g.floors[j].open and not g.floors[j].monster:
                     for i in range(4):
