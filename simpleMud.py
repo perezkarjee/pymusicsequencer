@@ -579,6 +579,7 @@ class Map(object):
 
         x = 5
         y = 500
+        self.places[self.curPlace].links.sort()
         for link in self.places[self.curPlace].links:
             name, rect = Text.GetSurf(self.font, self.places[link].name, (x, y), (240,240,240))
             if rect[0] + rect[2] > SW:
@@ -635,6 +636,7 @@ class Map(object):
         y = 500
         name, rect = Text.GetSurf(font, 'Places you could go: ', (5, 470), (240,240,240))
         screen.blit(name, rect)
+        self.places[self.curPlace].links.sort()
         for link in self.places[self.curPlace].links:
             name, rect = Text.GetSurf(font, self.places[link].name, (x, y), (240,240,240))
             if rect[0] + rect[2] > SW:
@@ -687,6 +689,29 @@ class Map(object):
         screen.blit(name, rect)
 
         self.fightBox.Render(screen)
+
+
+        y = 5
+        name, rect = Text.GetSurf(font, "Skills:", (5, y), (240,240,240))
+        screen.blit(name, rect)
+
+        y += 22*4+10
+        name, rect = Text.GetSurf(font, "Magic:", (5, y), (240,240,240))
+        screen.blit(name, rect)
+
+        y += 22*20+10
+        name, rect = Text.GetSurf(font, "Runaway", (5, y), (240,240,240))
+        screen.fill((20,20,20), rect)
+        screen.blit(name, rect)
+
+        y = 5
+        name, rect = Text.GetSurf(font, "Items:", (5+SW*3/4, y), (240,240,240))
+        screen.blit(name, rect)
+
+
+        screen.fill((120,120,120), (SW-24,0,24,24))
+        screen.fill((120,120,120), (SW-24,SH-24,24,24))
+
 
 
     def RenderInv(self, font, screen, g):
@@ -999,14 +1024,41 @@ You: Hahaha. But why the building?
 Jake: Didn't know? This particular station was entirely made out of pure mana.
 You: Huh, didn't know that. Why don't you take some of my mana.
 Jake: Thanks, buddy."""]
+    place.npcs = [jake]
+
+    place = Place('UnprotectedWilderness', 'Unprotected Wilderness', '''It is a wilderness where monsters appears at day and night.
+There are many hunters among these area and also many monsters.
+Because of the vastness of the land, people could not protect every area,
+so wilderness could have been protected pretty well.''')
+    map.places[place.placeID] = place
 
     mob = NPCMOB('slime', 'Slime')
     mob.hostile = True
-    place.npcs = [jake, mob]
+    place.npcs = [mob]
 
+    place = Place('UnprotectedWildernessNorth', 'Unprotected Wilderness North', '''Northern Wilderness area.''')
+    map.places[place.placeID] = place
+
+    place = Place('MagicSquareSouth', 'Magic Square South', '''Magic Square southern area.''')
+    map.places[place.placeID] = place
+
+    place = Place('MagicSquareCenter', 'Magic Square Center', '''Magic Square center area. This is where the people are hagning out.''')
+    map.places[place.placeID] = place
+
+
+    place = Place('MagicSquareEast', 'Magic Square East', '''Magic Square eastern area.''')
+    map.places[place.placeID] = place
+
+    place = Place('MagicSquareNorth', 'Magic Square North', '''Magic Square northern area.''')
+    map.places[place.placeID] = place
 
     map.places['StartingPoint'].links += ['ManaStation']
-    map.places['ManaStation'].links += ['StartingPoint']
+    map.places['StartingPoint'].links += ['UnprotectedWilderness']
+    map.places['ManaStation'].links += ['StartingPoint', 'UnprotectedWilderness']
+    map.places['UnprotectedWilderness'].links += ['StartingPoint', 'ManaStation', 'UnprotectedWildernessNorth']
+    map.places['UnprotectedWildernessNorth'].links += ['MagicSquareSouth', 'UnprotectedWilderness']
+    map.places['MagicSquareSouth'].links += ['MagicSquareCenter', 'UnprotectedWildernessNorth']
+    map.places['MagicSquareCenter'].links += ['MagicSquareSouth', 'MagicSquareEast', 'MagicSquareNorth']
 
 
 
@@ -1220,4 +1272,3 @@ if __name__ == "__main__":
 대신, 같은 야구방망이라도 여러가지 매직 이펙트가 붙어있다.
 야구방망이: Swing, Beating, Home Run Swing, Holy Smiting Swing
 """
-
