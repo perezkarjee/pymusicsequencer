@@ -283,6 +283,9 @@ class NPCMOB:
         self.hostile = hostile
         self.txts = []
         self.txtIdx = 0
+        def a():
+            pass
+        self.doneFunc = a
     def GetHP(self):
         return 50
     def GetMaxHP(self):
@@ -572,6 +575,7 @@ class Map(object):
                         self.txtBox.AddText(txt, (120,120,80))
                     self.txtBox.AddText('', (120,120,80))
                     self.txtBox.scrollPos = pos
+                    npc.doneFunc()
                     break
                 x += rect[2]+10
 
@@ -1024,9 +1028,12 @@ You: Hahaha. But why the building?
 Jake: Didn't know? This particular station was entirely made out of pure mana.
 You: Huh, didn't know that. Why don't you take some of my mana.
 Jake: Thanks, buddy."""]
+    def RemoveFromStation():
+        map.places['ManaStation'].npcs.remove(jake)
+    jake.doneFunc = RemoveFromStation
     place.npcs = [jake]
 
-    place = Place('UnprotectedWilderness', 'Unprotected Wilderness', '''It is a wilderness where monsters appears at day and night.
+    place = Place('UnprotectedWilderness', 'Unprotected Wilderness', '''It is a wilderness where monsters appear at day and night.
 There are many hunters among these area and also many monsters.
 Because of the vastness of the land, people could not protect every area,
 so wilderness could have been protected pretty well.''')
@@ -1036,15 +1043,29 @@ so wilderness could have been protected pretty well.''')
     mob.hostile = True
     place.npcs = [mob]
 
+    mob = NPCMOB('wildrat', 'Wild Rat')
+    mob.hostile = True
+    place.npcs += [mob]
+
+
     place = Place('UnprotectedWildernessNorth', 'Unprotected Wilderness North', '''Northern Wilderness area.''')
     map.places[place.placeID] = place
 
     place = Place('MagicSquareSouth', 'Magic Square South', '''Magic Square southern area.''')
     map.places[place.placeID] = place
+    npc = NPCMOB('antimagicRogue1', 'Extremely Suspicious Guy')
+    npc.txts += ["""\
+You: Hi, there.
+Extremely Suspicious Guy: ....
+And then the guy disappeared into the crowd.
+"""]
+    def RemoveFromStation():
+        map.places['MagicSquareSouth'].npcs.remove(npc)
+    npc.doneFunc = RemoveFromStation
+    place.npcs += [npc]
 
     place = Place('MagicSquareCenter', 'Magic Square Center', '''Magic Square center area. This is where the people are hagning out.''')
     map.places[place.placeID] = place
-
 
     place = Place('MagicSquareEast', 'Magic Square East', '''Magic Square eastern area.''')
     map.places[place.placeID] = place
@@ -1052,13 +1073,18 @@ so wilderness could have been protected pretty well.''')
     place = Place('MagicSquareNorth', 'Magic Square North', '''Magic Square northern area.''')
     map.places[place.placeID] = place
 
-    map.places['StartingPoint'].links += ['ManaStation']
-    map.places['StartingPoint'].links += ['UnprotectedWilderness']
+    place = Place('MagicalUnionCivicCenter', 'Magical Union Civic Center', '''This is where you get some service from government.''')
+    map.places[place.placeID] = place
+
+    map.places['StartingPoint'].links += ['ManaStation', 'UnprotectedWilderness']
     map.places['ManaStation'].links += ['StartingPoint', 'UnprotectedWilderness']
     map.places['UnprotectedWilderness'].links += ['StartingPoint', 'ManaStation', 'UnprotectedWildernessNorth']
     map.places['UnprotectedWildernessNorth'].links += ['MagicSquareSouth', 'UnprotectedWilderness']
     map.places['MagicSquareSouth'].links += ['MagicSquareCenter', 'UnprotectedWildernessNorth']
     map.places['MagicSquareCenter'].links += ['MagicSquareSouth', 'MagicSquareEast', 'MagicSquareNorth']
+    map.places['MagicSquareEast'].links += ['MagicSquareCenter']
+    map.places['MagicSquareNorth'].links += ['MagicSquareCenter', 'MagicalUnionCivicCenter']
+    map.places['MagicalUnionCivicCenter'].links += ['MagicSquareNorth']
 
 
 
