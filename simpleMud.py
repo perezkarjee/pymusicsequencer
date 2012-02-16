@@ -25,6 +25,12 @@ RMB = 3
 WUP = 4
 WDN = 5
 
+MAIN = 0
+INV = 1
+CHAR = 2
+SHOP = 3
+FIGHT = 4
+
 
 class Text:
     def __init__(self):
@@ -122,9 +128,18 @@ class Game:
         self.ring3 = None
         self.ring4 = None
 
+        self.curMob = None
 
         self.placeChanged = True
 
+    def GetHP(self):
+        return 50
+    def GetMaxHP(self):
+        return 50
+    def GetMP(self):
+        return 50
+    def GetMaxMP(self):
+        return 50
     def GetNextExp(self):
         return int((self.level ** 1.5)*50.0)
 
@@ -201,6 +216,7 @@ class TextBox(object):
         self.texts = []
         self.dragStart = None
         self.curPos = None
+        self.scrollPos = 0
         self.scrollPosScr = 0.0
 
     def OnMouseDown(self,evt):
@@ -222,6 +238,9 @@ class TextBox(object):
         scr.fill((80,80,80), pygame.Rect(self.x+self.w-32,self.y,32,self.h))
         scr.fill((160,160,160), pygame.Rect(self.x+self.w-32,self.y+self.h-32,32,32))
         scr.fill((160,160,160), pygame.Rect(self.x+self.w-32,self.y,32,32))
+        if len(self.texts) > self.h/self.fontH and self.scrollPos!=len(self.texts)-(self.h/self.fontH):
+            scr.fill((160,160,160), pygame.Rect(self.x,self.y+self.h,self.w,4))
+            
     def Render(self, scr):
         ii = 0
         scr.fill((20,20,20), pygame.Rect(self.x,self.y,self.w,self.h))
@@ -255,6 +274,23 @@ def Sell(g):
             g.gold += random.randint(20,80)
     g.customers += numCustomers
 
+class NPCMOB:
+    def __init__(self, npcID, name, hostile = False):
+        self.npcID = npcID
+        self.name = name
+        self.npcDef = {}
+        self.items = []
+        self.hostile = hostile
+        self.txts = []
+        self.txtIdx = 0
+    def GetHP(self):
+        return 50
+    def GetMaxHP(self):
+        return 50
+    def GetMP(self):
+        return 50
+    def GetMaxMP(self):
+        return 50
 
 class Map(object):
     def __init__(self):
@@ -262,7 +298,10 @@ class Map(object):
         self.curPlace = ''
         self.font = pygame.font.Font("./fonts/FanwoodText.ttf", 16)
         self.txtBox = None
+        self.fightBox = TextBox(self.font, 16, SW/4, 80, SW/2, SH-160)
 
+    def OnFightClick(self, evt, g, font):
+        pass
     def OnInvClick(self, evt, g, font):
         y = 52
         name, rect = Text.GetSurf(font, "Weapon:", (5, y), (240,240,240))
@@ -509,6 +548,37 @@ class Map(object):
 
         x = 5
         y = 400
+        for npc in self.places[self.curPlace].npcs:
+            if npc.hostile:
+                name, rect = Text.GetSurf(self.font, npc.name, (x, y), (240,240,240))
+                if rect[0] + rect[2] > SW:
+                    x = 5
+                    y += 30
+                rect = x,y,rect[2],rect[3]
+                if evt.button == LMB and InRect(*(rect+evt.pos)) and self.txtBox.scrollPos == len(self.txtBox.texts) - (self.txtBox.h/self.txtBox.fontH):
+                    g.TabMode = FIGHT
+                    g.curMob = npc
+                    break
+                x += rect[2]+10
+            else:
+                name, rect = Text.GetSurf(self.font, npc.name, (x, y), (240,240,240))
+                if rect[0] + rect[2] > SW:
+                    x = 5
+                    y += 30
+                rect = x,y,rect[2],rect[3]
+                if evt.button == LMB and InRect(*(rect+evt.pos)) and self.txtBox.scrollPos == len(self.txtBox.texts) - (self.txtBox.h/self.txtBox.fontH):
+                    pos = len(self.txtBox.texts)
+                    for txt in npc.txts[npc.txtIdx].split('\n'):
+                        self.txtBox.AddText(txt, (120,120,80))
+                    self.txtBox.AddText('', (120,120,80))
+                    self.txtBox.scrollPos = pos
+                    break
+                x += rect[2]+10
+
+
+
+        x = 5
+        y = 500
         for link in self.places[self.curPlace].links:
             name, rect = Text.GetSurf(self.font, self.places[link].name, (x, y), (240,240,240))
             if rect[0] + rect[2] > SW:
@@ -537,10 +607,33 @@ class Map(object):
             screen.blit(name, rect)
             x += rect[2]+10
 
-
         x = 5
         y = 400
-        name, rect = Text.GetSurf(font, 'Places you could go: ', (5, 370), (240,240,240))
+        name, rect = Text.GetSurf(font, 'NPCs/Enemies: ', (5, 370), (240,240,240))
+        screen.blit(name, rect)
+        for npc in self.places[self.curPlace].npcs:
+            if npc.hostile:
+                name, rect = Text.GetSurf(font, npc.name, (x, y), (240,120,120))
+                if rect[0] + rect[2] > SW:
+                    x = 5
+                    y += 30
+                rect = x,y,rect[2],rect[3]
+                screen.fill((40,40,40), rect)
+                screen.blit(name, rect)
+                x += rect[2]+10
+            else:
+                name, rect = Text.GetSurf(font, npc.name, (x, y), (240,240,240))
+                if rect[0] + rect[2] > SW:
+                    x = 5
+                    y += 30
+                rect = x,y,rect[2],rect[3]
+                screen.fill((40,40,40), rect)
+                screen.blit(name, rect)
+                x += rect[2]+10
+
+        x = 5
+        y = 500
+        name, rect = Text.GetSurf(font, 'Places you could go: ', (5, 470), (240,240,240))
         screen.blit(name, rect)
         for link in self.places[self.curPlace].links:
             name, rect = Text.GetSurf(font, self.places[link].name, (x, y), (240,240,240))
@@ -551,6 +644,49 @@ class Map(object):
             screen.fill((40,40,40), rect)
             screen.blit(name, rect)
             x += rect[2]+10
+
+        for mob in self.places[self.curPlace].mobs:
+            name, rect = Text.GetSurf(font, mob.name, (x, y), (240,240,240))
+            if rect[0] + rect[2] > SW:
+                x = 5
+                y += 30
+            rect = x,y,rect[2],rect[3]
+            screen.fill((40,40,40), rect)
+            screen.blit(name, rect)
+            x += rect[2]+10
+
+
+    def RenderFight(self, font, screen, g):
+        screen.fill((50,50,50), (0,0,SW/4,SH))
+        screen.fill((50,50,50), (SW-SW/4,0,SW/4,SH))
+        screen.fill((40,40,40), (SW/4,0,SW/2,80))
+        screen.fill((40,40,40), (SW/4,SH-80,SW/2,80))
+
+        y = SH-80+5
+        name, rect = Text.GetSurf(font, "You:", (SW/4+10, y), (240,240,240))
+        screen.blit(name, rect)
+
+        y += 22
+        name, rect = Text.GetSurf(font, "HP: %d/%d" % (g.GetHP(), g.GetMaxHP()), (SW/4+10, y), (240,240,240))
+        screen.blit(name, rect)
+
+        y += 22
+        name, rect = Text.GetSurf(font, "MP: %d/%d" % (g.GetMP(), g.GetMaxMP()), (SW/4+10, y), (240,240,240))
+        screen.blit(name, rect)
+
+        y = 5
+        name, rect = Text.GetSurf(font, "%s:" % g.curMob.name, (SW/4+10, y), (240,80,80))
+        screen.blit(name, rect)
+
+        y += 22
+        name, rect = Text.GetSurf(font, "HP: %d/%d" % (g.curMob.GetHP(), g.curMob.GetMaxHP()), (SW/4+10, y), (240,80,80))
+        screen.blit(name, rect)
+
+        y += 22
+        name, rect = Text.GetSurf(font, "MP: %d/%d" % (g.curMob.GetMP(), g.curMob.GetMaxMP()), (SW/4+10, y), (240,80,80))
+        screen.blit(name, rect)
+
+        self.fightBox.Render(screen)
 
 
     def RenderInv(self, font, screen, g):
@@ -802,10 +938,6 @@ def main():
     craftCountTick = 0
     fightCountTick = 0
 
-    MAIN = 0
-    INV = 1
-    CHAR = 2
-    SHOP = 3
     g.TabMode = MAIN
     def ChangeToMain(g):
         g.TabMode = MAIN
@@ -840,8 +972,38 @@ You remember loud noise in the earlier morning you ignored while you slept throu
     map.curPlace = place.placeID
 
     place = Place('ManaStation', 'Mana Station', '''Mana Station is where you can buy up some manas or mana potions for journey.
-Because of the explosion, it is closed down for now''')
+Because of the explosion, it is closed down for now.''')
     map.places[place.placeID] = place
+
+    jake = NPCMOB('jake', 'Jake')
+    jake.txts += ["""\
+Jake: Aww man I'm out of mana and this happened!
+You: What's up?
+Jake: I don't know but something about terrorism?
+You: It won't blow up by itself, I mean manas are the most stable energy source on earth!
+Jake: Yeah but if someone could used Antimana it could blow up like this...
+You: Antimana? Who would use that expensive material to just blow up some stupid mana station?
+Jake: That's why they are in such a fuss...
+You: If you had one drop of antimana you could just create massive amount of gold with that why the explosion?
+Jake: Yeah I'm just here to buy up some mana and look at this....
+You: Did anybody die?
+Jake: Yeah, wierd on that, nobody got hurt but building disappeared and every bit of mana underground dried up.
+You: Huh, wierd.. was nobody in the building?
+Jake: Yes there was, but only the building disappeared.
+You: I suspect someone stole the building....
+Jake: Heh, that would be fun, I heard a rumor that some wierd people are collecting massive amount of mana
+      to overtake the whole earth.
+You: Aww no, that again?
+Jake: Yeah, as if it is possible, ha ha ha.
+You: Hahaha. But why the building?
+Jake: Didn't know? This particular station was entirely made out of pure mana.
+You: Huh, didn't know that. Why don't you take some of my mana.
+Jake: Thanks, buddy."""]
+
+    mob = NPCMOB('slime', 'Slime')
+    mob.hostile = True
+    place.npcs = [jake, mob]
+
 
     map.places['StartingPoint'].links += ['ManaStation']
     map.places['ManaStation'].links += ['StartingPoint']
@@ -861,10 +1023,11 @@ Because of the explosion, it is closed down for now''')
             if event.type == QUIT:
                 done = True
             elif event.type == MOUSEBUTTONDOWN:
-                txtBox.OnMouseDown(event)
-                topButtons.OnMouse(event, font, g)
+                if g.TabMode != FIGHT:
+                    topButtons.OnMouse(event, font, g)
                 #OnMouseDown(event, g)
                 if g.TabMode == MAIN:
+                    txtBox.OnMouseDown(event)
                     map.OnClick(event, g)
                 if g.TabMode == INV:
                     map.OnInvClick(event, g, font)
@@ -872,6 +1035,8 @@ Because of the explosion, it is closed down for now''')
                     map.OnCharClick(event, g)
                 if g.TabMode == SHOP:
                     map.OnShopClick(event, g)
+                if g.TabMode == FIGHT:
+                    map.OnFightClick(event, g, font)
             elif event.type == MOUSEMOTION:
                 pass
             elif event.type == MOUSEBUTTONUP:
@@ -1025,7 +1190,10 @@ Because of the explosion, it is closed down for now''')
             map.RenderChar(font, screen, g)
         if g.TabMode == SHOP:
             map.RenderShop(font, screen, g)
-        topButtons.Render(screen, font)
+        if g.TabMode == FIGHT:
+            map.RenderFight(font, screen, g)
+        if g.TabMode != FIGHT:
+            topButtons.Render(screen, font)
 
         pygame.display.flip()
         endTick = pygame.time.get_ticks()
@@ -1041,5 +1209,15 @@ if __name__ == "__main__":
 텍스트박스에 스크롤바를 넣어야 한다.
 ------------
 여기에 떠오르는 아이디어를 적고 그걸 구현한다. 한개씩.
+
+전투화면은 Main에 띄운다. 전투중엔 텍스트박스가 사라지고 Fight메뉴가 뜨게되며
+포션류와 같은 사용가능한 아이템이 오른편에 메뉴로 뜨게되고(스크롤가능)
+좌편에는 사용가능한 스킬
+가운데에는 전투 로그와 가운데 상단에는 주인공의 체력 마력이 뜨게 되며
+하단에는 전투중인 몹의 체력 마력이 뜬다. 1:1전투만 가능 포켓몬처럼?
+-----------
+무기마다 기술이 4개씩 붙어있다. 공격력은 무기에 붙어있지 않고 캐릭터의 공격력 위주로 간다.
+대신, 같은 야구방망이라도 여러가지 매직 이펙트가 붙어있다.
+야구방망이: Swing, Beating, Home Run Swing, Holy Smiting Swing
 """
 
