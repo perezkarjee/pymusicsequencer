@@ -1053,11 +1053,12 @@ so wilderness could have been protected pretty well.''')
 
     place = Place('MagicSquareSouth', 'Magic Square South', '''Magic Square southern area.''')
     map.places[place.placeID] = place
-    npc = NPCMOB('antimagicRogue1', 'Extremely Suspicious Guy')
+    npc = NPCMOB('antimagicRogue1', 'An Extremely Suspicious Looking Guy')
     npc.txts += ["""\
-You: Hi, there.
-Extremely Suspicious Guy: ....
+You: Hi, there, did you blow up the mana station?
+An Extremely Suspicious Looking Guy: ....
 And then the guy disappeared into the crowd.
+You: Oh, hey, I hit the jackpot, I should follow him!
 """]
     def RemoveFromStation():
         map.places['MagicSquareSouth'].npcs.remove(npc)
@@ -1297,6 +1298,16 @@ if __name__ == "__main__":
 무기마다 기술이 4개씩 붙어있다. 공격력은 무기에 붙어있지 않고 캐릭터의 공격력 위주로 간다.
 대신, 같은 야구방망이라도 여러가지 매직 이펙트가 붙어있다.
 야구방망이: Swing, Beating, Home Run Swing, Holy Smiting Swing
+
+
+각 메뉴를 완성한다
+일단 플레이어의 정의를 완성한다.
+STR, DEX, INT가 있다.
+STR이 올라가면 공격력이 올라가고
+DEX가 올라가면 방어가 올라가고
+INT가 올라가면 마나가 올라간다.
+CON이 올라가면 체력이 올라간다.
+이거밖에 없음. 나머지는 걍 레벨이 올라갈 때마다 레벨로만 모디파이어를 얻어서 저절로 강해지거나, 아이템이 점점 강해짐 캐릭터만으론 별로!
 ----------------
 세계는 모두 마나로 이루어져 있는데 안티마나를 이용해 세계의 껍질을 한꺼풀 벗기면 주변의 모든 사물이나 생명체를 구성하는 마나를 모두 흡수 가능. 이걸 이용해 세계를 정복할 힘을 얻으려다가 세계 멸망이 되려는걸 주인공이 막음!
 
@@ -1305,4 +1316,12 @@ if __name__ == "__main__":
 
 3탄:
     안티마나를 만들어내는 고대의 주술이 발견되어 또 모두가 그걸 차지하려고 하고 또 세계가 멸망하려고 할 때 주인공이 당연하다는 듯 막음. 끝.
+에필로그
+주인공이 안티마나를 이용해 세계의 기아와 전쟁을 종식시킴 끝.!!!!!!!
+
+
+스토리를 쓰는 방법: 어릴 때 독후감을 쓰라고 하듯이 걍 장소를 정하고 느낀점 또는 묘사를 쓰면 된다. 대화는 쉬운데 느낀점이나 묘사가 꽤 어려울 듯 하다.
+어렵게 생각하지 말고 쉽게 하면 된다.
+
+랜덤한 단어를 선택해서 그 단어들에 맞도록 스토리를 짜내면 된다.
 """
