@@ -100,18 +100,37 @@ class Floor:
         self.quality = 0
         self.gatherCounter = 0
 
+class Skill(object):
+    def __init__(self, ident, name, **skillDef):
+        self.ident = ident
+        self.name = name
+        self.skillDef = skillDef
+        self.useCount = 0
+        self.level = 1
+        self.nextLevel = 3
+
+    def GetName(self):
+        return self.name
+    def GetUseCount(self, level):
+        return int(level**1.5)*3
+    def Use(self, target):
+        self.useCount += 1
+        if self.useCount >= self.nextLevel:
+            self.level+=1
+            self.nextLevel += self.GetUseCount(level)
+
 class Game:
     def __init__(self):
         self.gold = 0
-        
-        self.hp = 50
-        self.atk = 10
-        self.dfn = 10
+        self.hp = 10
+        self.mp = 10
+        self.str = 10
+        self.dex = 10
+        self.con = 10
+        self.int = 10
         self.exp = 0
         self.level = 1
-        self.statPoint = 5
-        self.skillPoint = 1
-        self.nextExp = self.GetNextExp()
+        self.nextExp = self.GetExp(self.level)
 
         self.TabMode = 0
         self.inventory = []
@@ -131,7 +150,23 @@ class Game:
         self.curMob = None
 
         self.placeChanged = True
+        self.hammerSkills = [Skill('swing','Swing'), Skill('beating', "Beating"), Skill('homerun', "Home Run Swing"), Skill("smite", "Holy Smiting Swing")]
+        self.spearSkills = [Skill('pierce','Pierce'), Skill('rapid', "Rapid Pierce"), Skill('penetrate', "Penetrate"), Skill("lightning", "Lightning Shooting Pierce")]
+        self.swordSkills = [Skill('slash','Slash'), Skill('multislash', "Multi Slash"), Skill('cut', "Cut In Halves"), Skill("fire", "Burning Fiery Slash")]
+        self.handSkills = [Skill('punch','Punch'), Skill('doublepunch', "Double Punch"), Skill('superpunch', "Super Punch"), Skill("ice", "Ice Cold Punch")]
 
+    def GetSkillName(self, idx):
+        if self.weapon:
+            if self.weapon.itemDef["class"] == "Hammer":
+                return self.hammerSkills[idx].GetName()
+            if self.weapon.itemDef["class"] == "Sword":
+                return self.swordSkills[idx].GetName()
+            if self.weapon.itemDef["class"] == "Spear":
+                return self.spearSkills[idx].GetName()
+        else:
+            return self.handSkills[idx].GetName()
+    def GetExp(self, level):
+        return (level**1.5)*50
     def GetHP(self):
         return 50
     def GetMaxHP(self):
@@ -140,8 +175,20 @@ class Game:
         return 50
     def GetMaxMP(self):
         return 50
+    def GetSTR(self):
+        return 50
+    def GetDEX(self):
+        return 50
+    def GetCON(self):
+        return 50
+    def GetINT(self):
+        return 50
+    def GetLevel(self):
+        return self.level
+    def GetCurExp(self):
+        return self.exp
     def GetNextExp(self):
-        return int((self.level ** 1.5)*50.0)
+        return self.nextExp
 
     def Fight(self):
         if self.monsterLvl >= 12:
@@ -170,13 +217,15 @@ class Game:
             self.GetExp(exp*(float(mhp)/float(self.GetMHP())))
 
 
-    def GetExp(self, exp):
+    def EarnExp(self, exp):
         self.exp += exp
-        if self.exp >= self.nextexp:
-            self.nextexp += self.GetNextExp()
+        if self.exp >= self.nextExp:
             self.level += 1
-            self.statPoint += 5
-            self.skillPoint += 1
+            self.nextExp += self.GetExp(self.level)
+            self.str += 3
+            self.dex += 3
+            self.con += 3
+            self.int += 3
 
 
 def InRect(x,y,w,h, x2, y2):
@@ -662,7 +711,7 @@ class Map(object):
             x += rect[2]+10
 
 
-    def RenderFight(self, font, screen, g):
+    def RenderFight(self, font, screen, g, map):
         screen.fill((50,50,50), (0,0,SW/4,SH))
         screen.fill((50,50,50), (SW-SW/4,0,SW/4,SH))
         screen.fill((40,40,40), (SW/4,0,SW/2,80))
@@ -698,12 +747,51 @@ class Map(object):
         y = 5
         name, rect = Text.GetSurf(font, "Skills:", (5, y), (240,240,240))
         screen.blit(name, rect)
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetSkillName(0), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
 
-        y += 22*4+10
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetSkillName(1), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetSkillName(2), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetSkillName(3), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+
+        y += 40
         name, rect = Text.GetSurf(font, "Magic:", (5, y), (240,240,240))
         screen.blit(name, rect)
 
-        y += 22*20+10
+        """
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetMagic(0), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetMagic(1), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetMagic(2), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+        y += 30
+        name, rect = Text.GetSurf(font, "%s" % g.GetMagic(3), (5, y), (240,240,240))
+        screen.fill((30,30,30), rect)
+        screen.blit(name, rect)
+        """
+
+
+        y += 40
         name, rect = Text.GetSurf(font, "Runaway", (5, y), (240,240,240))
         screen.fill((20,20,20), rect)
         screen.blit(name, rect)
@@ -874,6 +962,47 @@ class Map(object):
                 y += 22
 
     def RenderChar(self, font, screen, g):
+        screen.fill((40,40,40), (0,22,SW,SH-22))
+        y = 22 + 5
+        name, rect = Text.GetSurf(font, "Level: %d" % (g.GetLevel()), (5, y), (240,240,240))
+        screen.blit(name, rect)
+        y += 30
+
+        name, rect = Text.GetSurf(font, "Exp: %d/%d" % (g.GetCurExp(), g.GetNextExp()), (5, y), (240,240,240))
+        screen.blit(name, rect)
+
+
+        y += 30
+        name, rect = Text.GetSurf(font, "HP: %d/%d" % (g.GetHP(), g.GetMaxHP()), (5, y), (240,240,240))
+        screen.blit(name, rect)
+        name, rect = Text.GetSurf(font, "MP: %d/%d" % (g.GetMP(), g.GetMaxMP()), (5+400, y), (240,240,240))
+        screen.blit(name, rect)
+        y += 30
+
+        name, rect = Text.GetSurf(font, "STR: %d" % (g.GetSTR()), (5, y), (240,240,240))
+        screen.blit(name, rect)
+        name, rect = Text.GetSurf(font, "DEX: %d" % (g.GetDEX()), (5+400, y), (240,240,240))
+        screen.blit(name, rect)
+        y += 30
+
+        name, rect = Text.GetSurf(font, "CON: %d" % (g.GetCON()), (5, y), (240,240,240))
+        screen.blit(name, rect)
+        name, rect = Text.GetSurf(font, "INT: %d" % (g.GetINT()), (5+400, y), (240,240,240))
+        screen.blit(name, rect)
+        y += 30
+
+        skills = [g.handSkills, g.swordSkills, g.spearSkills, g.hammerSkills]
+        for j in range(4):
+            for i in range(4):
+                skill = skills[j][i]
+                name, rect = Text.GetSurf(font, "%s - Level: %d (%d/%d)  -|-  Damage: %d  -|-  MP Cost: %d" % \
+                        (skill.name, skill.level, skill.useCount, skill.nextLevel, 50, 5), (5, y), (240,240,240))
+                screen.blit(name, rect)
+                y += 20
+            y += 10
+
+
+
         pass
     def RenderShop(self, font, screen, g):
         pass
@@ -960,6 +1089,7 @@ def main():
             }
 
     font = pygame.font.Font("./fonts/FanwoodText.ttf", 16)
+    font2 = pygame.font.Font("./fonts/FanwoodText.ttf", 14)
     g = Game()
     startTick = pygame.time.get_ticks()
     endTick = pygame.time.get_ticks()
@@ -984,7 +1114,9 @@ def main():
 
 
     items = [ItemDef('potion', {'name': 'Potion', 'type': 'Potion'}),
-            ItemDef('bbat', {'name': 'Baseball Bat', 'type': 'Weapon'}),
+            ItemDef('warhammer', {'name': 'War Hammer', 'type': 'Weapon', 'class': 'Hammer'}),
+            ItemDef('sword', {'name': 'Sword', 'type': 'Weapon', 'class': 'Sword'}),
+            ItemDef('spear', {'name': 'Spear', 'type': 'Weapon', 'class': 'Spear'}),
             ItemDef('leather_jacket', {'name': 'Leather Jacket', 'type': 'UpperTorso'}),
             ItemDef('leather_pants', {'name': 'Leather Pants', 'type':'LowerTorso'}),
             ItemDef('ring1', {'name': 'Gold Ring', 'type':'Ring'})]
@@ -1266,11 +1398,11 @@ You: Oh, hey, I hit the jackpot, I should follow him!
         if g.TabMode == INV:
             map.RenderInv(font, screen, g)
         if g.TabMode == CHAR:
-            map.RenderChar(font, screen, g)
+            map.RenderChar(font2, screen, g)
         if g.TabMode == SHOP:
             map.RenderShop(font, screen, g)
         if g.TabMode == FIGHT:
-            map.RenderFight(font, screen, g)
+            map.RenderFight(font, screen, g, map)
         if g.TabMode != FIGHT:
             topButtons.Render(screen, font)
 
@@ -1324,4 +1456,19 @@ CON이 올라가면 체력이 올라간다.
 어렵게 생각하지 말고 쉽게 하면 된다.
 
 랜덤한 단어를 선택해서 그 단어들에 맞도록 스토리를 짜내면 된다.
+------------------
+호랑이가 폴짝 폴짝 뛰어다니면서 보석을 모으고 토끼를 잡는 게임.
+반짝반짝 빛나는 보석들과 에쁜 숲속 배경이 포인트!
+-------------------
+무기는 배트, 스피어, 소드이다.
+스피어: Pierce, Rapid Pierce, Penetrate, Lightning Pierce
+소드: Slash, Multi Slash, Cut In Halves, Fiery Slash
+맨손기술도 있음: Punch, Double Punch, Super Punch, Ice Cold Punch
+싸워서 지더라도 자동으로 병원으로 호송되며 스킬 경험치나 싸워서 얻은 경험치는 남는다.
+병원 호송 패널티는 돈의 10% 감소.
+마법:
+    힐, 적 MaxHP서서히깍기, MaxMP서서히깎기, 몇턴동안 힐불가, 독마법 까지만 하자.
+----------------------
+적이 먼저 공격하는 경우도 있고, 이긴 후에 내가 먼저 공격할 수도 있다.
+적이 먼저 공격할 찬스는 75%
 """
