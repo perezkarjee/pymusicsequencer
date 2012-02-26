@@ -137,11 +137,12 @@ badd +43 asd.py
 badd +167 pysynth.py
 badd +61 exportmy.py
 badd +412 simpleAdv.py
-badd +283 simpleMud.py
+badd +1488 simpleMud.py
+badd +0 simpleConstruct.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
-edit simpleMud.py
+edit simpleConstruct.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -243,12 +244,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1221 - ((37 * winheight(0) + 24) / 49)
+let s:l = 1 - ((0 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1221
-normal! 061l
+1
+normal! 0
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
