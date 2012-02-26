@@ -14,7 +14,6 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""
 cdef extern from "stdlib.h":
     ctypedef unsigned long size_t
     void free(void *ptr)
@@ -218,7 +217,7 @@ cdef:
 #
 #
 # Torch등의 오브젝트는 따로 저장하겠군....
-"""
+'''
 bool SphereInFrustum( float x, float y, float z, float radius )
 {
    int p;
@@ -228,7 +227,7 @@ bool SphereInFrustum( float x, float y, float z, float radius )
          return false;
    return true;
 }
-"""
+'''
 class Vector2(object):
     def __init__(self, x=0.0, y=0.0):
         self.x = x
@@ -665,7 +664,7 @@ class MapGen:
 
             return mylines
 
-        """
+        '''
         이렇게 만들어진 곡선을 어떻게 렌더링하나?
         원 안에 스캔라인으로 채우는 방식으로 해야하나?
         청크 안에서 딱 맞춰져야 할텐데 이거참. 가장 left right top bottom점을 찾아서 청크에 맞춘 후에
@@ -682,9 +681,9 @@ class MapGen:
         http://www.cs.brown.edu/stc/summer/2ViewRender/2ViewRender_23.html
         X값들의 리스트를 1픽셀 수준에서 만든다.
         odd,even으로 폴리곤의 안쪽인지 바깥쪽인지 본다.
-        """
+        '''
 
-        """
+        '''
         if (x,y,z) not in self.map:
             self.generatedCoords[(x,y,z)] = None
             #x,y,z에 대해 여러가지 쉐이프라던가 땅의 높이라던가 그런 걸 결정한다.
@@ -721,7 +720,7 @@ class MapGen:
                     diffy = random.randint(4,32)
                     height = random.randint(16,32)
                     mountains += [(diffx, diffy, rad)]
-        """
+        '''
 
 
 
@@ -904,7 +903,7 @@ cdef class Chunks:
         self.SaveChests(octree, x, z)
         #self.SaveOthers(octree, x, z)
 
-    """
+    '''
     cdef SaveOthers(self, Octree *octree, int x, int z):
         cdef int *buffer
         cdef int bufferLen
@@ -940,7 +939,7 @@ cdef class Chunks:
                 stdio.fclose(fp)
 
         free(buffer)
-    """
+    '''
     cdef SaveChests(self, Octree *octree, int x, int z):
         cdef int *buffer
         cdef int bufferLen
@@ -1290,12 +1289,12 @@ cdef class Chunks:
         if makeWater >= 0.5:
             self.GenObjs(x,y,z,2, 64, 128, 64, 128, 20, 40, "Sea")
         self.GenObjs(x,y,z,10, 8, 32, 8, 32, 1, 4, "Pond")
-        """
+        '''
         제네럴라이즈 하고 바다를 만들고 광물을 만들고
         끝낸다.
         그리고나서 땅파기와 인벤토리를 구현하고 아이템을 구현한다.
         그전에 나무를 구현한다.
-        """
+        '''
 
         FillMap(chunkData)
         extraLinCrd = []
@@ -1592,7 +1591,7 @@ cdef class Chunks:
             startZ += strideZ
         return trees
 
-    """
+    '''
     cdef void SaveOther(self, int **buffer, int *bufferLen, int *bufferIdx, Octree * parent, int x[7], int y[7], int z[7], int depth):
         cdef int stride = 128
         cdef int bufferOffset = 0
@@ -1634,7 +1633,7 @@ cdef class Chunks:
                         y[depth] = j
                         z[depth] = k
                         self.SaveOther(buffer, bufferLen, bufferIdx, parent.children[k*2*2+j*2+i], x,y,z, depth+1)
-    """
+    '''
 
     cdef void SaveChest(self, int **buffer, int *bufferLen, int *bufferIdx, Octree * parent, int x[7], int y[7], int z[7], int depth):
         cdef int stride = 128
@@ -2176,7 +2175,7 @@ cdef class Chunks:
             return p
         return None
     def RayTryIntersect(self, p1, p2, pa, pb, pc):
-        """
+        '''
    Determine whether or not the line segment p1,p2
    Intersects the 3 vertex facet bounded by pa,pb,pc
    Return true/false and the intersection point p
@@ -2184,7 +2183,7 @@ cdef class Chunks:
    The equation of the line is p = p1 + mu (p2 - p1)
    The equation of the plane is a x + b y + c z + d = 0
                                 n.x x + n.y y + n.z z + d = 0
-        """
+        '''
         cdef double d
         cdef double a1,a2,a3
         cdef double total,denom,mu
@@ -2559,7 +2558,7 @@ cdef class Chunks:
         viewmat[13] = mat[1][3]
         viewmat[14] = mat[2][3]
         viewmat[15] = mat[3][3]
-        """
+        '''
         viewmat[0] = mat[0][0]
         viewmat[1] = mat[0][1]
         viewmat[2] = mat[0][2]
@@ -2576,7 +2575,7 @@ cdef class Chunks:
         viewmat[13] = mat[3][1]
         viewmat[14] = mat[3][2]
         viewmat[15] = mat[3][3]
-        """
+        '''
 
         picked = PickWithMouse(pickVP, pickDirV, pos, octrees, outchunks, outCoords, &outFace, level, 0, viewmat)
         if picked:
@@ -2660,7 +2659,7 @@ cdef class Chunks:
                 return result
         return False
 
-        """
+        '''
 
         # 요 아래부터 PickWithMouse가 된다능
         x,y,z = vp.x, vp.y, vp.z
@@ -2781,7 +2780,7 @@ cdef class Chunks:
 
         #이렇게 하고 Radius 1, 2, 3, 4, 5, 6, 7, 8, 9까지 해서 9단계로 Ray/Sphere 충돌검사를 한 후에
         # 가장 먼저 걸리는 블럭의 pos를 구한다.
-        """
+        '''
 
     def FixPos(self, oldpos, newpos, boundingBoxLen): # 땅 위에 떠있으면 떨어지고, 블럭과 겹쳐지면 원래 자리로 돌아가거나 아...
         cdef Octree * octrees[9]
@@ -3255,12 +3254,12 @@ cdef class Chunks:
                 for i in range(sightLen):
                     if curToDrawList[i] not in matchedCoords:
                         updatedDrawList += [curToDrawList[i]]
-                """
+                '''
                 for i in range(sightLen):
                     self.updateCoords[i*3+0] = self.curDrawnCoords[0][i][0]
                     self.updateCoords[i*3+1] = self.curDrawnCoords[0][i][1]
                     self.updateCoords[i*3+2] = self.curDrawnCoords[0][i][2]
-                """
+                '''
                 memset(self.updateCoords, -1, sizeof(int)*64*3)
                 idx = 0
                 for i in range(sightLen):
@@ -3321,7 +3320,7 @@ cdef class Chunks:
                     #glDrawArrays(GL.GL_QUADS, 0, self.tIdx[i]*4)
                     glDrawElements(GL.GL_QUADS, indexLen, GL.GL_UNSIGNED_INT, self.indexList)
 
-            """
+            '''
             self.curIdx = 0
             for i in range(64):
                 curx,cury,curz = self.curDrawnCoords[0][i]
@@ -3339,7 +3338,7 @@ cdef class Chunks:
             glNormalPointer(GL.GL_FLOAT, 0, <void*>self.normals) 
             #glDrawArrays(GL.GL_QUADS, 0, self.tIdx[i]*4)
             glDrawElements(GL.GL_QUADS, indexLen, GL.GL_UNSIGNED_INT, self.indexList)
-            """
+            '''
 
 
 
@@ -3570,7 +3569,7 @@ def Test():
     chunks = Chunks()
     chunks.Test2()
 
-
+"""
 
 """
 옥트리
