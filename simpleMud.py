@@ -1163,6 +1163,8 @@ Jake: Thanks, buddy."""]
     def RemoveFromStation():
         map.places['ManaStation'].npcs.remove(jake)
     jake.doneFunc = RemoveFromStation
+
+    cop = NPCMOB('cop', 'A Magical Crime Division Officer')
     place.npcs = [jake]
 
     place = Place('UnprotectedWilderness', 'Unprotected Wilderness', '''It is a wilderness where monsters appear at day and night.
@@ -1471,4 +1473,13 @@ CON이 올라가면 체력이 올라간다.
 ----------------------
 적이 먼저 공격하는 경우도 있고, 이긴 후에 내가 먼저 공격할 수도 있다.
 적이 먼저 공격할 찬스는 75%
+------------
+건축물의 패턴을 만들어서 건축물 생성기를 만드는것!
+랜덤 심즈3의 심과같은 랜덤 사람도 만들고!
+만약 도시를 랜덤으로 생성할 수 있다면 더 멋질 것!
+자동차 등의 물품등도 랜덤으로 생성!
+
+굳이 실제 현실과 똑같은 형태일 건 없고 프로그레시브하게 생성 가능한 여러가지 아이템을 만든다.
+
+모든 액션게임은 달리기 또는 레이싱게임으로 기본이 잡힌다. 그리고 레이싱이나 달리기를 막는 무언가를 피하거나 이겨내는 것으로 게임플레이가 형성된다.
 """
