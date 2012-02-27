@@ -1,0 +1,957 @@
+# -*- coding: utf-8 -*-
+SW,SH = 640,480
+BGCOLOR = (0, 0, 0)
+
+from math import radians 
+
+from OpenGL.GL import *
+from OpenGL.GLU import *
+
+import pygame
+from pygame.locals import *
+
+import random
+import math
+import numpy
+import pickle
+import os
+
+LMB = 1
+MMB = 2
+RMB = 3
+WUP = 4
+WDN = 5
+
+
+
+class CustomIMEModule:
+    def __init__(self, printFunc):
+        EMgrSt.BindTick(self._OnTick)
+        EMgrSt.BindKeyDown(self._OnKeyPressed)
+        self.printFunc = printFunc
+
+        self.cmdText = u""
+
+        self.composingText = u""
+        self.composing = False
+
+        self.hangulMode = False
+        self.chatMode = False
+
+        self.keyPressedWaitedFor = 0
+        self.keyRepeatStartWaitedFor = 0
+        self.pressedDelay = 50
+        self.repeatStartDelay = 250
+
+        self.lastKey = 0
+        self.lastText = 0
+        self.lastTick = pygame.time.get_ticks()
+        
+
+        import hangul
+        self.hangulComposer = hangul.HangulComposer()
+
+    def ResetTexts(self):
+        self._FinishChatMode()
+        self.cmdText = u""
+    def SetText(self, text):
+        self._FinishChatMode()
+        self.cmdText = unicode(text)
+    def SetPrintFunc(self, func):
+        self.printFunc = func
+    def SetActive(self, mode):
+        self.chatMode = mode
+        if not mode:
+            self._FinishChatMode()
+        else:
+            pass
+
+    def _ToggleHangulMode(self):
+        self.hangulMode = not self.hangulMode
+
+    def _FinishChatMode(self):
+        self._FinishHangulComposing()
+
+    def _OnTick(self, tick, lastMouseState, lastKeyState):
+        tick2 = tick - self.lastTick
+        self.lastTick = tick
+        def RepeatKeyEvent():
+            if lastKeyState.GetPressedKey():
+                # check if it's time to start to repeat
+                if self.keyRepeatStartWaitedFor > self.repeatStartDelay and \
+                        self.keyPressedWaitedFor > self.pressedDelay: # check if last repeat waiting is over
+                    self.keyPressedWaitedFor = 0
+                    if self.lastKey != K_RETURN:
+                        self._ProcessKeyPressed(self.lastKey, self.lastText)
+                self.keyPressedWaitedFor += tick2
+                self.keyRepeatStartWaitedFor += tick2
+
+        if self.chatMode:
+            RepeatKeyEvent()
+
+    def _OnKeyPressed(self, tick, m, k):
+        if self.chatMode:
+            def ResetRepeatKeyEvent():
+                self.keyPressedWaitedFor = 0
+                self.keyRepeatStartWaitedFor = 0
+            ResetRepeatKeyEvent()
+            self._ProcessKeyPressed(k.pressedKey, k.pressedChar)
+
+    def _ProcessKeyPressed(self, key, text):
+        self.lastKey = key
+        self.lastText = text
+
+        if key == K_RALT:
+            self._ToggleHangulMode()
+
+        elif key == K_BACKSPACE:
+            if self.hangulComposer.iscomposing():
+                self._DoHangulBackspace()
+            else:
+                if self.cmdText:
+                    self.cmdText = self.cmdText[:-1]
+            self._PrintCmd(self.cmdText + self.composingText)
+
+        else:
+            self._ProcessChar(text)
+            self._PrintCmd(self.cmdText + self.composingText)
+
+    def _DoHangulBackspace(self):
+        bs = self.hangulComposer.backspace()
+        if bs:
+            uni, finished, finishedUni = bs
+            if uni:
+                self._StartHangulComposing(uni)
+            else:
+                self._FinishHangulComposing()
+        else:
+            self._FinishHangulComposing()
+
+    def _StartHangulComposing(self, composingText):
+        self.composing = True
+        self.composingText = composingText
+    def _FinishHangulComposing(self):
+        self.hangulComposer.finish()
+        if self.composing:
+            self.cmdText += self.composingText
+            self.composing = False
+            self.composingText = u''
+
+    def _ProcessChar(self, char):
+        if len(self.cmdText) > 50:
+            return
+        alphabets = SpecialStrings.GetAlphabets()
+        numerics = SpecialStrings.GetNumerics()
+        specials = SpecialStrings.GetSpecials()
+        #char = chr(char)
+
+        if self.hangulMode and char in alphabets:
+            uni, finished, finishedUni = self.hangulComposer.feed(char) # XXX: feel exotic to use huh?
+            if finished:
+                self.cmdText += finishedUni
+                self._StartHangulComposing(uni[len(finishedUni):])
+            else:
+                self._StartHangulComposing(uni)
+
+        elif char in numerics + alphabets + specials:
+            self._FinishHangulComposing()
+            self.cmdText += char
+        else:
+            self._FinishHangulComposing()
+
+    def _PrintCmd(self, text):
+        self.printFunc(text)
+
+
+
+EMgrSt = None
+class EventManager(object):
+    def __init__(self):
+        global EMgrSt
+        EMgrSt = self
+        self.lastMouseState = MouseState()
+        self.lastKeyState = KeyState()
+        self.bindMDown = []
+        self.bindMUp = []
+        self.bindMotion = []
+        self.bindTick = []
+
+        self.ldown = []
+        self.rdown = []
+        self.mdown = []
+        self.lup = []
+        self.rup = []
+        self.mup = []
+        self.wup = []
+        self.wdn = []
+        self.bindLPressing = []
+        self.bindMPressing = []
+        self.bindRPressing = []
+        self.kdown = []
+        self.kup = []
+        self.tick = 0
+
+        self.prevEvent = 0
+        self.eventDelay = 50
+
+    def BindWUp(self, func):
+        self.wup += [func]
+    def BindWDn(self, func):
+        self.wdn += [func]
+    def BindLPressing(self, func):
+        self.bindLPressing += [func]
+    def BindMPressing(self, func):
+        self.bindMPressing += [func]
+    def BindRPressing(self, func):
+        self.bindRPressing += [func]
+    def BindLDown(self, func):
+        self.ldown += [func]
+    def BindLUp(self, func):
+        self.lup += [func]
+    def BindRDown(self, func):
+        self.rdown += [func]
+    def BindRUp(self, func):
+        self.rup += [func]
+    def BindMUp(self, func):
+        self.bindMUp += [func]
+    def BindMDown(self, func):
+        self.bindMDown += [func]
+    def BindMotion(self, func):
+        self.bindMotion += [func]
+    def BindTick(self, func):
+        self.bindTick += [func]
+    def BindKeyUp(self, func):
+        self.kup += [func]
+    def BindKeyDown(self, func):
+        self.kdown += [func]
+
+    def Tick(self):
+        self.tick = pygame.time.get_ticks()
+        self.tick = pygame.time.get_ticks()
+        self.lastMouseState.OnTick(self.tick)
+        self.tick = pygame.time.get_ticks()
+        self.lastKeyState.OnTick(self.tick)
+        for func in self.bindTick:
+            self.tick = pygame.time.get_ticks()
+            func(self.tick, self.lastMouseState, self.lastKeyState)
+
+
+        pressedButtons = self.lastMouseState.GetPressedButtons()
+        for button in pressedButtons.iterkeys():
+            if button == LMB:
+                for func in self.bindLPressing:
+                    self.tick = pygame.time.get_ticks()
+                    func(self.tick, self.lastMouseState, self.lastKeyState)
+            if button == MMB:
+                for func in self.bindMPressing:
+                    self.tick = pygame.time.get_ticks()
+                    func(self.tick, self.lastMouseState, self.lastKeyState)
+            if button == RMB:
+                for func in self.bindRPressing:
+                    self.tick = pygame.time.get_ticks()
+                    func(self.tick, self.lastMouseState, self.lastKeyState)
+
+            
+
+        if self.tick - self.prevEvent > self.eventDelay:
+            self.prevEvent = self.tick
+
+    def Event(self, e):
+        if e.type is MOUSEBUTTONDOWN:
+            x,y = e.pos
+            self.lastMouseState.OnMousePressed(x,y,SW,SH,e.button)
+            for func in self.bindMDown:
+                self.tick = pygame.time.get_ticks()
+                func(self.tick, self.lastMouseState, self.lastKeyState)
+
+            dic = {LMB: self.ldown, MMB: self.mdown, RMB: self.rdown, WUP: self.wup, WDN: self.wdn}
+            for button in dic:
+                if e.button == button:
+                    for func in dic[button]:
+                        self.tick = pygame.time.get_ticks()
+                        func(self.tick, self.lastMouseState, self.lastKeyState)
+                
+        elif e.type is MOUSEBUTTONUP:
+            x,y = e.pos
+            self.lastMouseState.OnMouseReleased(x,y,SW,SH, e.button)
+            for func in self.bindMUp:
+                self.tick = pygame.time.get_ticks()
+                func(self.tick, self.lastMouseState, self.lastKeyState)
+
+            dic = {LMB: self.lup, MMB: self.mup, RMB: self.rup}
+            for button in dic:
+                if e.button == button:
+                    for func in dic[button]:
+                        self.tick = pygame.time.get_ticks()
+                        func(self.tick, self.lastMouseState, self.lastKeyState)
+        elif e.type is MOUSEMOTION:
+            x,y = e.pos
+            x2,y2 = e.rel
+            self.lastMouseState.OnMouseMoved(x,y,SW,SH,x2,y2,0)
+            for func in self.bindMotion:
+                self.tick = pygame.time.get_ticks()
+                func(self.tick, self.lastMouseState, self.lastKeyState)
+
+        elif e.type is KEYDOWN:
+            self.lastKeyState.OnKeyPressed(e.key, e.unicode, e.mod)
+            for func in self.kdown:
+                self.tick = pygame.time.get_ticks()
+                func(self.tick, self.lastMouseState, self.lastKeyState)
+        elif e.type is KEYUP:
+            self.lastKeyState.OnKeyReleased()
+            for func in self.kup:
+                self.tick = pygame.time.get_ticks()
+                func(self.tick, self.lastMouseState, self.lastKeyState)
+            '''
+    KEYDOWN	     unicode, key, mod
+    KEYUP	     key, mod
+            '''
+
+def emptyfunc(pos):
+    pass
+class MouseEventHandler(object):
+    def __init__(self, rect):
+        self.rect = rect
+        self.ldown = emptyfunc
+        self.rdown = emptyfunc
+
+    def BindLDown(self, func):
+        self.ldown = func
+    def BindRDown(self, func):
+        self.rdown = func
+
+    def Event(self, e):
+        self.OnLDown(e)
+        self.OnRDown(e)
+
+    def OnRDown(self, e):
+        if e.type is MOUSEBUTTONDOWN:
+            if e.button == RMB:
+                x, y = e.pos
+                x2,y2,w,h = self.rect
+                if InRect(x2,y2,w,h,x,y):
+                    self.rdown(e.pos)
+
+    def OnLDown(self, e):
+        if e.type is MOUSEBUTTONDOWN:
+            if e.button == LMB:
+                x, y = e.pos
+                x2,y2,w,h = self.rect
+                if InRect(x2,y2,w,h,x,y):
+                    self.ldown(e.pos)
+
+
+class MouseState(object):
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.w = 0
+        self.h = 0
+        self.relX = 0
+        self.relY = 0
+        self.relZ = 0
+        self.pressedButtons = {}
+
+    def OnMouseMoved(self, x, y, w, h, relX, relY, relZ):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.relX = relX
+        self.relY = relY
+        self.relZ = relZ
+    def OnMousePressed(self, x, y, w, h, id):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.pressedButtons[id] = 0
+    def OnMouseReleased(self, x, y, w, h, id):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        try:
+            del self.pressedButtons[id]
+        except:
+            pass
+    def UpdateWithMouseState(self, mouseState):
+        self.x, self.y, self.w, self.h = mouseState.GetValues()
+        self.relX, self.relY = self.GetRelativeMovements()
+        for key in mouseState.GetPressedButtons().iterkeys():
+            self.pressedButtons[key] = mouseState.GetPressedButtons()[key]
+    def OnTick(self, time):
+        for key in self.pressedButtons.iterkeys():
+            self.pressedButtons[key] += time
+
+    def GetValues(self):
+        return self.x, self.y, self.w, self.h
+    def GetRelativeMovements(self):
+        return self.relX, self.relY
+    def GetWheelMovement(self):
+        return self.relZ
+    def GetPressedButtons(self):
+        return self.pressedButtons
+    def _GetScreenVector(self, x, y, w, h):
+        if w and h:
+            mx = float(x) - float(w)/2.0
+            my = float(y) - float(h)/2.0
+            vectorX, vectorY = mx/(float(w)/2.0), -my/(float(h)/2.0)
+            return vectorX, vectorY
+        else:
+            return 0, 0
+    def GetScreenVector(self):
+        return self._GetScreenVector(*self.GetValues())
+
+    def GetScreenVectorDegree(self):
+        vector = self.GetScreenVector()
+        return Vector2ToAngle(*vector)
+
+def DegreeTo8WayDirection(degree):
+    degrees = [((360 / 8)*i)-360/16 for i in range(9)]
+    degrees[0] += 360
+    if (0 <= degree < degrees[1]) or (degrees[0] <= degree < 360) or (degree == 360):
+        return "e"
+
+    directions = ["ne", "n", "nw", "w", "sw", "s", "se"]
+    
+    idx = 0
+    for degIdx in range(len(degrees[1:])):
+        deg1 = degrees[1:][idx]
+        deg2 = degrees[1:][idx+1]
+        if deg1 <= degree < deg2:
+            return directions[idx]
+        idx += 1
+'''
+
+          +
+          +
+          +
+          +
+          +
+----------------------
+          +
+          +
+          +
+          +
+          +
+'''
+
+def Vector2ToAngle(x, y):
+    vecOrg = Vector2(1.0, 0.0)
+    vecPos = Vector2(x, y)
+    vecPos = vecPos.normalised()
+    dotted = vecOrg.dotProduct(vecPos)
+    if dotted == 0.0:
+        dotted = 0.0001
+    convert = 360.0/(2*math.pi)
+
+    angle = math.acos(dotted)*convert
+    if y < 0:
+        angle = -angle
+    angle %= 360
+    return angle
+
+class KeyState(object):
+    def __init__(self):
+        self.pressedKey = None
+        self.pressedChar = None
+        self.pressedMod = None
+        self.timePressedFor = None
+
+    def OnKeyPressed(self, key, text, mod):
+        self.pressedKey = key
+        self.pressedChar = text
+        self.pressedMod = mod
+        self.timePressedFor = 0
+    def OnTick(self, time):
+        if self.timePressedFor:
+            self.timePressedFor += time
+    def OnKeyReleased(self):
+        self.pressedKey = None
+        self.pressedChar = None
+        self.pressedMod = None
+        self.timePressedFor = None
+
+    def GetPressedKey(self):
+        return self.pressedKey
+    def GetPressedTime(self):
+        return self.timePressedFor
+
+class Vector2(object):
+    def __init__(self, x=0.0, y=0.0):
+        self.x = x
+        self.y = y
+    def length(self):
+        return math.sqrt(self.x ** 2 + self.y ** 2)
+    def normalised(self):
+        l = self.length()
+        if l == 0.0:
+            l = 1
+        return Vector2(self.x / l, self.y / l)
+    def __neg__(self):
+        return Vector2(-self.x, -self.y)
+    def __add__(self, other):
+        return Vector2(self.x + other.x, self.y + other.y)
+    def __radd__(self, other):
+        return self.__add__(other)
+    def __sub__(self, other):
+        return Vector2(self.x - other.x, self.y - other.y)
+    def __rsub__(self, other):
+        return self.__sub__(other)
+    def __mul__(self, other):
+        if type(other) in (int, float):
+            return Vector2(self.x * other, self.y * other)
+        else: # dot product
+            return self.x * other.x + self.y * other.y
+    def __rmul__(self, other):
+        return self.__mul__(other)
+    def __div__(self, other):
+        return Vector2(self.x / other, self.y / other)
+    def dotProduct(self, other):
+        return self.x * other.x + self.y * other.y
+
+def tangent(a, b):
+    return (a-b)/2.0
+def CatmullRomSpline(p0, p1, p2, p3, resolution=0.1):
+
+    m0 = tangent(p1, p0)
+    m1 = tangent(p2, p0)
+    m2 = tangent(p3, p1)
+    m3 = tangent(p3, p2)
+    t = 0.0
+    a = []
+    b = []
+    c = []
+    while t < 1.0:
+        t_2 = t * t
+        _1_t = 1 - t
+        _2t = 2 * t
+        h00 =  (1 + _2t) * (_1_t) * (_1_t)
+        h10 =  t  * (_1_t) * (_1_t)
+        h01 =  t_2 * (3 - _2t)
+        h11 =  t_2 * (t - 1)
+
+        result = Vector2(0.0,0.0)
+        result.x = h00 * p0.x + h10 * m0.x + h01 * p1.x + h11 * m1.x
+        result.y = h00 * p0.y + h10 * m0.y + h01 * p1.y + h11 * m1.y
+        a.append(result)
+        result = Vector2(0.0,0.0)
+        result.x = h00 * p1.x + h10 * m1.x + h01 * p2.x + h11 * m2.x
+        result.y = h00 * p1.y + h10 * m1.y + h01 * p2.y + h11 * m2.y
+        b.append(result)
+        result = Vector2(0.0,0.0)
+        result.x = h00 * p2.x + h10 * m2.x + h01 * p3.x + h11 * m3.x
+        result.y = h00 * p2.y + h10 * m2.y + h01 * p3.y + h11 * m3.y
+        c.append(result)
+        t+=resolution
+    out = []
+
+    for point in b:
+        out.append(point)
+    return out
+
+def IsClockwise(x0,x1,x2,y0,y1,y2):
+    return ((x1-x0)*(y2-y0) - (x2-x0)*(y1-y0)) < 0
+
+def MbyM44(m, n):
+    m[0],m[4],m[8],m[12]
+    m[1],m[5],m[9],m[13]
+    m[2],m[6],m[10],m[14]
+    m[3],m[7],m[11],m[15]
+
+    n[0],n[4],n[8],n[12]
+    n[1],n[5],n[9],n[13]
+    n[2],n[6],n[10],n[14]
+    n[3],n[7],n[11],n[15]
+
+    l = [0 for i in range(16)]
+    l[0] = m[0]*n[0] + m[1]*n[4] + m[2]*n[8] + m[3]*n[12]
+    l[1] = m[0]*n[1] + m[1]*n[5] + m[2]*n[9] + m[3]*n[13]
+    l[2] = m[0]*n[2] + m[1]*n[6] + m[2]*n[10] + m[3]*n[14]
+    l[3] = m[0]*n[3] + m[1]*n[7] + m[2]*n[11] + m[3]*n[15]
+
+    l[4] = m[4]*n[0] + m[5]*n[4] + m[6]*n[8] + m[7]*n[12]
+    l[5] = m[4]*n[1] + m[5]*n[5] + m[6]*n[9] + m[7]*n[13]
+    l[6] = m[4]*n[2] + m[5]*n[6] + m[6]*n[10] + m[7]*n[14]
+    l[7] = m[4]*n[3] + m[5]*n[7] + m[6]*n[11] + m[7]*n[15]
+
+    l[8] = m[8]*n[0] + m[9]*n[4] + m[10]*n[8] + m[11]*n[12]
+    l[9] = m[8]*n[1] + m[9]*n[5] + m[10]*n[9] + m[11]*n[13]
+    l[10] = m[8]*n[2] + m[9]*n[6] + m[10]*n[10] + m[11]*n[14]
+    l[11] = m[8]*n[3] + m[9]*n[7] + m[10]*n[11] + m[11]*n[15]
+
+    l[12] = m[12]*n[0] + m[13]*n[4] + m[14]*n[8] + m[15]*n[12]
+    l[13] = m[12]*n[1] + m[13]*n[5] + m[14]*n[9] + m[15]*n[13]
+    l[14] = m[12]*n[2] + m[13]*n[6] + m[14]*n[10] + m[15]*n[14]
+    l[15] = m[12]*n[3] + m[13]*n[7] + m[14]*n[11] + m[15]*n[15]
+    return l
+
+def ViewingMatrix():
+    projection = glGetDoublev( GL_PROJECTION_MATRIX)
+    model = glGetDoublev( GL_MODELVIEW_MATRIX )
+    # hmm, this will likely fail on 64-bit platforms :(
+    if projection is None or model is None:
+        if projection:
+            return projection
+        if model:
+            return model
+        return None
+    else:
+        m = model
+        p = projection
+        return numpy.dot(m,p)
+
+def GetFrustum(matrix):
+    frustum = numpy.zeros( (6, 4), 'd' )
+    clip = numpy.ravel(matrix)
+    # right
+    frustum[0][0] = clip[ 3] - clip[ 0]
+    frustum[0][1] = clip[ 7] - clip[ 4]
+    frustum[0][2] = clip[11] - clip[ 8]
+    frustum[0][3] = clip[15] - clip[12]
+    # left
+    frustum[1][0] = clip[ 3] + clip[ 0]
+    frustum[1][1] = clip[ 7] + clip[ 4]
+    frustum[1][2] = clip[11] + clip[ 8]
+    frustum[1][3] = clip[15] + clip[12]
+    # bottom
+    frustum[2][0] = clip[ 3] + clip[ 1]
+    frustum[2][1] = clip[ 7] + clip[ 5]
+    frustum[2][2] = clip[11] + clip[ 9]
+    frustum[2][3] = clip[15] + clip[13]
+    # top
+    frustum[3][0] = clip[ 3] - clip[ 1]
+    frustum[3][1] = clip[ 7] - clip[ 5]
+    frustum[3][2] = clip[11] - clip[ 9]
+    frustum[3][3] = clip[15] - clip[13]
+    # far
+    frustum[4][0] = clip[ 3] - clip[ 2]
+    frustum[4][1] = clip[ 7] - clip[ 6]
+    frustum[4][2] = clip[11] - clip[10]
+    frustum[4][3] = clip[15] - clip[14]
+    # near
+    frustum[5][0] = clip[ 3] + clip[ 2]
+    frustum[5][1] = clip[ 7] + clip[ 6]
+    frustum[5][2] = clip[11] + clip[10]
+    frustum[5][3] = clip[15] + clip[14]
+    return frustum
+def NormalizeFrustum(frustum):
+    magnitude = numpy.sqrt( 
+        frustum[:,0] * frustum[:,0] + 
+        frustum[:,1] * frustum[:,1] + 
+        frustum[:,2] * frustum[:,2] 
+    )
+    # eliminate any planes which have 0-length vectors,
+    # those planes can't be used for excluding anything anyway...
+    frustum = numpy.compress( magnitude,frustum,0 )
+    magnitude = numpy.compress( magnitude, magnitude,0 )
+    magnitude = numpy.reshape(magnitude.astype('d'), (len(frustum),1))
+    return frustum/magnitude
+
+
+def resize(width, height):
+    glViewport(0, 0, width, height)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(60.0, float(width)/height, .1, 1000.)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+
+def init():
+    glEnable(GL_DEPTH_TEST)
+    glShadeModel(GL_SMOOTH)
+    glClearColor(1.0, 1.0, 1.0, 0.0)
+    
+
+def glpPerspective(fovy, aspect, zNear, zFar):
+    top = math.tan(fovy * math.pi / 360.0) * zNear
+    bottom = -top
+    left = aspect * bottom
+    right = aspect * top
+    glFrustum(float(left), float(right), float(bottom), float(top), float(zNear), float(zFar))
+
+def GUIDrawMode():
+    glDisable(GL_CULL_FACE)
+    glDisable(GL_DEPTH_TEST)
+    #glViewport(0, 0, SW, SH)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glOrtho(0.0, float(SW), -float(SH), 0.0, -1000.0, 1000.0)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+G_FAR = 300.0
+def GameDrawMode():
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_DEPTH_TEST)
+    glDepthFunc(GL_LEQUAL)
+    h = SH
+    if SH == 0: h = 1
+    aspect = float(SW) / float(h)
+    fov = 90.0
+    near = 0.1 # 이게 너무 작으면 Z버퍼가 정확도가 낮으면 글픽 깨짐
+    far = G_FAR
+
+    #glViewport(0, 0, SW, SH)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glpPerspective(90.0, aspect, near, far)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+class Quaternion:
+    def __init__(self, x = 0, y = 0, z = 0, w = 1):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.w = w
+
+    def Length(self):
+        return sqrtf(self.x**2+self.y**2+self.z**2+self.w**2)
+
+    def Normalized(self):
+        len = self.Length()
+        try:
+            factor = 1.0/len
+            x = self.x * factor
+            y = self.y * factor
+            z = self.z * factor
+            w = self.w * factor
+        except ZeroDivisionError:
+            x = self.x
+            y = self.y
+            z = self.z
+            w = self.w
+        return Quaternion(x,y,z,w)
+
+
+    def CreateFromAxisAngle(self, x, y, z, degrees):
+        angle = (degrees / 180.0) * math.pi
+        result = math.sin( angle / 2.0 )
+        self.w = math.cos( angle / 2.0 )
+        self.x = (x * result)
+        self.y = (y * result)
+        self.z = (z * result)
+
+    def CreateMatrix(self):
+        pMatrix = [0 for i in range(16)]
+	
+	# First row
+	pMatrix[ 0] = 1.0 - 2.0 * ( self.y * self.y + self.z * self.z )
+	pMatrix[ 1] = 2.0 * (self.x * self.y + self.z * self.w)
+	pMatrix[ 2] = 2.0 * (self.x * self.z - self.y * self.w)
+	pMatrix[ 3] = 0.0
+	
+	# Second row
+	pMatrix[ 4] = 2.0 * ( self.x * self.y - self.z * self.w )
+	pMatrix[ 5] = 1.0 - 2.0 * ( self.x * self.x + self.z * self.z )
+	pMatrix[ 6] = 2.0 * (self.z * self.y + self.x * self.w )
+	pMatrix[ 7] = 0.0
+
+	# Third row
+	pMatrix[ 8] = 2.0 * ( self.x * self.z + self.y * self.w )
+	pMatrix[ 9] = 2.0 * ( self.y * self.z - self.x * self.w )
+	pMatrix[10] = 1.0 - 2.0 * ( self.x * self.x + self.y * self.y )
+	pMatrix[11] = 0.0
+
+	# Fourth row
+	pMatrix[12] = 0
+	pMatrix[13] = 0
+	pMatrix[14] = 0
+	pMatrix[15] = 1.0
+        return pMatrix
+
+
+    def Conjugate(self):
+        x = -self.x
+        y = -self.y
+        z = -self.z
+        w = self.w
+        return Quaternion(x,y,z,w)
+
+    def __mul__(self, quat):
+        x = self.w*quat.x + self.x*quat.w + self.y*quat.z - self.z*quat.y;
+        y = self.w*quat.y - self.x*quat.z + self.y*quat.w + self.z*quat.x;
+        z = self.w*quat.z + self.x*quat.y - self.y*quat.x + self.z*quat.w;
+        w = self.w*quat.w - self.x*quat.x - self.y*quat.y - self.z*quat.z;
+        return Quaternion(x,y,z,w)
+
+    def __repr__(self):
+        return str([self.w, [self.x,self.y,self.z]])
+    
+    def Dot(self, q):
+        q = q.Normalized()
+        self = self.Normalized()
+        return self.x*q.x + self.y*q.y + self.z*q.z + self.w*q.w
+
+    def Slerp(self, q, t):
+        import math
+        if t <= 0.0:
+            return Quaternion(self.x, self.y, self.z, self.w)
+        elif t >= 1.0:
+            return Quaternion(q.x, q.y, q.z, q.w)
+
+        cosOmega = self.Dot(q)
+        if cosOmega < 0:
+            cosOmega = -cosOmega
+            q2 = Quaternion(-q.x, -q.y, -q.z, -q.w)
+        else:
+            q2 = Quaternion(q.x, q.y, q.z, q.w)
+        
+        if 1.0 - cosOmega > 0.00001:
+            omega = math.acos(cosOmega)
+            sinOmega = sin(omega)
+            oneOverSinOmega = 1.0 / sinOmega
+
+            k0 = sin((1.0 - t) * omega) / sinOmega
+            k1 = sin(t * omega) / sinOmega
+        else:
+            k0 = 1.0 - t
+            k1 = t
+        return Quaternion(
+                (k0 * self.x) + (k1 * q2.x),
+                (k0 * self.y) + (k1 * q2.y),
+                (k0 * self.z) + (k1 * q2.z),
+                (k0 * self.w) + (k1 * q2.w))
+
+class Vector:
+    def __init__(self, x = 0, y = 0, z = 0, w=1.0):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.w = w
+
+    def Length(self):
+        import math
+        return math.sqrt(self.x*self.x+self.y*self.y+self.z*self.z)
+
+    def NormalizeByW(self):
+        x,y,z,w = self.x,self.y,self.z,self.w
+        w = float(w)
+        if w == 0.0:
+            w = 0.000001
+        x /= w
+        y /= w
+        z /= w
+        w = 1.0
+        return Vector(x,y,z,w)
+
+    def Normalized(self):
+        try:
+            newV = self.NormalizeByW()
+            factor = 1.0/newV.Length()
+            return newV.MultScalar(factor)
+        except ZeroDivisionError:
+            return Vector(self.x, self.y, self.z, self.w)
+
+    def Cross(self, vector):
+        newV = self.NormalizeByW()
+        vector = vector.NormalizeByW()
+        return Vector(*cross(newV.x,newV.y,newV.z,vector.x,vector.y,vector.z))
+
+    def Dot(self, vector):
+        newV = self.NormalizeByW()
+        newV = newV.Normalized()
+        vector = vector.NormalizeByW()
+        vector = vector.Normalized()
+        return newV.x*vector.x+newV.y*vector.y+newV.z*vector.z
+
+    def __add__(self, vec):
+        newV = self.NormalizeByW()
+        vec = vec.NormalizeByW()
+        a,b,c = newV.x,newV.y,newV.z
+        x,y,z = vec.x,vec.y,vec.z
+        return Vector(a+x,b+y,c+z)
+
+    def __sub__(self, vec):
+        newV = self.NormalizeByW()
+        vec = vec.NormalizeByW()
+        a,b,c = newV.x,newV.y,newV.z
+        x,y,z = vec.x,vec.y,vec.z
+        return Vector(a-x,b-y,c-z)
+
+    def MultScalar(self, scalar):
+        newV = self.NormalizeByW()
+        return Vector(newV.x*scalar, newV.y*scalar, newV.z*scalar)
+    def DivScalar(self, scalar):
+        newV = self.NormalizeByW()
+        return Vector(newV.x/scalar, newV.y/scalar, newV.z/scalar)
+    def __repr__(self):
+        return str([self.x, self.y, self.z, self.w])
+    
+    def MultMatrix(self, mat):
+        tempVec = Vector()
+        tempVec.x = self.x*mat[0] + self.y*mat[1] + self.z*mat[2] + self.w*mat[3]
+        tempVec.y = self.x*mat[4] + self.y*mat[5] + self.z*mat[6] + self.w*mat[7]
+        tempVec.z = self.x*mat[8] + self.y*mat[9] + self.z*mat[10] + self.w*mat[11]
+        tempVec.w = self.x*mat[12] + self.y*mat[13] + self.z*mat[14] + self.w*mat[15]
+        return tempVec
+
+
+
+
+    
+def glpLookAt(eye, center, up):
+    m = [0.0 for i in range(16)]
+    forward = center-eye
+    forward = forward.Normalized()
+
+    side = forward.Cross(up)
+    side = side.Normalized()
+    
+    up = side.Cross(forward)
+
+    m_ = [side.x, up.x, -forward.x, 0,
+        side.y, up.y, -forward.y, 0,
+        side.z, up.z, -forward.z, 0,
+        0, 0, 0, 1]
+
+    for i in range(16):
+        m[i] = float(m_[i])
+
+    glMultMatrixf(m)
+    glTranslatef(-eye.x, -eye.y, -eye.z)
+
+class ConstructorApp:
+    def __init__(self):
+        pass
+
+    def Run(self):
+        pygame.init()
+        isFullScreen = 0#FULLSCREEN
+        screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN)
+        done = False
+        while not done:
+            #fps.Start()
+            for e in pygame.event.get():
+                if e.type is QUIT: 
+                    done = True
+                elif e.type is KEYDOWN and e.mod & KMOD_LALT and e.key == K_F4:
+                    done = True
+                elif e.type is MOUSEMOTION:
+                    pass
+                elif e.type is MOUSEBUTTONDOWN:
+                    pass
+                elif e.type is MOUSEBUTTONUP:
+                    pass
+                elif e.type == ACTIVEEVENT and e.gain == 1:
+                    #screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
+                    #self.regenTex = True
+                    #g_Textures = []
+                    pass
+                #emgr.Event(e)
+            #emgr.Tick()
+            #self.gui.invShown = self.gui.setInvShown
+            #self.regenTex = False
+            #fps.End()
+            #print fps.GetFPS()
+
+
+if __name__ == '__main__':
+    def run():
+        app = ConstructorApp()
+        app.Run()
+    run()
+

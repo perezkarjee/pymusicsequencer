@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """
+'''
 DigDigRPG
 Copyright (C) 2011 Jin Ju Yu
 
@@ -15,7 +16,7 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""
+'''
 SW,SH = 640,480
 BGCOLOR = (0, 0, 0)
 
@@ -935,7 +936,7 @@ TOOL_TEX_COORDS = [
 TYPE_BLOCK = "Block"
 TYPE_ITEM = "Item"
 
-"""
+'''
 무기
 방패
 모자
@@ -944,7 +945,7 @@ TYPE_ITEM = "Item"
 신발
 목걸이
 반지
-"""
+'''
 g_id = 0
 EQ_RIGHTHAND = GenId()
 EQ_LEFTHAND = GenId()
@@ -1278,7 +1279,7 @@ class DigDigGUI(object):
         self.eqSlotPos = []
         self.charTab = True
 
-        """
+        '''
         무기
         방패
         모자
@@ -1300,13 +1301,13 @@ class DigDigGUI(object):
         250,296
         250,330
 
-        """
+        '''
         for i in range(4):
             self.eqSlotPos += [(self.makeRealPos[0]+23, self.makeRealPos[1]+25+i*34)]
         for i in range(4):
             self.eqSlotPos += [(self.makeRealPos[0]+247, self.makeRealPos[1]+25+i*34)]
 
-        """
+        '''
         self.PutItemInInventory(Item(ITEM_GOLD, 64, color = (207,207,101), stackable=True))
         self.PutItemInInventory(Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True))
         self.PutItemInInventory(Block(BLOCK_CODE, 64))
@@ -1322,12 +1323,12 @@ class DigDigGUI(object):
         self.PutItemInInventory(Item(ITEM_GOLD, 64, color = (207,207,101), stackable=True))
         self.PutItemInInventory(Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True))
         self.PutItemInInventory(Item(ITEM_DIAMOND, 64, color = (80,212,217), stackable=True))
-        """
-        """
+        '''
+        '''
         self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_DIAMOND, 64, color = (80,212,217), stackable=True) for i in range(60)]))
         self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_GOLD, 64, color = (207,207,80), stackable=True) for i in range(60)]))
         self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True) for i in range(60)]))
-        """
+        '''
         #self.PutItemInInventory(Block(BLOCK_COBBLESTONE, 64))
         #self.PutItemInInventory(Block(BLOCK_DIRT, 64))
 
@@ -1604,7 +1605,7 @@ class DigDigGUI(object):
     def DoEquip(self, idx):
         # dragging이 있으면 그걸 입을수있는지 검사
         # 없으면 언이큅
-        """
+        '''
         u"RightHand",
         u"LeftHand",
         u"Head",
@@ -1613,7 +1614,7 @@ class DigDigGUI(object):
         u"Boots",
         u"Necklace",
         u"Ring",]
-        """
+        '''
 
         if self.draggingItem and self.draggingItem.name == "Item" and self.draggingItem.type_ in [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE, ITEM_SHIELD, ITEM_GLOVES, ITEM_BOOTS, ITEM_GOLDRING, ITEM_GOLDNECLACE, ITEM_HELM, ITEM_ARMOR, ITEM_SILVERRING, ITEM_SILVERNECLACE, ITEM_DIAMONDRING, ITEM_DIAMONDNECLACE]:
             item = self.draggingItem
@@ -2385,12 +2386,12 @@ class DigDigGUI(object):
                 glVertex3f(x, -float(y), 100.0)
                 glEnd()
 
-            """
+            '''
             texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
             texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
             texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
             texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            """
+            '''
             if text:
                 self.RenderNumber(item.count, x, y)
         def RenderSkill(skill, idx, posx, posy, text=True):
@@ -2420,12 +2421,12 @@ class DigDigGUI(object):
             glVertex3f(x, -float(y), 100.0)
             glEnd()
 
-            """
+            '''
             texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
             texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
             texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
             texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            """
+            '''
             if text:
                 self.RenderNumber(int(skill.skillPoint), x, y)
         def RenderItem(item, idx, posx, posy, text=True):
@@ -2511,12 +2512,12 @@ class DigDigGUI(object):
                 glVertex3f(x, -float(y), 100.0)
                 glEnd()
 
-            """
+            '''
             texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
             texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
             texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
             texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            """
+            '''
             if text:
                 self.RenderNumber(item.count, x, y)
 
@@ -2580,15 +2581,15 @@ class DigDigGUI(object):
                         b = item.returns[0]
                         texupx = (TOOL_TEX_COORDS[b*2 + 0]*30.0) / 512.0
                         texupy = (TOOL_TEX_COORDS[b*2 + 1]*30.0) / 512.0
-                        """
+                        '''
                         texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
                         texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
                         texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
                         texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-                        """
+                        '''
 
                         # XXX: 재료가 없으면 배경을 빨간색으로 표시
-                        """
+                        '''
                         glDisable(GL_TEXTURE_2D)
                         glBegin(GL_QUADS)
                         glColor4ub(200,0,0,200)
@@ -2598,7 +2599,7 @@ class DigDigGUI(object):
                         glVertex3f(x, -float(y), 100.0)
                         glEnd()
                         glEnable(GL_TEXTURE_2D)
-                        """
+                        '''
 
                         glBegin(GL_QUADS)
                         glColor4ub(*item.color + (255,))
@@ -2633,15 +2634,15 @@ class DigDigGUI(object):
                         b = item.returns[0]
                         texupx = (BLOCK_TEX_COORDS[b*2*3 + 0]*32.0) / 512.0
                         texupy = (BLOCK_TEX_COORDS[b*2*3 + 1]*32.0) / 512.0
-                        """
+                        '''
                         texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
                         texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
                         texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
                         texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-                        """
+                        '''
 
                         # XXX: 재료가 없으면 배경을 빨간색으로 표시
-                        """
+                        '''
                         glDisable(GL_TEXTURE_2D)
                         glBegin(GL_QUADS)
                         glColor4ub(200,0,0,200)
@@ -2651,7 +2652,7 @@ class DigDigGUI(object):
                         glVertex3f(x, -float(y), 100.0)
                         glEnd()
                         glEnable(GL_TEXTURE_2D)
-                        """
+                        '''
 
                         glBegin(GL_QUADS)
                         glColor4ub(*item.color + (255,))
@@ -3324,10 +3325,10 @@ class EventManager(object):
             for func in self.kup:
                 self.tick = pygame.time.get_ticks()
                 func(self.tick, self.lastMouseState, self.lastKeyState)
-            """
+            '''
     KEYDOWN	     unicode, key, mod
     KEYUP	     key, mod
-            """
+            '''
 
 def emptyfunc(pos):
     pass
@@ -3444,7 +3445,7 @@ def DegreeTo8WayDirection(degree):
         if deg1 <= degree < deg2:
             return directions[idx]
         idx += 1
-"""
+'''
 
           +
           +
@@ -3457,7 +3458,7 @@ def DegreeTo8WayDirection(degree):
           +
           +
           +
-"""
+'''
 
 def Vector2ToAngle(x, y):
     vecOrg = Vector2(1.0, 0.0)
@@ -3672,7 +3673,7 @@ def NormalizeFrustum(frustum):
     return frustum/magnitude
 
 
-"""
+'''
 class Frustum (node.Node):
     ""Holder for frustum specification for intersection tests
 
@@ -3751,7 +3752,7 @@ class Frustum (node.Node):
         magnitude=reshape(magnitude.astype(cls.ARRAY_TYPE), (len(frustum),1))
         return frustum/magnitude
     normalize = classmethod(normalize)
-"""
+'''
 
 def resize(width, height):
     glViewport(0, 0, width, height)
@@ -4019,14 +4020,14 @@ def glpLookAt(eye, center, up):
 
 class Camera:
     def __init__(self):
-        """
+        '''
         self.view = Vector(0, 0, 1.0).Normalized()
         self.rotX = 0
         self.rotY = ((math.pi/2)-0.1)
         self.posz = -3.0
         self.posx = 0
         self.posy = 0
-        """
+        '''
         self.qPitch = Quaternion()
         self.qHeading = Quaternion()
         self.pitchDegrees = 0.0
@@ -4052,7 +4053,7 @@ class Camera:
 
 
     def RotateByXY(self, xmoved, ymoved):
-        """
+        '''
         if xmoved or ymoved:
             factor = 1000.0
 
@@ -4076,7 +4077,7 @@ class Camera:
             #self.view = self.RotateVert(view, -self.rotX, Vector(0, 1.0, 0))
             view = self.RotateVert(view, -ymoved, axis)
             self.view = self.RotateVert(view, -xmoved, Vector(0, 1.0, 0))
-        """
+        '''
         self.pitchDegrees += float(ymoved)/10.0
         if self.pitchDegrees >= 89.9:
             self.pitchDegrees = 89.9
@@ -4186,7 +4187,7 @@ class Camera:
             self.pos += leftVec
 
 
-        """
+        '''
         self.posx += x
         self.posy += y
         self.posz += z
@@ -4194,7 +4195,7 @@ class Camera:
             self.posz = -0.15
         if self.posz < -10.0:
             self.posz = -10.0
-        """
+        '''
 
 
 def normalize(x, y, z):
@@ -4491,7 +4492,7 @@ def DrawCubeArm(pos,bound, color, tex1,tex2,tex3,tex4,tex5,tex6, texid, flipX = 
         glTexCoord2f(*texc[3])
         glVertex( v[v4] )            
         glEnd()
-        """
+        '''
         glDisable(GL_TEXTURE_2D)
         glLineWidth(2.0)
         glBegin(GL_LINES)
@@ -4506,7 +4507,7 @@ def DrawCubeArm(pos,bound, color, tex1,tex2,tex3,tex4,tex5,tex6, texid, flipX = 
         glVertex( v[v1] )
         glEnd()
         glEnable(GL_TEXTURE_2D)
-        """
+        '''
 def DrawCubeStair(pos,bound, color, tex1,tex2,tex3,tex4,tex5,tex6, texid, flipX = False, offset=32.0): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
     x,y,z = pos
     w,h,j = bound
@@ -4711,7 +4712,7 @@ def DrawCube(pos,bound, color, tex1,tex2,tex3,tex4,tex5,tex6, texid, flipX = Fal
         glTexCoord2f(*texc[3])
         glVertex( v[v4] )            
         glEnd()
-        """
+        '''
         glLineWidth(2.0)
         glBegin(GL_LINES)
         glColor4f(0.0, 0.0, 0.0, 1.0)
@@ -4724,7 +4725,7 @@ def DrawCube(pos,bound, color, tex1,tex2,tex3,tex4,tex5,tex6, texid, flipX = Fal
         glVertex( v[v4] )            
         glVertex( v[v1] )
         glEnd()
-        """
+        '''
 
 g_id = 0
 ANIM_IDLE = GenId()
@@ -4753,9 +4754,9 @@ class MobRenderer(object):
         glCallList(self.dLists[mobType][anim][frame])
         glPopMatrix()
     def RebuildMobs(self, bound):
-        """
+        '''
         factor = self.animIdx/self.animMax
-        """
+        '''
 
         w,h,l = bound
         self.color = (255,255,255,255)
@@ -5061,10 +5062,10 @@ class MobGL(object):
     def SetAnimState(self, s):
         self.animstate = s
     def Render2(self, nameRenderer, cam, t):
-        """
+        '''
         if not self.genDone or AppSt.regenTex:
             self.dList = [glGenLists(1) for i in range(6)]
-        """
+        '''
         glBindTexture(GL_TEXTURE_2D, AppSt.mobtex)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
@@ -5089,7 +5090,7 @@ class MobGL(object):
         self.t = t
 
 
-        """
+        '''
 
         x,y,z = self.pos
         y -= self.bound[1]
@@ -5213,7 +5214,7 @@ class MobGL(object):
         self.t = t
 
         glPopMatrix()
-        """
+        '''
     def Render(self, nameRenderer, cam, t):
         if not self.genDone or AppSt.regenTex:
             self.dList = [glGenLists(1) for i in range(6)]
@@ -7636,7 +7637,7 @@ class DigDigApp(object):
                 glEnd()
                 glEnable(GL_TEXTURE_2D)
 
-            """
+            '''
             glBindTexture(GL_TEXTURE_2D, self.guitex)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
@@ -7652,8 +7653,8 @@ class DigDigApp(object):
             glVertex3f(float(512), 0.0, 100.0)
             glTexCoord2f(0.0, 0.0)
             glVertex3f(0.0, 0.0, 100.0)
-            """
-            """
+            '''
+            '''
             glTexCoord2f(0.0, float(SH)/1024.0)
             glVertex3f(0.0, -float(SH), 100.0)
             glTexCoord2f(float(SW)/1024.0, float(SH)/1024.0)
@@ -7662,15 +7663,15 @@ class DigDigApp(object):
             glVertex3f(float(SW), 0.0, 100.0)
             glTexCoord2f(0.0, 0.0)
             glVertex3f(0.0, 0.0, 100.0)
-            """
-            """
+            '''
+            '''
             glColor3f(1.0, 1.0, 0.0)
             glVertex3f(-10.0, 0.0, -10.0)
             glVertex3f(10.0, 0.0, -10.0)
             glVertex3f(10.0, 0.0, 10.0)
             glVertex3f(-10.0, 0.0, 10.0)
             glEnd()
-            """
+            '''
             #self.RenderWeapon(0,1,(255,0,0,255), False)
             self.RenderCrossHair()
             self.RenderHPMP()
@@ -7832,14 +7833,14 @@ class DigDigApp(object):
         #pygame.mixer.music.play(-1)
         def prr():
             print 'aa'
-        """
+        '''
         but = Button(prr, u"테스트", (0,40,0,0))
         self.housing = VisibilitySet()
         self.housing.Add(but)
         self.housing.Show(False)
         emgr.BindKeyDown(self.KeyTest)
-        """
-        """
+        '''
+        '''
         but = Button(house.SetSE, u"남동", (0,40,0,0))
         self.housing.Add(but)
         but = Button(house.SetSW, u"남서", (0,80,0,0))
@@ -7847,7 +7848,7 @@ class DigDigApp(object):
         but = Button(house.SetFloor, u"바닥", (0,120,0,0))
         self.housing.Add(but)
         self.housing.Show(False)
-        """
+        '''
         skin = [
             [(0*64.0/512.0, 1*64.0/512.0),
             (0*64.0/512.0, 1*64.0/512.0),
@@ -7926,10 +7927,10 @@ class DigDigApp(object):
         skins = {MOB_SKELETON: skin, MOB_NPC: skin2}
         self.mobR = MobRenderer(skins)
 
-        """
+        '''
         entity = FightingEntity("Mob1", self.cam1.pos, {"HP": 100, "MP": 100, "Str": 5, "Dex": 5, "Int": 5})
         self.mobs = [MobGL((0.0,0.0,0.0), self.bound, skin, MOB_SKELETON, (200,200,200,255), entity) for i in range(1)]
-        """
+        '''
 
 
         entity = FightingEntity("Mob1", {"HP": 100, "MP": 100, "Str": 5, "Dex": 5, "Int": 5, "Melee Damage":10,"Defense":5,"Poison Damage":5,"Poison Resist":5,"Electric Damage":5,"Electric Resist":5,"Ice Damage":5,"Ice Resist":5,"Fire Damage":5,"Fire Resist":5,"Sword Skill":5,"Mace Skill":5,"Spear Skill":5,"Knuckle Skill":5,"Armor Skill":5,"Magic Skill":5})
@@ -8018,12 +8019,12 @@ class DigDigApp(object):
             mob.pos = p.x+idx*1.0, p.y, (-p.z)
             idx += 1
         
-        """
+        '''
         questIdx = 0
         quests[questIdx]
 
         SpawnNPC("name", "SpawnerName", quests)
-        """
+        '''
 
 
         checkargs = []
@@ -8110,14 +8111,14 @@ if __name__ == '__main__':
         app.Run()
     run()
     #chunkhandler.Test()
-    """
+    '''
     v1 = Vector(-1.1,0.1,-0.1)
     v2 = Vector(0.1,0.1,1.1)
     print v1.Dot(v2)
-    """
+    '''
 
 
-"""
+'''
 ㅋㅋㅋㅋㅋㅋㅋㅋ 마인크래프트 클론을 만들어서 드워프 포트리스처럼 만들자.
 기본적으로 서버가 있고 무한맵.
 음.... 맵 데이터를 DB에 저장하는가?
@@ -8253,9 +8254,9 @@ GUI했으니 이제 맵생성을 하고 파는걸 하고 여러블럭을 한다.
 
 전투는 커스텀 디펜스처럼 커스텀 스킬을 부여 가능.
 ---------------
-"""
+'''
 # 청크 쿼드트리, 청크 메모리가 꽉차면 프리하고 다른거 로드하는기능 꼭 넣기 XXX:
-"""
+'''
 한칸 Y값 차이나는 거 계단ㅁ 없어도 그냥 점프 안해도 걸어가면 올라갈 수 있게.
 +1.0을 y에 해서 충돌검사에 안걸리면 y+1.0으로 고쳐서 하도록 한다.
 ------------
@@ -9148,4 +9149,5 @@ Bfxr처럼 비슷한 이론으로 랜덤한 사운드를 만들게도 한다.
 프로그래밍을 해서 게임을 만드는 것이 목적이다.
 처음에는 간단한 코드를 짜다가 점점 제공하는 라이브러리를 자신이 짜도록 한다.
 풀 코스로 해서 이 코스를 마치면 그 게임을 만드는 것이 가능하고, 보너스로 그 게임을 만드는 툴 자체를 만드는 부분을 엑스트라로 엔딩 이후 플레이할 수 있다.
+'''
 """
