@@ -137,10 +137,10 @@ badd +43 asd.py
 badd +167 pysynth.py
 badd +61 exportmy.py
 badd +412 simpleAdv.py
-badd +1488 simpleMud.py
-badd +26 simpleConstruct.py
-badd +8066 digdig.py
+badd +1092 simpleMud.py
+badd +1 digdig.py
 badd +3676 chunkhandler.pyx
+badd +39 glut.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
@@ -157,7 +157,7 @@ setlocal autoindent
 setlocal balloonexpr=
 setlocal nobinary
 setlocal bufhidden=
-setlocal buflisted
+setlocal nobuflisted
 setlocal buftype=
 setlocal nocindent
 setlocal cinkeys=0{,0},0),:,!^F,o,O,e
@@ -193,7 +193,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
+setlocal iminsert=2
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -246,12 +246,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 954 - ((47 * winheight(0) + 24) / 49)
+let s:l = 1208 - ((41 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-954
-normal! 027l
+1208
+normal! 015l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

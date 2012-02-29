@@ -22,6 +22,230 @@ RMB = 3
 WUP = 4
 WDN = 5
 
+class Camera:
+    def __init__(self):
+        '''
+        self.view = Vector(0, 0, 1.0).Normalized()
+        self.rotX = 0
+        self.rotY = ((math.pi/2)-0.1)
+        self.posz = -3.0
+        self.posx = 0
+        self.posy = 0
+        '''
+        self.qPitch = Quaternion()
+        self.qHeading = Quaternion()
+        self.pitchDegrees = 0.0
+        self.headingDegrees = 0.0
+        self.directionVector = Vector()
+        self.forwardVelocity = 1.0
+        self.pos = Vector(0.0, 0.0, 0.0)
+
+    def RotateVert(self, vert, angle, axis):
+        axis = axis.Normalized()
+        V = Quaternion(vert.x, vert.y, vert.z, 0)
+        R = self.Rotation(angle, axis)
+        W = R * V * R.Conjugate()
+        return Vector(W.x, W.y, W.z)#.Normalized()
+
+    def Rotation(self, angle, v):
+        from math import sin, cos
+        x = v.x * sin(float(angle)/2.0)
+        y = v.y * sin(float(angle)/2.0)
+        z = v.z * sin(float(angle)/2.0)
+        w = cos(float(angle)/2.0)
+        return Quaternion(x,y,z,w)
+
+
+    def RotateByXY(self, xmoved, ymoved):
+        '''
+        if xmoved or ymoved:
+            factor = 1000.0
+
+            yMax = ((math.pi/2)-0.1)
+            yMin = 0.1
+            xmoved /= factor
+            ymoved /= factor
+    
+            self.rotX += xmoved
+            self.rotY += ymoved
+            self.rotX = self.rotX % (2*math.pi)
+            if self.rotY > yMax:
+                self.rotY = yMax
+            elif self.rotY < yMin:
+                self.rotY = yMin
+
+            view = self.view#Vector(0.0, 0.0, 1.0)
+            pos = Vector(self.posx, self.posy, self.posz)
+            axis = (view-pos).Cross(Vector(0.0,1.0,0.0)).Normalized()
+            #view = self.RotateVert(view, -self.rotY, axis)
+            #self.view = self.RotateVert(view, -self.rotX, Vector(0, 1.0, 0))
+            view = self.RotateVert(view, -ymoved, axis)
+            self.view = self.RotateVert(view, -xmoved, Vector(0, 1.0, 0))
+        '''
+        self.pitchDegrees += float(ymoved)/10.0
+        if self.pitchDegrees >= 89.9:
+            self.pitchDegrees = 89.9
+        if self.pitchDegrees <= -89.9:
+            self.pitchDegrees = -89.9
+        self.headingDegrees += float(xmoved)/10.0
+
+    def ApplyCamera(self):
+	self.qPitch.CreateFromAxisAngle(1.0, 0.0, 0.0, self.pitchDegrees)
+	self.qHeading.CreateFromAxisAngle(0.0, 1.0, 0.0, self.headingDegrees)
+
+	# Combine the pitch and heading rotations and store the results in q
+	q = self.qPitch * self.qHeading
+	matrix = q.CreateMatrix()
+
+	# Let OpenGL set our new prespective on the world!
+	glMultMatrixf(matrix)
+
+	# Create a matrix from the pitch Quaternion and get the j vector
+	# for our direction.
+	matrix = self.qPitch.CreateMatrix()
+	self.directionVector.y = matrix[9]
+
+	# Combine the heading and pitch rotations and make a matrix to get
+	# the i and j vectors for our direction.
+	q = self.qHeading * self.qPitch
+	matrix = q.CreateMatrix()
+	self.directionVector.x = matrix[8]
+	self.directionVector.z = matrix[10]
+
+	# Scale the direction by our speed.
+	self.directionVector.MultScalar(self.forwardVelocity)
+
+	# Increment our position by the vector
+	#self.pos.x += self.directionVector.x
+	#self.pos.y += self.directionVector.y
+	#self.pos.z += self.directionVector.z
+
+	# Translate to our new position.
+	glTranslatef(-self.pos.x, -(self.pos.y), self.pos.z) # 아 이게 왜 방향이 다 엉망인 이유였구만.... -z를 써야되는데-_-
+
+        #glTranslatef(self.posx, self.posy, self.posz)
+        #pos = Vector(self.posx, self.posy, self.posz).Normalized()
+        #glpLookAt(pos, self.view,
+        #        Vector(0.0, 1.0, 0.0).Normalized())
+
+    def GetDirV(self):
+	matrix = self.qPitch.CreateMatrix()
+        dirV = Vector()
+	dirV.y = matrix[9]
+	q = self.qHeading * self.qPitch
+	matrix = q.CreateMatrix()
+	dirV.x = matrix[8]
+	dirV.z = matrix[10]
+	dirV.w = 1.0
+        return dirV.Normalized()
+
+    def Move(self, x, y, z, theT):
+        # 이걸..... 음..... 현재 가리키는 방향 즉 현재 보는 방향을 알아내서
+        # 그걸 기준으로 앞뒤좌우로 움직여야 한다.
+        # 앞뒤벡터를 회전벡터로 회전시킨 후에 포지션에다 더하고 빼면 됨.
+        #
+        #
+        # 자. 이제 여기서는 y값을 절대로 변경시키지 못한다!
+
+        lrV = Vector(x/10.0, 0.0, 0.0, 1.0)
+        fbV = Vector(0.0, 0.0, z/10.0, 1.0)
+	self.qPitch.CreateFromAxisAngle(1.0, 0.0, 0.0, self.pitchDegrees)
+	self.qHeading.CreateFromAxisAngle(0.0, 1.0, 0.0, self.headingDegrees)
+
+	# Combine the pitch and heading rotations and store the results in q
+	q = self.qPitch * self.qHeading
+	matrix = q.CreateMatrix()
+        lrV = lrV.MultMatrix(matrix)
+        fbV = fbV.MultMatrix(matrix)
+
+
+	# Combine the heading and pitch rotations and make a matrix to get
+	# the i and j vectors for our direction.
+        self.directionVector = self.GetDirV()
+        factor = float(theT)*20/1000.0
+        if factor < 0.0:
+            factor = 0.0
+        if factor*AppSt.speed > 1.0:
+            factor = 1.0
+        self.directionVector = self.directionVector.Normalized()
+        if z and not x:
+            factor *= 0.5
+            upVector = Vector(0.0, 1.0, 0.0)
+            leftVec = upVector.Cross(self.directionVector)
+            leftVec = leftVec.MultScalar(-z).Normalized()
+            forVector = upVector.Cross(leftVec)
+            if AppSt.chunks.InWater(self.pos.x, self.pos.y, -self.pos.z):
+                forVector = self.GetDirV().Normalized().MultScalar(AppSt.speed*factor)
+            else:
+                forVector = forVector.Normalized().MultScalar(AppSt.speed*factor)
+            self.pos += forVector
+
+        if x and not z:
+            upVector = Vector(0.0, 1.0, 0.0)
+            leftVec = upVector.Cross(self.directionVector).MultScalar(x)
+            while factor > 1.0:
+                leftVec = leftVec.Normalized().MultScalar(AppSt.speed)
+                self.pos += leftVec
+                factor -= 1.0
+            leftVec = leftVec.Normalized().MultScalar(AppSt.speed*factor)
+            self.pos += leftVec
+
+
+        '''
+        self.posx += x
+        self.posy += y
+        self.posz += z
+        if self.posz > -0.15:
+            self.posz = -0.15
+        if self.posz < -10.0:
+            self.posz = -10.0
+        '''
+
+
+def normalize(x, y, z):
+    factor = 1.0/math.sqrt(x**2+y**2+z**2)
+    return x*factor, y*factor, z*factor
+def cross(x,y,z,x2,y2,z2):
+    return ((y*z2-z*y2),(z*x2-x*z2),(x*y2-y*x2))
+def dot(x,y,z,x2,y2,z2):
+    return x*x2+y*y2+z*z2
+
+class FPS:
+    def __init__(self):
+        self.fpsCounter = 0
+        self.fpsSum = 0
+        self.start = 0.0
+        self.end = 0.0
+        self.delay = 4000
+        self.sumStart = pygame.time.get_ticks()
+    def Start(self):
+        timetaken = float(self.end-self.start)
+        if timetaken == 0: timetaken = 1.0
+        fps = 1000.0/timetaken
+        self.fpsSum += fps
+        self.fpsCounter += 1
+        self.start = pygame.time.get_ticks()
+
+    def End(self):
+        self.end = pygame.time.get_ticks()
+    def GetFPS(self):
+        if self.fpsCounter == 0:
+            fps = 0
+        else:
+            fps = self.fpsSum/self.fpsCounter
+        tick = pygame.time.get_ticks()
+        if tick - self.sumStart > self.delay:
+            self.sumStart = pygame.time.get_ticks()
+            self.fpsCounter = 0
+            self.fpsSum = 0
+        return fps
+
+
+def InRect(x,y,w,h, x2, y2):
+    if x <= x2 < x+w and y <= y2 < y+h:
+        return True
+    else:
+        return False
 
 
 class CustomIMEModule:
@@ -918,13 +1142,33 @@ class ConstructorApp:
     def __init__(self):
         pass
 
+    def Render(self, t, m, k):
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        pygame.display.flip()
+
+    def SetReload(self):
+        pass
+
     def Run(self):
         pygame.init()
         isFullScreen = 0#FULLSCREEN
         screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN)
         done = False
+        resize(SW,SH)
+        init()
+
+        glViewport(0, 0, SW, SH)
+        self.cam1 = Camera()
+        self.cam1.pos.y = 90
+        emgr = EventManager()
+        emgr.BindTick(self.Render)
+
+
+        fps = FPS()
         while not done:
-            #fps.Start()
+            fps.Start()
             for e in pygame.event.get():
                 if e.type is QUIT: 
                     done = True
@@ -937,16 +1181,12 @@ class ConstructorApp:
                 elif e.type is MOUSEBUTTONUP:
                     pass
                 elif e.type == ACTIVEEVENT and e.gain == 1:
-                    #screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
-                    #self.regenTex = True
-                    #g_Textures = []
-                    pass
-                #emgr.Event(e)
-            #emgr.Tick()
-            #self.gui.invShown = self.gui.setInvShown
-            #self.regenTex = False
-            #fps.End()
-            #print fps.GetFPS()
+                    screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
+                    SetReload()
+                emgr.Event(e)
+            emgr.Tick()
+            fps.End()
+            print fps.GetFPS()
 
 
 if __name__ == '__main__':
@@ -955,3 +1195,15 @@ if __name__ == '__main__':
         app.Run()
     run()
 
+"""
+음 다른거 고민하지 말고 100% 타일구조의 3D 맵 에디터를 만든다.
+의외로 DigDig랑 거의 비슷할지도 모르겠다.
+----------------------------------------
+타일이 꽉 차있지 않으므로 청크 구조는 아닌 반면, 옥트리의 파일구조는 남겨둬서 무한맵이 가능하도록? 맵 크기는 4096x4096x128이 최대로 잡자.
+--------------------
+lightmapping을 구현
+---------
+익스텐션에 대해:
+    PyOpenGL은 그냥 익스텐션을 자유롭게 쓸 수 있다.
+    ShaderModel 3.0에 맞는 익스텐션만 써서 만들자.
+"""

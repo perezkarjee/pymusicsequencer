@@ -348,7 +348,7 @@ class Map(object):
     def __init__(self):
         self.places = {}
         self.curPlace = ''
-        self.font = pygame.font.Font("./fonts/FanwoodText.ttf", 16)
+        self.font = pygame.font.Font("./fonts/Ubuntu-C.ttf", 16)
         self.txtBox = None
         self.fightBox = TextBox(self.font, 16, SW/4, 80, SW/2, SH-160)
 
@@ -1088,8 +1088,8 @@ def main():
             'ore': pygame.image.load("img/ore.png"),
             }
 
-    font = pygame.font.Font("./fonts/FanwoodText.ttf", 16)
-    font2 = pygame.font.Font("./fonts/FanwoodText.ttf", 14)
+    font = pygame.font.Font("./fonts/Ubuntu-C.ttf", 16)
+    font2 = pygame.font.Font("./fonts/Ubuntu-C.ttf", 14)
     g = Game()
     startTick = pygame.time.get_ticks()
     endTick = pygame.time.get_ticks()
