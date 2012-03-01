@@ -2,7 +2,7 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-ext_modules = [Extension("chunkhandler", ["chunkhandler.pyx"], libraries = ['opengl32', 'genquads'])]
+ext_modules = [Extension("chunkhandler", ["chunkhandler.pyx"], libraries = ['opengl32', 'cpart'])]
 
 setup(
   name = 'DigDig Chunk Handler',

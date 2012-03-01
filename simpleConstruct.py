@@ -39,6 +39,8 @@ class Camera:
         self.directionVector = Vector()
         self.forwardVelocity = 1.0
         self.pos = Vector(0.0, 0.0, 0.0)
+        self.xsens = 0.2
+        self.ysens = 0.2
 
     def RotateVert(self, vert, angle, axis):
         axis = axis.Normalized()
@@ -82,12 +84,12 @@ class Camera:
             view = self.RotateVert(view, -ymoved, axis)
             self.view = self.RotateVert(view, -xmoved, Vector(0, 1.0, 0))
         '''
-        self.pitchDegrees += float(ymoved)/10.0
+        self.pitchDegrees += float(ymoved)*self.ysens
         if self.pitchDegrees >= 89.9:
             self.pitchDegrees = 89.9
-        if self.pitchDegrees <= -89.9:
-            self.pitchDegrees = -89.9
-        self.headingDegrees += float(xmoved)/10.0
+        if self.pitchDegrees <= 10.0:#-89.9:
+            self.pitchDegrees = 10.0#-89.9
+        self.headingDegrees += float(xmoved)*self.xsens
 
     def ApplyCamera(self):
 	self.qPitch.CreateFromAxisAngle(1.0, 0.0, 0.0, self.pitchDegrees)
@@ -174,10 +176,13 @@ class Camera:
             leftVec = upVector.Cross(self.directionVector)
             leftVec = leftVec.MultScalar(-z).Normalized()
             forVector = upVector.Cross(leftVec)
+            """
             if AppSt.chunks.InWater(self.pos.x, self.pos.y, -self.pos.z):
                 forVector = self.GetDirV().Normalized().MultScalar(AppSt.speed*factor)
             else:
                 forVector = forVector.Normalized().MultScalar(AppSt.speed*factor)
+            """
+            forVector = forVector.Normalized().MultScalar(AppSt.speed*factor)
             self.pos += forVector
 
         if x and not z:
@@ -1138,18 +1143,168 @@ def glpLookAt(eye, center, up):
     glMultMatrixf(m)
     glTranslatef(-eye.x, -eye.y, -eye.z)
 
+
+from OpenGL.GLUT import glutInit, glutSolidTeapot
+AppSt = None
+
+def DrawQuad(x,y,w,h, color1, color2):
+    glBegin(GL_QUADS)
+    glColor4ub(*color1)
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glColor4ub(*color2)
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
+
+
+def DrawCube(pos,bound, color): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
+    x,y,z = pos
+    w,h,j = bound
+    x -= w/2
+    y -= h/2
+    z -= j/2
+
+    vidx = [ 
+            (4, 5, 1, 0),  # bottom    
+            (6,7,3, 2),  # top
+            (3, 7, 4, 0),  # left
+            (6,2,1, 5),  # right
+            (7,6,5, 4),  # back
+            (2,3,0, 1),  # front
+            ]
+
+    v = [   (0.0+x, 0.0+y, j+z),
+            (w+x, 0.0+y, j+z),
+            (w+x, h+y, j+z),
+            (0.0+x, h+y, j+z),
+            (0.0+x, 0.0+y, 0.0+z),
+            (w+x, 0.0+y, 0.0+z),
+            (w+x, h+y, 0.0+z),
+            (0.0+x, h+y, 0.0+z) ]
+
+    for face in range(6):
+        v1, v2, v3, v4 = vidx[face]
+        glBegin(GL_QUADS)
+        glColor4ub(*color)
+        glVertex( v[v1] )
+        glVertex( v[v2] )
+        glVertex( v[v3] )
+        glVertex( v[v4] )            
+        glEnd()
+
+
+class Physics(object):
+    def __init__(self):
+# Create a world object
+        world = ode.World()
+        world.setGravity( (0,-9.81,0) )
+
+# Create a body inside the world
+        body = ode.Body(world)
+        M = ode.Mass()
+        M.setSphere(2500.0, 0.05)
+        M.mass = 1.0
+        body.setMass(M)
+
+        body.setPosition( (0,2,0) )
+        body.addForce( (0,200,0) )
+
+# Do the simulation...
+        total_time = 0.0
+        dt = 0.04
+
+    def Tick(self, t,m,k):
+        x,y,z = body.getPosition()
+        u,v,w = body.getLinearVel()
+        print "%1.2fsec: pos=(%6.3f, %6.3f, %6.3f)  vel=(%6.3f, %6.3f, %6.3f)" % \
+            (total_time, x, y, z, u,v,w)
+        world.step(dt)
+        total_time+=dt
+
 class ConstructorApp:
     def __init__(self):
-        pass
+        global AppSt
+        AppSt = self
+        self.guiMode = False
+        self.keyBinds = {
+                "UP": K_w,
+                "LEFT": K_a,
+                "DOWN": K_s,
+                "RIGHT": K_d,
+                "ATK": K_j,
+                "JUMP": K_SPACE,}
+        self.prevTime = pygame.time.get_ticks()
+        self.speed = 0.23
+        glutInit()
+        self.camMoveMode = False
+
 
     def Render(self, t, m, k):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        self.DoMove(t,m,k)
+
+        GameDrawMode()
+        self.cam1.ApplyCamera()
+        dirV = self.cam1.GetDirV().Normalized().MultScalar(7.0)
+        glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
+        DrawCube((0.0,0.0,0.0),(1.0,1.0,1.0),(255,255,255,255))
+        DrawCube((2.0,0.0,0.0),(1.0,1.0,1.0),(255,255,255,255))
         pygame.display.flip()
+
+    def UnCamMoveMode(self, t,m,k):
+        self.camMoveMode = False
+    def CamMoveMode(self, t,m,k):
+        self.camMoveMode = True
+    def DoCam(self, t, m, k):
+        if not self.guiMode:
+            pressedButtons = m.GetPressedButtons()
+            if MMB in pressedButtons.iterkeys():
+                self.cam1.RotateByXY(m.relX, m.relY)
+
+    def DoMove(self, t, m, k):
+        if not self.guiMode:
+            pressed = pygame.key.get_pressed()
+            oldPos = self.cam1.pos
+            x,y,z = oldPos.x,oldPos.y,oldPos.z
+            if pressed[self.keyBinds["LEFT"]]:
+                self.cam1.Move(-1.0,0,0, t-self.prevTime)
+            if pressed[self.keyBinds["RIGHT"]]:
+                self.cam1.Move(1.0,0,0, t-self.prevTime)
+            if pressed[self.keyBinds["UP"]]:
+                self.cam1.Move(0,0,1.0, t-self.prevTime)
+            if pressed[self.keyBinds["DOWN"]]:
+                self.cam1.Move(0,0,-1.0, t-self.prevTime)
+
+            """
+            if pressed[self.keyBinds["JUMP"]]:
+                if self.canJump and not self.jumping:
+                    self.StartJump(t)
+            """
+            """
+            #if t - self.prevTime > self.delay:
+            xyz2 = self.cam1.pos#Vector(x,y,z)+((self.cam1.pos - Vector(x,y,z)).Normalized())
+            x2,y2,z2 = xyz2.x, xyz2.y, xyz2.z
+
+            #x3,y3,z3 = self.chunks.FixPos(Vector(x,y,-z), Vector(x2,y2,-z2), self.bound)
+            x3,y3,z3 = x2,y2,z2
+            self.cam1.pos = Vector(x3,y3,-z3)
+            """
+
+        self.prevTime = t
+        #self.CheckJump(self.cam1.pos.y)
+
 
     def SetReload(self):
         pass
+
+    def DoTrackBall(self, t,m,k):
+        # 원점을 기준으로 회전하는게 아니라 화면의 가운데를 중심으로 회전을 한다? 정확히는 화면에 보여지는 맵의 중심점을 기준으로 
+        # 맵의 중심을 항상 보게하고, 그걸 중심으로 상하회전 좌우회전을 한다.
+        m.relX
+        m.relY
 
     def Run(self):
         pygame.init()
@@ -1161,9 +1316,15 @@ class ConstructorApp:
 
         glViewport(0, 0, SW, SH)
         self.cam1 = Camera()
-        self.cam1.pos.y = 90
         emgr = EventManager()
         emgr.BindTick(self.Render)
+        emgr.BindMotion(self.DoCam)
+        emgr.BindMotion(self.DoTrackBall)
+        emgr.BindMDown(self.CamMoveMode)
+        emgr.BindMUp(self.UnCamMoveMode)
+        #phy = Physics()
+        #emgr.BindTick(phy.Tick)
+
 
 
         fps = FPS()
@@ -1182,9 +1343,11 @@ class ConstructorApp:
                     pass
                 elif e.type == ACTIVEEVENT and e.gain == 1:
                     screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
-                    SetReload()
+                    self.SetReload()
                 emgr.Event(e)
             emgr.Tick()
+
+
             fps.End()
             print fps.GetFPS()
 
@@ -1209,4 +1372,14 @@ lightmapping을 구현
 -------------
 음악을 비롯해 모든 예술은 어떤 패턴을 만들고 패턴위에 패턴을 덮어씌우고 한 5단계의 패턴을 합쳐서 놓은 후에 그 패턴 위에 패턴과 어울리는 어떤
 또다른 좀 더 큰 패턴을 만들고 그 다 합쳐진 패턴을 기준으로 또 그 위에 또다른 하나의 그림을 만드는 것이다.
+
+패턴은 에너지를 준다. 그 패턴이 주는 에너지로 좀 더 복잡한 그림이나 멜로디를 보거나 듣고 즐길 수 있는 것이다.
+또한 패턴 위에 패턴을 올리는 것도 있지만 안으로 들어가서 패턴안에 패턴을 넣는것도 있다.
+
+heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더링한다.
+마우스로 화면 이동 어케하지?
+일단 맵의 중심점으로 pos를 옮긴다.
+그다음에 회전을 한다.
+그다음에 dir벡터의 반대방향으로 카메라를 옮긴다.
+그러니까 pos의 X,Y는 변하지 않으면서 dirV만큼만 이동하면 
 """
