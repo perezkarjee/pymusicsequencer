@@ -139,15 +139,15 @@ badd +61 exportmy.py
 badd +412 simpleAdv.py
 badd +1092 simpleMud.py
 badd +4637 digdig.py
-badd +1 chunkhandler.pyx
-badd +1251 simpleConstruct.py
-badd +4 cpart.c
-badd +4 cpart.h
-badd +1 chunk.pyx
+badd +26 chunkhandler.pyx
+badd +743 simpleConstruct.py
+badd +10 cpart.c
+badd +16 cpart.h
+badd +57 chunk.pyx
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
-edit chunkhandler.pyx
+edit cpart.c
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -162,12 +162,12 @@ setlocal nobinary
 setlocal bufhidden=
 setlocal buflisted
 setlocal buftype=
-setlocal nocindent
-setlocal cinkeys=0{,0},0),:,!^F,o,O,e
+setlocal cindent
+setlocal cinkeys=0{,0},0),:,0#,!^F,o,O,e
 setlocal cinoptions=
 setlocal cinwords=if,else,while,do,for,switch
-setlocal comments=s1:/*,mb:*,ex:*/,://,b:#,:XCOMM,n:>,fb:-
-setlocal commentstring=#%s
+setlocal comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,://
+setlocal commentstring=/*%s*/
 setlocal complete=.,w,b,u,t,i
 setlocal completefunc=
 setlocal nocopyindent
@@ -179,8 +179,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'pyrex'
-setlocal filetype=pyrex
+if &filetype != 'c'
+setlocal filetype=c
 endif
 setlocal foldcolumn=0
 setlocal foldenable
@@ -193,15 +193,15 @@ setlocal foldminlines=1
 setlocal foldnestmax=20
 setlocal foldtext=foldtext()
 setlocal formatexpr=
-setlocal formatoptions=tcroq
+setlocal formatoptions=croql
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
+setlocal iminsert=2
 setlocal imsearch=0
-setlocal include=s*\\(from\\|import\\)
-setlocal includeexpr=substitute(v:fname,'\\.','/','g')
-setlocal indentexpr=GetPythonIndent(v:lnum)
-setlocal indentkeys=0{,0},:,!^F,o,O,e,<:>,=elif,=except
+setlocal include=
+setlocal includeexpr=
+setlocal indentexpr=
+setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
 setlocal noinfercase
 setlocal iskeyword=@,48-57,_,128-167,224-235
 setlocal keywordprg=
@@ -216,7 +216,7 @@ setlocal nrformats=octal,hex
 set number
 setlocal number
 setlocal numberwidth=4
-setlocal omnifunc=pythoncomplete#Complete
+setlocal omnifunc=ccomplete#Complete
 setlocal path=
 setlocal nopreserveindent
 setlocal nopreviewwindow
@@ -234,11 +234,11 @@ setlocal spellcapcheck=[.?!]\\_[\\])'\"\	\ ]\\+
 setlocal spellfile=
 setlocal spelllang=en
 setlocal statusline=
-setlocal suffixesadd=.py
+setlocal suffixesadd=
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'pyrex'
-setlocal syntax=pyrex
+if &syntax != 'c'
+setlocal syntax=c
 endif
 setlocal tabstop=8
 setlocal tags=
@@ -249,12 +249,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1 - ((0 * winheight(0) + 24) / 49)
+let s:l = 57 - ((48 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1
-normal! 0
+57
+normal! 064l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

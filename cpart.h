@@ -2,6 +2,7 @@
 #define __CPART_H__ 1
 
 typedef struct tTile {
+    float height;
     int tileData;
 } Tile;
 typedef struct tChunk {
@@ -9,5 +10,8 @@ typedef struct tChunk {
     int x,y,z;
 } Chunk;
 
-
+typedef struct tVector2 {
+    float x;
+    float y;
+} Vector2;
 #endif

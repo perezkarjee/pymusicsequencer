@@ -22,8 +22,11 @@ cdef extern from "gl/gl.h":
     cdef void glDrawElements(GLenum 	mode,   GLsizei  count, GLenum  type,GLvoid *indices)
     cdef void glDrawArrays(	GLenum  	mode,            GLint  	first,            GLsizei  	count)
 
+# 렌더링할 때 캐슁을 이용하여 실시간으로 삼각형을 생성하여 렌더링한다.
+# 삼각형을 생성할 때 CatMull을 이용하여 스무딩을 한다.
 cdef extern from "cpart.h":
     struct tTile:
+        float height
         int tileData
     struct tChunk:
         tTile *tiles

@@ -743,7 +743,6 @@ class Vector2(object):
 def tangent(a, b):
     return (a-b)/2.0
 def CatmullRomSpline(p0, p1, p2, p3, resolution=0.1):
-
     m0 = tangent(p1, p0)
     m1 = tangent(p2, p0)
     m2 = tangent(p3, p1)
