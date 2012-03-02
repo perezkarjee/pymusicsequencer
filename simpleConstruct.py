@@ -1312,6 +1312,7 @@ class ConstructorApp:
     def Reload(self):
         if self.reload:
             self.reload = False
+            self.model.Regen()
 
             image = pygame.image.load("./img/tile_wall.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -1331,7 +1332,56 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
 
+            self.program3 = compile_program('''
+            // Vertex program
+
+#version 150
+
+
+varying vec3 vNormal;
+varying vec3 vViewVec;
+uniform vec4 view_position;
+
+void main(void)
+{
+   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+
+   // World-space lighting
+   vNormal = gl_Normal;
+   vec4 pos = (gl_ModelViewProjectionMatrix*gl_Vertex);
+   vec4 vp;
+   vp.x=10.0;
+   vp.y=0.0;
+   vp.z=0.0;
+   vp.w=0.0;
+
+   vViewVec = vp.xyz - pos.xyz;
+
+   
+}
+            ''', '''
+#version 150
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+uniform vec4 color;
+
+varying vec3 vNormal;
+varying vec3 vViewVec;
+
+void main(void)
+{
+   float v = 0.5 * (1.0 + dot(normalize(vViewVec), vNormal));
+   gl_FragColor = v * color;
+
+}
+            ''')
             self.program = compile_program('''
+#version 150
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
             void main() {
@@ -1339,14 +1389,27 @@ class ConstructorApp:
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
             }
             ''', '''
+#version 150
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
             // Fragment program
             varying vec3 pos;
             void main() {
-                gl_FragColor.rgb = pos.xyz/5;
+                vec3 col;
+                col.x = 0.4;
+                col.y = pos.y/2;
+                col.z = 0.2;
+                gl_FragColor.rgb = col;
             }
             ''')
 
             self.program2 = compile_program('''
+#version 150
             // Vertex program
             varying vec3 pos;
             varying vec2 texture_coordinate;
@@ -1356,6 +1419,7 @@ class ConstructorApp:
                 texture_coordinate = vec2(gl_MultiTexCoord0);
             }
             ''', '''
+#version 150
             // Fragment program
             varying vec2 texture_coordinate;
             uniform sampler2D my_color_texture;
@@ -1381,21 +1445,26 @@ class ConstructorApp:
         dirV = self.cam1.GetDirV().Normalized().MultScalar(2.0)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
         glUseProgram(self.program2)
+        """
         for j in range(-4,1):
             for i in range(-4,1):
                 DrawCube((float(i),0.0,float(j)*2.0),(1.0,2.0,1.0),(255,255,255,255), self.tex)
         for j in range(-4,1):
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
+        """
         glTranslatef(self.tr, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
-        self.tr += 0.01
+        self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
-        glUseProgram(self.program)
-        self.model.Draw()
-        glUseProgram(0)
 
+        glUseProgram(self.program)
+        
+        glUniform4f(glGetUniformLocation(self.program3, "color"), 1.0,0.0,0.0,1.0)
+        self.model.Draw()
+
+        glUseProgram(0)
         pygame.display.flip()
 
     def UnCamMoveMode(self, t,m,k):
@@ -1445,12 +1514,6 @@ class ConstructorApp:
         self.reload = True
         pass
 
-    def DoTrackBall(self, t,m,k):
-        # 원점을 기준으로 회전하는게 아니라 화면의 가운데를 중심으로 회전을 한다? 정확히는 화면에 보여지는 맵의 중심점을 기준으로 
-        # 맵의 중심을 항상 보게하고, 그걸 중심으로 상하회전 좌우회전을 한다.
-        m.relX
-        m.relY
-
     def Run(self):
         pygame.init()
         isFullScreen = 0#FULLSCREEN
@@ -1466,7 +1529,6 @@ class ConstructorApp:
         emgr = EventManager()
         emgr.BindTick(self.Render)
         emgr.BindMotion(self.DoCam)
-        emgr.BindMotion(self.DoTrackBall)
         emgr.BindMDown(self.CamMoveMode)
         emgr.BindMUp(self.UnCamMoveMode)
         #phy = Physics()
@@ -1498,7 +1560,7 @@ class ConstructorApp:
 
 
             fps.End()
-            #print fps.GetFPS()
+            print fps.GetFPS()
 
 
 if __name__ == '__main__':
@@ -1531,4 +1593,11 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 그다음에 회전을 한다.
 그다음에 dir벡터의 반대방향으로 카메라를 옮긴다.
 그러니까 pos의 X,Y는 변하지 않으면서 dirV만큼만 이동하면 
+-------------------------
+게임의 기본:
+    물질의 얻음,잃음
+    사람간의 상호관계 심리적 주고받음
+    연출의 진행
+--------------
+64x64의 맵을 렌더링함. 큐브가 아닌 그냥 쿼드. 한 쿼드가 다른 쿼드보다 높을 때 그냥 단색의 어울리는 색의 색으로 FILL한다.
 """
