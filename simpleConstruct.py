@@ -2,7 +2,11 @@
 SW,SH = 640,480
 BGCOLOR = (0, 0, 0)
 
+import sys
+from ctypes import *
 from math import radians 
+from OpenGL import platform
+gl = platform.OpenGL
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -21,6 +25,59 @@ MMB = 2
 RMB = 3
 WUP = 4
 WDN = 5
+
+GL_FRAGMENT_SHADER = 0x8B30
+GL_VERTEX_SHADER = 0x8B31
+GL_COMPILE_STATUS = 0x8B81
+GL_LINK_STATUS = 0x8B82
+GL_INFO_LOG_LENGTH = 0x8B84
+ 
+def print_log(shader):
+    length = c_int()
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, byref(length))
+ 
+    if length.value > 0:
+        log = create_string_buffer(length.value)
+        log = glGetShaderInfoLog(shader)
+        print log
+
+def compile_shader(source, shader_type):
+    shader = glCreateShader(shader_type)
+    length = c_int(-1)
+    glShaderSource(shader, source)
+    glCompileShader(shader)
+    
+    status = c_int()
+    glGetShaderiv(shader, GL_COMPILE_STATUS, byref(status))
+    if not status.value:
+        print_log(shader)
+        glDeleteShader(shader)
+        raise ValueError, 'Shader compilation failed'
+    return shader
+ 
+def compile_program(vertex_src, fragment_src):
+    '''
+    Compile a Shader program given the vertex
+    and fragment sources
+    '''
+    
+    shaders = []
+    
+    program = glCreateProgram()
+
+    for shader_type, src in ((GL_VERTEX_SHADER, vertex_src),
+                             (GL_FRAGMENT_SHADER, fragment_src)):
+        shader = compile_shader(src, shader_type)
+        glAttachShader(program, shader)
+        shaders.append(shader)
+
+    glLinkProgram(program)
+ 
+    for shader in shaders:
+        glDeleteShader(shader)
+ 
+    return program
+ 
 
 class Camera:
     def __init__(self):
@@ -1273,6 +1330,44 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
 
+            self.program = compile_program('''
+            // Vertex program
+            varying vec3 pos;
+            void main() {
+                pos = gl_Vertex.xyz;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            ''', '''
+            // Fragment program
+            varying vec3 pos;
+            void main() {
+                gl_FragColor.rgb = pos.xyz/5;
+            }
+            ''')
+
+            self.program2 = compile_program('''
+            // Vertex program
+            varying vec3 pos;
+            varying vec2 texture_coordinate;
+            void main() {
+                pos = gl_Vertex.xyz;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                texture_coordinate = vec2(gl_MultiTexCoord0);
+            }
+            ''', '''
+            // Fragment program
+            varying vec2 texture_coordinate;
+            uniform sampler2D my_color_texture;
+            varying vec3 pos;
+            void main() {
+                //gl_FragColor.rgb = pos.xyz/5;
+                gl_FragColor = texture2D(my_color_texture, texture_coordinate);
+
+            }
+            ''')
+
+
+
     def Render(self, t, m, k):
         self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -1284,12 +1379,15 @@ class ConstructorApp:
         self.cam1.ApplyCamera()
         dirV = self.cam1.GetDirV().Normalized().MultScalar(2.0)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
-        for j in range(-0,1):
-            for i in range(-0,1):
+        glUseProgram(self.program2)
+        for j in range(-4,1):
+            for i in range(-4,1):
                 DrawCube((float(i),0.0,float(j)*2.0),(1.0,2.0,1.0),(255,255,255,255), self.tex)
-        for j in range(-0,1):
-            for i in range(-0,1):
+        for j in range(-4,1):
+            for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
+        glTranslatef(3.0, 0.0, 0.0) # Trackball implementation
+        glUseProgram(self.program)
         self.model.Draw()
 
         pygame.display.flip()
@@ -1355,6 +1453,8 @@ class ConstructorApp:
         resize(SW,SH)
         init()
 
+
+
         glViewport(0, 0, SW, SH)
         self.cam1 = Camera()
         emgr = EventManager()
@@ -1370,7 +1470,7 @@ class ConstructorApp:
 
         fps = FPS()
         import chunkhandler
-        self.model = chunkhandler.Model("./11122.jrpg")
+        self.model = chunkhandler.Model("./blend/11122.jrpg")
         while not done:
             fps.Start()
             for e in pygame.event.get():

@@ -179,7 +179,6 @@ cdef class Model:
     def GetNum(self):
         return self.num
     def Draw(self):
-        print 'ok'
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
