@@ -14,4 +14,6 @@ typedef struct tVector2 {
     float x;
     float y;
 } Vector2;
+
+int ReadInt(char *);
 #endif

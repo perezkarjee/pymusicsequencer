@@ -1157,7 +1157,14 @@ def DrawQuad(x,y,w,h, color1, color2):
     glEnd()
 
 
-def DrawCube(pos,bound, color): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
+def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
+    glEnable(GL_TEXTURE_2D)
+    glBindTexture(GL_TEXTURE_2D, texture)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+
+
     x,y,z = pos
     w,h,j = bound
     x -= w/2
@@ -1186,11 +1193,16 @@ def DrawCube(pos,bound, color): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 �
         v1, v2, v3, v4 = vidx[face]
         glBegin(GL_QUADS)
         glColor4ub(*color)
+        glTexCoord2f(1.0, 0.0)
         glVertex( v[v1] )
+        glTexCoord2f(0.0, 0.0)
         glVertex( v[v2] )
+        glTexCoord2f(0.0, 1.0)
         glVertex( v[v3] )
+        glTexCoord2f(1.0, 1.0)
         glVertex( v[v4] )            
         glEnd()
+    glDisable(GL_TEXTURE_2D)
 
 
 class Physics(object):
@@ -1237,9 +1249,32 @@ class ConstructorApp:
         self.speed = 0.23
         glutInit()
         self.camMoveMode = False
+        self.reload = True
 
+    def Reload(self):
+        if self.reload:
+            self.reload = False
+
+            image = pygame.image.load("./img/tile_wall.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.tex = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+
+            image = pygame.image.load("./img/tile_grass.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.tex2 = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
 
     def Render(self, t, m, k):
+        self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -1247,10 +1282,16 @@ class ConstructorApp:
 
         GameDrawMode()
         self.cam1.ApplyCamera()
-        dirV = self.cam1.GetDirV().Normalized().MultScalar(7.0)
+        dirV = self.cam1.GetDirV().Normalized().MultScalar(2.0)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
-        DrawCube((0.0,0.0,0.0),(1.0,1.0,1.0),(255,255,255,255))
-        DrawCube((2.0,0.0,0.0),(1.0,1.0,1.0),(255,255,255,255))
+        for j in range(-0,1):
+            for i in range(-0,1):
+                DrawCube((float(i),0.0,float(j)*2.0),(1.0,2.0,1.0),(255,255,255,255), self.tex)
+        for j in range(-0,1):
+            for i in range(-0,1):
+                DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
+        self.model.Draw()
+
         pygame.display.flip()
 
     def UnCamMoveMode(self, t,m,k):
@@ -1297,6 +1338,7 @@ class ConstructorApp:
 
 
     def SetReload(self):
+        self.reload = True
         pass
 
     def DoTrackBall(self, t,m,k):
@@ -1327,6 +1369,8 @@ class ConstructorApp:
 
 
         fps = FPS()
+        import chunkhandler
+        self.model = chunkhandler.Model("./11122.jrpg")
         while not done:
             fps.Start()
             for e in pygame.event.get():
@@ -1348,7 +1392,7 @@ class ConstructorApp:
 
 
             fps.End()
-            print fps.GetFPS()
+            #print fps.GetFPS()
 
 
 if __name__ == '__main__':

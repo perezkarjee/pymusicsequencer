@@ -55,6 +55,7 @@ class JRPGHeader:
     def Save(self, file):
         fmt = self.binaryFormat1 % len(self.typename)
         header1 = struct.pack(fmt, self.ident, self.version, self.numverts, self.numIndices, len(self.typename), bytes(self.typename,'ascii'), self.numanims)
+        print len(self.typename)
         file.write(header1)
 class jrpgAnimatedMeshHeader:
     """
@@ -190,13 +191,7 @@ def save_jrpg(settings):
                 self.numverts = 0
 		self.typename = ""
                 self.numanims = 0
-
-      일단 armature와 멀티 애니메이션을 구현해야 한다.
-      verts, texcs, norms만 애니메이션 프레임만큼 얻고
-      자바코드도 고쳐야 한다.
-      글구 애니메이션 네임도 따로 얻어야 한다.
-      일할게 엄청 많으니 일단 쉬고 재밌는거보자 ㅡ_ㅡ
-      """
+     """
       mymesh.indices = vertlist
       jrpgHeader.numverts = mymesh.GetNumVerts()
       jrpgHeader.numIndices = len(vertlist)
@@ -267,10 +262,3 @@ def unregister():
   bpy.types.INFO_MT_file_export.remove(menu_func)
 if __name__ == '__main__':
     register()
-"""
-I could use it directly by modifying it a little bit since it supports all of the functionalities I need
-
-about houses and other objects:
-    just make animation for objects or make frame start 1, frame end 1 and if there is only one frame make numanim 0 and it will be fine
-
-"""
