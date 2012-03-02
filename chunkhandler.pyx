@@ -54,6 +54,7 @@ cdef class Model:
     cdef char *inds
     cdef int num
     cdef int indNum
+    cdef int lX,lY,lZ,hX,hY,hZ
     def __cinit__(self, fileName):
         cdef char *lentypenameChar
         cdef char *versionChar
@@ -66,6 +67,7 @@ cdef class Model:
         cdef char *t
         cdef char *n
         cdef char *i
+        cdef float *vbound
 
         f = open(fileName, "rb")
 
@@ -145,6 +147,41 @@ cdef class Model:
             self.num = numverts
             self.indNum = numind
 
+            vbound = <float*>v
+            lowestX = vbound[0]
+            lowestY = vbound[1]
+            lowestZ = vbound[2]
+            highestX = lowestX
+            highestY = lowestY
+            highestZ = lowestZ
+            curX = 0
+            curY = 0
+            curZ = 0
+            for ii in range(numverts):
+                curX = vbound[ii*3]
+                curY = vbound[ii*3+1]
+                curZ = vbound[ii*3+2]
+                if lowestX > curX:
+                    lowestX = curX
+                if lowestY > curY:
+                    lowestY = curY
+                if lowestZ > curZ:
+                    lowestZ = curZ
+
+                if highestX < curX:
+                    highestX = curX
+                if highestY < curY:
+                    highestY = curY
+                if highestX < curZ:
+                    highestZ = curZ
+
+            self.lX = lowestX
+            self.lY = lowestY
+            self.lZ = lowestZ
+            self.hX = highestX
+            self.hY = highestY
+            self.hZ = highestZ
+
 
 
             
@@ -178,6 +215,8 @@ cdef class Model:
         free(self.inds)
     def GetNum(self):
         return self.num
+    def GetBounds(self):
+        return [(self.lX,self.lY,self.lZ), (self.hX,self.hY,self.hZ)]
     def Draw(self):
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)

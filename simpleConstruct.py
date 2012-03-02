@@ -1307,6 +1307,7 @@ class ConstructorApp:
         glutInit()
         self.camMoveMode = False
         self.reload = True
+        self.tr = -3.0
 
     def Reload(self):
         if self.reload:
@@ -1332,7 +1333,7 @@ class ConstructorApp:
 
             self.program = compile_program('''
             // Vertex program
-            varying vec3 pos;
+            varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
             void main() {
                 pos = gl_Vertex.xyz;
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
@@ -1360,7 +1361,7 @@ class ConstructorApp:
             uniform sampler2D my_color_texture;
             varying vec3 pos;
             void main() {
-                //gl_FragColor.rgb = pos.xyz/5;
+                //gl_FragColor.rgb = pos.xyz/2;
                 gl_FragColor = texture2D(my_color_texture, texture_coordinate);
 
             }
@@ -1386,9 +1387,14 @@ class ConstructorApp:
         for j in range(-4,1):
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
-        glTranslatef(3.0, 0.0, 0.0) # Trackball implementation
+        glTranslatef(self.tr, 0.0, 0.0)
+        glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
+        self.tr += 0.01
+        if self.tr >= 3.0:
+            self.tr = -3.0
         glUseProgram(self.program)
         self.model.Draw()
+        glUseProgram(0)
 
         pygame.display.flip()
 
