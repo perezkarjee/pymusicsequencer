@@ -1679,11 +1679,10 @@ void main(void)
 
         z_cursor = glReadPixels(x_cursor, viewport[3]-y_cursor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
         x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, z_cursor, modelview, projection, viewport)
-        #x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, 1.0, modelview, projection, viewport)
-        #xx,yy, zz = gluUnProject(x_cursor, viewport[3]-y_cursor, 90.0, modelview, projection, viewport)
+        #x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, 0.0, modelview, projection, viewport)
+        #xx,yy, zz = gluUnProject(x_cursor, viewport[3]-y_cursor, 1.0, modelview, projection, viewport)
         return (x,y,z)
 
-        # 그냥 바운드박스로 한다. 레이를 구하는데 마우스->
 
     def Render(self, t, m, k):
         self.Reload()

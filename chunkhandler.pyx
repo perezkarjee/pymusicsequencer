@@ -158,7 +158,7 @@ cdef class Map:
 
 
                 xx += 1.0
-            zz += 1.0
+            zz -= 1.0
             xx = 0.0
         xx = 0.0
         yy = 0.0
@@ -240,7 +240,7 @@ cdef class Map:
                 i += 12
 
                 xx += 1.0
-            zz += 1.0
+            zz -= 1.0
             xx = 0.0
 
         if self.vbos.vbos:
