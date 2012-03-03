@@ -55,7 +55,6 @@ class JRPGHeader:
     def Save(self, file):
         fmt = self.binaryFormat1 % len(self.typename)
         header1 = struct.pack(fmt, self.ident, self.version, self.numverts, self.numIndices, len(self.typename), bytes(self.typename,'ascii'), self.numanims)
-        print len(self.typename)
         file.write(header1)
 class jrpgAnimatedMeshHeader:
     """

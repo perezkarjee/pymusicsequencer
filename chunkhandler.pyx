@@ -67,8 +67,6 @@ cdef extern from "gl/gl.h":
     cdef void glDrawElements(GLenum 	mode,   GLsizei  count, GLenum  type,GLvoid *indices)
     cdef void glDrawArrays(	GLenum  	mode,            GLint  	first,            GLsizei  	count)
 
-# 렌더링할 때 캐슁을 이용하여 실시간으로 삼각형을 생성하여 렌더링한다.
-# 삼각형을 생성할 때 CatMull을 이용하여 스무딩을 한다.
 cdef extern from "cpart.h":
     struct tTile:
         float height
@@ -82,19 +80,205 @@ cdef extern from "cpart.h":
 cdef void FreeChunk(Chunk* chunk):
     free(chunk.tiles)
     free(chunk)
+
 NUMCHUNKS = 1
+SIZE_CHUNK = 32
+import random
 cdef class Map:
     cdef Chunk **chunks
+    cdef float *quads
+    cdef float *topquads
+    cdef float *texcs
+    vbos = VBOs()
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
         self.chunks[0] = <Chunk*>malloc(sizeof(Chunk))
-        self.chunks[0].tiles = <Tile*>malloc(sizeof(Tile)*32*32)
-        for i in range(32*32):
-            self.chunks[0].tiles[i].height = 0.0
+        self.chunks[0].tiles = <Tile*>malloc(sizeof(Tile)*SIZE_CHUNK*SIZE_CHUNK)
+        self.chunks[0].x = 0
+        self.chunks[0].y = 0
+        self.chunks[0].z = 0
+        for i in range(SIZE_CHUNK*SIZE_CHUNK):
+            self.chunks[0].tiles[i].height = 0.0+float(random.randint(0,10))
+        self.quads = <float*>0
+        self.topquads = <float*>0
+        self.texcs = <float*>0
     def Regen(self):
-        pass
+        cdef char *topquads
+        cdef char *quads
+        cdef char *texcs
+        if self.topquads:
+            free(self.topquads)
+        if self.texcs:
+            free(self.texcs)
+        if self.quads:
+            free(self.quads)
+        self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
+        self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
+        self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
+        # x,y,z,  x,y,z  x,y,z,  x,y,z * 5
+
+        xx = 0.0
+        yy = 0.0
+        zz = 0.0
+        for y in range(SIZE_CHUNK):
+            for x in range(SIZE_CHUNK):
+                height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                i=0
+                # top
+                self.topquads[y*SIZE_CHUNK*4*3+i+x*4*3] = xx
+                self.topquads[y*SIZE_CHUNK*4*3+1+i+x*4*3] = float(height)*0.25
+                self.topquads[y*SIZE_CHUNK*4*3+2+i+x*4*3] = zz
+
+                self.topquads[y*SIZE_CHUNK*4*3+3+i+x*4*3] = xx+1.0
+                self.topquads[y*SIZE_CHUNK*4*3+4+i+x*4*3] = float(height)*0.25
+                self.topquads[y*SIZE_CHUNK*4*3+5+i+x*4*3] = zz
+
+                self.topquads[y*SIZE_CHUNK*4*3+6+i+x*4*3] = xx+1.0
+                self.topquads[y*SIZE_CHUNK*4*3+7+i+x*4*3] = float(height)*0.25
+                self.topquads[y*SIZE_CHUNK*4*3+8+i+x*4*3] = zz-1.0
+
+                self.topquads[y*SIZE_CHUNK*4*3+9+i+x*4*3] = xx
+                self.topquads[y*SIZE_CHUNK*4*3+10+i+x*4*3] = float(height)*0.25
+                self.topquads[y*SIZE_CHUNK*4*3+11+i+x*4*3] = zz-1.0
+
+
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+0+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+1+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+2+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+3+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+4+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+5+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+6+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+2+i+7+x*4*2] = 1.0
+
+
+                xx += 1.0
+            zz += 1.0
+            xx = 0.0
+        xx = 0.0
+        yy = 0.0
+        zz = 0.0
+        for y in range(SIZE_CHUNK):
+            for x in range(SIZE_CHUNK):
+                height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                i=0
+                # front
+                self.quads[y*SIZE_CHUNK*4*4*3+i+x*4*4*3] = xx # top left
+                self.quads[y*SIZE_CHUNK*4*4*3+1+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz
+                i += 12
+
+                # back
+                self.quads[y*SIZE_CHUNK*4*4*3+i+x*4*4*3] = xx # top left
+                self.quads[y*SIZE_CHUNK*4*4*3+1+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz-1.0
+                i += 12
+
+                # left
+                self.quads[y*SIZE_CHUNK*4*4*3+i+x*4*4*3] = xx # top left
+                self.quads[y*SIZE_CHUNK*4*4*3+1+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz
+                i += 12
+
+                # right
+                self.quads[y*SIZE_CHUNK*4*4*3+i+x*4*4*3] = xx+1.0 # top right
+                self.quads[y*SIZE_CHUNK*4*4*3+1+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz
+
+                self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
+
+                self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx+1.0
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = float(height)*0.25
+                self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz-1.0
+                i += 12
+
+                xx += 1.0
+            zz += 1.0
+            xx = 0.0
+
+        if self.vbos.vbos:
+            self.vbos.vbos[0].reload = True
+            self.vbos.vbos[1].reload = True
+            self.vbos.vbos[2].reload = True
+            del self.vbos.vbos[0]
+            del self.vbos.vbos[0]
+            del self.vbos.vbos[0]
+        quads = <char*>self.quads
+        topquads = <char*>self.topquads
+        texcs = <char*>self.texcs
+        self.vbos.vbos += [0,0,0]
+        self.vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
+        self.vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
+        self.vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
+
+
     def Render(self):
+        GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
+        GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
+        self.vbos.vbos[0].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        self.vbos.vbos[2].bind()
+        GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+        #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+        #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+        glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+        GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+
+        self.vbos.vbos[1].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
+        #glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
+        GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
+        #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
+
         pass
     def __dealloc__(self):
         for i in range(NUMCHUNKS):
@@ -276,22 +460,25 @@ cdef class Model:
     def Regen(self):
         if self.vbo.vbos:
             self.vbo.vbos[0].reload = True
+            self.vbo.vbos[1].reload = True
             del self.vbo.vbos[0]
-        self.vbo.vbos += [0]
+            del self.vbo.vbos[0]
+        self.vbo.vbos += [0,0]
         self.vbo.vbos[0] = VertexBuffer(self.verts[:self.num*4*3])
+        self.vbo.vbos[1] = VertexBuffer(self.normals[:self.num*4*3])
     def Draw(self):
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
-        #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
+        GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
         self.vbo.vbos[0].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-        #glNormalPointer(GL.GL_FLOAT, 0, <void*>self.normals) 
+        GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
         #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
         #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
         #glDrawArrays(GL.GL_TRIANGLES, 0, self.num)
         glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
         GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
-        #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
+        GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
 

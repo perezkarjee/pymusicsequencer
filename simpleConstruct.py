@@ -1313,6 +1313,7 @@ class ConstructorApp:
         if self.reload:
             self.reload = False
             self.model.Regen()
+            self.map.Regen()
             glEnable(GL_TEXTURE_2D)
             glEnable(GL_TEXTURE_1D)
 
@@ -1394,9 +1395,11 @@ void main(void)
 #version 150 compatibility
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
+            varying vec3 vNorm;
             void main() {
                 pos = gl_Vertex.xyz;
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                vNorm = gl_Normal;
             }
             ''', '''
 #version 150 compatibility
@@ -1411,17 +1414,23 @@ void main(void)
             uniform sampler1D colorLookup;
             uniform vec2 updown;
             varying vec3 pos;
+            varying vec3 vNorm;
             void main() {
                 float base = updown.x;
                 float high = updown.y;
                 float cur = pos.z-base;
                 float curCol = cur/(high-base);
                 curCol *=0.79;
-                vec3 col;
-                col.x = 0.4;
-                col.y = curCol;
-                col.z = 0.2;
-                gl_FragColor.rgb = texture1D(colorLookup, curCol).rgb;
+                vec3 light;
+                light.x = 1000.0;
+                light.y = 1000.0;
+                light.z = 1000.0;
+                light = normalize(light);
+                vec3 norm = normalize(vNorm);
+                float fac = (dot(light, norm)+4.0)/5.0;
+                vec3 color = texture1D(colorLookup, curCol).rgb;
+                color.g *= fac;
+                gl_FragColor.rgb = color;
             }
             ''')
 
@@ -1459,8 +1468,10 @@ void main(void)
 
         GameDrawMode()
         self.cam1.ApplyCamera()
-        dirV = self.cam1.GetDirV().Normalized().MultScalar(2.0)
+        dirV = self.cam1.GetDirV().Normalized().MultScalar(7.0)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
+        glBindTexture(GL_TEXTURE_2D, self.tex2)
+        self.map.Render()
         glUseProgram(self.program2)
         """
         for j in range(-4,1):
@@ -1470,10 +1481,10 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        glTranslatef(self.tr, 3.0, 0.0)
+        #glTranslatef(self.tr, 3.0, 0.0)
         glRotatef(270, 1.0, 0.0, 0.0)
         #glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
-        self.tr += 0.001
+        self.tr += 0.01
         if self.tr >= 3.0:
             self.tr = -3.0
 
@@ -1564,7 +1575,8 @@ void main(void)
 
         fps = FPS()
         import chunkhandler
-        self.model = chunkhandler.Model("./blend/11122.jrpg")
+        self.model = chunkhandler.Model("./blend/321323.jrpg")
+        self.map = chunkhandler.Map()
         while not done:
             fps.Start()
             for e in pygame.event.get():
@@ -1626,4 +1638,6 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
     연출의 진행
 --------------
 64x64의 맵을 렌더링함. 큐브가 아닌 그냥 쿼드. 한 쿼드가 다른 쿼드보다 높을 때 그냥 단색의 어울리는 색의 색으로 FILL한다.
+------
+심시티2000과 캐피탈리즘과 울온의 게임방식을 섞자.
 """

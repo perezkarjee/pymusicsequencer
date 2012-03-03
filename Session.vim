@@ -135,12 +135,12 @@ set shortmess=aoO
 badd +275 TheorySequencer.py
 badd +43 asd.py
 badd +167 pysynth.py
-badd +268 exportmy.py
+badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +1092 simpleMud.py
 badd +7465 digdig.py
-badd +229 chunkhandler.pyx
-badd +1419 simpleConstruct.py
+badd +197 chunkhandler.pyx
+badd +1508 simpleConstruct.py
 badd +57 cpart.c
 badd +16 cpart.h
 badd +57 chunk.pyx
@@ -197,7 +197,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
+setlocal iminsert=2
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -250,12 +250,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1465 - ((19 * winheight(0) + 24) / 49)
+let s:l = 1642 - ((48 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1465
-normal! 08l
+1642
+normal! 068l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
