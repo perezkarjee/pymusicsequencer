@@ -186,6 +186,68 @@ class Camera:
         #pos = Vector(self.posx, self.posy, self.posz).Normalized()
         #glpLookAt(pos, self.view,
         #        Vector(0.0, 1.0, 0.0).Normalized())
+        dirV = self.GetDirV().Normalized().MultScalar(7.0)
+        glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
+    def GetInversedPos(self, vec):
+        vec = vec+(1.0,)
+        # glTranslatef(dirV.x, dirV.y, -dirV.z) inverse1*vec
+	#glTranslatef(-self.pos.x, -(self.pos.y), self.pos.z) # inverse2*vec
+	#glMultMatrixf(matrix) inverse3*vec 하면 최종 벡터가 나온다.
+        #1 0 0 x 0 1 0 y 0 0 1 z 0 0 0 1 translate
+	self.qPitch.CreateFromAxisAngle(1.0, 0.0, 0.0, self.pitchDegrees)
+	self.qHeading.CreateFromAxisAngle(0.0, 1.0, 0.0, self.headingDegrees)
+
+	# Combine the pitch and heading rotations and store the results in q
+	q = self.qPitch * self.qHeading
+	matrix3 = q.CreateMatrix()
+
+	# Let OpenGL set our new prespective on the world!
+	#glMultMatrixf(matrix)
+
+	# Create a matrix from the pitch Quaternion and get the j vector
+	# for our direction.
+	matrix = self.qPitch.CreateMatrix()
+	self.directionVector.y = matrix[9]
+
+	# Combine the heading and pitch rotations and make a matrix to get
+	# the i and j vectors for our direction.
+	q = self.qHeading * self.qPitch
+	matrix = q.CreateMatrix()
+	self.directionVector.x = matrix[8]
+	self.directionVector.z = matrix[10]
+
+	# Scale the direction by our speed.
+	self.directionVector.MultScalar(self.forwardVelocity)
+
+	# Increment our position by the vector
+	#self.pos.x += self.directionVector.x
+	#self.pos.y += self.directionVector.y
+	#self.pos.z += self.directionVector.z
+
+	# Translate to our new position.
+	#glTranslatef(-self.pos.x, -(self.pos.y), self.pos.z) # 아 이게 왜 방향이 다 엉망인 이유였구만.... -z를 써야되는데-_-
+        matrix2 = [1, 0, 0, -self.pos.x,
+                   0, 1, 0, -self.pos.y,
+                   0, 0, 1, self.pos.z,
+                   0, 0, 0, 1]
+        #glTranslatef(self.posx, self.posy, self.posz)
+        #pos = Vector(self.posx, self.posy, self.posz).Normalized()
+        #glpLookAt(pos, self.view,
+        #        Vector(0.0, 1.0, 0.0).Normalized())
+        dirV = self.GetDirV().Normalized().MultScalar(7.0)
+        #glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
+        matrix1 = [1, 0, 0, dirV.x,
+                   0, 1, 0, dirV.y,
+                   0, 0, 1, -dirV.z,
+                   0, 0, 0, 1]
+        # x,y,z값을 w로 나누어야만 한다. 매번.
+        mat1 = AppSt.GetInverseMatrix(matrix1)
+        mat2 = AppSt.GetInverseMatrix(matrix2)
+        mat3 = AppSt.GetInverseMatrix(matrix3)
+        vec = AppSt.MultMat4x4(mat1,vec)
+        vec = AppSt.MultMat4x4(mat2,vec)
+        vec = AppSt.MultMat4x4(mat3,vec)
+        return vec
 
     def GetDirV(self):
 	matrix = self.qPitch.CreateMatrix()
@@ -976,7 +1038,7 @@ def GameDrawMode():
     if SH == 0: h = 1
     aspect = float(SW) / float(h)
     fov = 90.0
-    near = 0.1 # 이게 너무 작으면 Z버퍼가 정확도가 낮으면 글픽 깨짐
+    near = 1.0 # 이게 너무 작으면 Z버퍼가 정확도가 낮으면 글픽 깨짐
     far = G_FAR
 
     #glViewport(0, 0, SW, SH)
@@ -1308,6 +1370,157 @@ class ConstructorApp:
         self.camMoveMode = False
         self.reload = True
         self.tr = -3.0
+    def MultMat4x4(self, mat, vec):
+        x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
+        y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
+        z = mat[8] *vec[0]+mat[9] *vec[1]+mat[10]*vec[2]+mat[11]*vec[3]
+        w = mat[12]*vec[0]+mat[13]*vec[1]+mat[14]*vec[2]+mat[15]*vec[3]
+        if w != 0:
+            x /= w
+            y /= w
+            z /= w
+            w /= w
+            return [x,y,z,w]
+        else:
+            return [0,0,0,0]
+    def Test(self):
+        matrix1 = [1, 0, 0, 3.0,
+                   0, 1, 0, 3.0,
+                   0, 0, 1, 3.0,
+                   0, 0, 0, 1]
+        inv = self.GetInverseMatrix(matrix1)
+        vec = [1.0,1.0,1.0,1.0]
+        vec2 = self.MultMat4x4(matrix1, vec)
+        vec3 = self.MultMat4x4(inv, vec2)
+
+
+    def GetInverseMatrix(self, mat):
+        det = mat[0]*mat[5]*mat[10]*mat[15] + mat[0]*mat[6]*mat[11]*mat[13] + mat[0]*mat[7]*mat[9]*mat[14] +\
+                mat[1]*mat[4]*mat[11]*mat[14] + mat[1]*mat[6]*mat[8]*mat[15] + mat[1]*mat[7]*mat[10]*mat[12] +\
+                mat[2]*mat[4]*mat[9]*mat[15] + mat[2]*mat[5]*mat[11]*mat[12] + mat[2]*mat[7]*mat[8]*mat[13] +\
+                mat[3]*mat[4]*mat[10]*mat[13] + mat[3]*mat[5]*mat[8]*mat[14] + mat[3]*mat[6]*mat[9]*mat[12] -\
+                mat[0]*mat[5]*mat[11]*mat[14] + mat[0]*mat[6]*mat[9]*mat[15] + mat[0]*mat[7]*mat[10]*mat[13] -\
+                mat[1]*mat[4]*mat[10]*mat[15] + mat[1]*mat[6]*mat[11]*mat[12] + mat[1]*mat[7]*mat[8]*mat[14] -\
+                mat[2]*mat[4]*mat[11]*mat[13] + mat[2]*mat[5]*mat[8]*mat[15] + mat[2]*mat[7]*mat[9]*mat[12] -\
+                mat[3]*mat[4]*mat[9]*mat[14] + mat[3]*mat[5]*mat[10]*mat[12] + mat[3]*mat[6]*mat[8]*mat[13]
+        result = [0 for i in range(16)]
+        if det != 0:
+            invDet = 1.0/det
+
+            result[0] += invDet*mat[5]*mat[10]*mat[15]
+            result[0] += invDet*mat[6]*mat[11]*mat[13]
+            result[0] += invDet*mat[7]*mat[9]*mat[14]
+            result[0] -= invDet*mat[5]*mat[11]*mat[14]
+            result[0] -= invDet*mat[6]*mat[9]*mat[15]
+            result[0] -= invDet*mat[7]*mat[10]*mat[13]
+
+            result[1] += invDet*mat[1]*mat[11]*mat[14]
+            result[1] += invDet*mat[2]*mat[9]*mat[15]
+            result[1] += invDet*mat[3]*mat[10]*mat[13]
+            result[1] -= invDet*mat[1]*mat[10]*mat[15]
+            result[1] -= invDet*mat[2]*mat[11]*mat[13]
+            result[1] -= invDet*mat[3]*mat[9]*mat[14]
+
+            result[2] += invDet*mat[1]*mat[6]*mat[15]
+            result[2] += invDet*mat[2]*mat[7]*mat[13]
+            result[2] += invDet*mat[3]*mat[5]*mat[14]
+            result[2] -= invDet*mat[1]*mat[7]*mat[14]
+            result[2] -= invDet*mat[2]*mat[5]*mat[15]
+            result[2] -= invDet*mat[3]*mat[6]*mat[13]
+
+            result[3] += invDet*mat[1]*mat[7]*mat[10]
+            result[3] += invDet*mat[2]*mat[5]*mat[11]
+            result[3] += invDet*mat[3]*mat[6]*mat[9]
+            result[3] -= invDet*mat[1]*mat[6]*mat[11]
+            result[3] -= invDet*mat[2]*mat[7]*mat[9]
+            result[3] -= invDet*mat[3]*mat[5]*mat[10]
+
+            
+            result[4] += invDet*mat[4]*mat[10]*mat[14]
+            result[4] += invDet*mat[6]*mat[8]*mat[15]
+            result[4] += invDet*mat[7]*mat[10]*mat[12]
+            result[4] -= invDet*mat[4]*mat[10]*mat[15]
+            result[4] -= invDet*mat[6]*mat[11]*mat[12]
+            result[4] -= invDet*mat[7]*mat[8]*mat[14]
+
+            result[5] += invDet*mat[0]*mat[10]*mat[15]
+            result[5] += invDet*mat[2]*mat[11]*mat[12]
+            result[5] += invDet*mat[3]*mat[8]*mat[14]
+            result[5] -= invDet*mat[0]*mat[11]*mat[14]
+            result[5] -= invDet*mat[2]*mat[8]*mat[15]
+            result[5] -= invDet*mat[3]*mat[10]*mat[12]
+
+            result[6] += invDet*mat[0]*mat[7]*mat[14]
+            result[6] += invDet*mat[2]*mat[4]*mat[15]
+            result[6] += invDet*mat[3]*mat[6]*mat[12]
+            result[6] -= invDet*mat[0]*mat[6]*mat[15]
+            result[6] -= invDet*mat[2]*mat[7]*mat[12]
+            result[6] -= invDet*mat[3]*mat[4]*mat[14]
+
+            result[7] += invDet*mat[0]*mat[6]*mat[11]
+            result[7] += invDet*mat[2]*mat[7]*mat[8]
+            result[7] += invDet*mat[3]*mat[4]*mat[10]
+            result[7] -= invDet*mat[0]*mat[7]*mat[10]
+            result[7] -= invDet*mat[2]*mat[4]*mat[11]
+            result[7] -= invDet*mat[3]*mat[6]*mat[8]
+
+            result[8] += invDet*mat[4]*mat[9]*mat[15]
+            result[8] += invDet*mat[5]*mat[11]*mat[12]
+            result[8] += invDet*mat[7]*mat[8]*mat[13]
+            result[8] -= invDet*mat[4]*mat[11]*mat[13]
+            result[8] -= invDet*mat[5]*mat[8]*mat[15]
+            result[8] -= invDet*mat[7]*mat[9]*mat[12]
+
+            result[9] += invDet*mat[0]*mat[11]*mat[13]
+            result[9] += invDet*mat[1]*mat[8]*mat[15]
+            result[9] += invDet*mat[3]*mat[9]*mat[12]
+            result[9] -= invDet*mat[0]*mat[9]*mat[15]
+            result[9] -= invDet*mat[1]*mat[11]*mat[12]
+            result[9] -= invDet*mat[3]*mat[8]*mat[13]
+
+            result[10] += invDet*mat[0]*mat[5]*mat[15]
+            result[10] += invDet*mat[1]*mat[7]*mat[12]
+            result[10] += invDet*mat[3]*mat[4]*mat[13]
+            result[10] -= invDet*mat[0]*mat[7]*mat[13]
+            result[10] -= invDet*mat[1]*mat[4]*mat[15]
+            result[10] -= invDet*mat[3]*mat[5]*mat[12]
+
+            result[11] += invDet*mat[0]*mat[7]*mat[9]
+            result[11] += invDet*mat[1]*mat[4]*mat[11]
+            result[11] += invDet*mat[3]*mat[5]*mat[8]
+            result[11] -= invDet*mat[0]*mat[5]*mat[11]
+            result[11] -= invDet*mat[1]*mat[7]*mat[8]
+            result[11] -= invDet*mat[3]*mat[4]*mat[9]
+
+            result[12] += invDet*mat[4]*mat[10]*mat[13]
+            result[12] += invDet*mat[5]*mat[8]*mat[14]
+            result[12] += invDet*mat[6]*mat[9]*mat[12]
+            result[12] -= invDet*mat[4]*mat[9]*mat[14]
+            result[12] -= invDet*mat[5]*mat[10]*mat[12]
+            result[12] -= invDet*mat[6]*mat[8]*mat[13]
+
+            result[13] += invDet*mat[0]*mat[9]*mat[14]
+            result[13] += invDet*mat[1]*mat[10]*mat[12]
+            result[13] += invDet*mat[2]*mat[8]*mat[13]
+            result[13] -= invDet*mat[0]*mat[10]*mat[13]
+            result[13] -= invDet*mat[1]*mat[8]*mat[14]
+            result[13] -= invDet*mat[2]*mat[9]*mat[12]
+
+            result[14] += invDet*mat[0]*mat[6]*mat[12]
+            result[14] += invDet*mat[1]*mat[4]*mat[14]
+            result[14] += invDet*mat[2]*mat[5]*mat[12]
+            result[14] -= invDet*mat[0]*mat[5]*mat[14]
+            result[14] -= invDet*mat[1]*mat[6]*mat[12]
+            result[14] -= invDet*mat[2]*mat[4]*mat[13]
+
+            result[15] += invDet*mat[0]*mat[5]*mat[10]
+            result[15] += invDet*mat[1]*mat[6]*mat[8]
+            result[15] += invDet*mat[2]*mat[4]*mat[9]
+            result[15] -= invDet*mat[0]*mat[6]*mat[9]
+            result[15] -= invDet*mat[1]*mat[4]*mat[10]
+            result[15] -= invDet*mat[2]*mat[5]*mat[8]
+        return result
+
 
     def Reload(self):
         if self.reload:
@@ -1459,14 +1672,18 @@ void main(void)
             ''')
 
     def GetWorldMouse(self, x_cursor, y_cursor):
+        """이 코드는 꼭 피킹하려는 오브젝트를 렌더링한 직후에 다른 트랜스폼 없이 호출해야 한다."""
         viewport = glGetIntegerv(GL_VIEWPORT)
         modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
         projection = glGetDoublev(GL_PROJECTION_MATRIX)
 
         z_cursor = glReadPixels(x_cursor, viewport[3]-y_cursor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
-        x,y,z = gluUnProject(x_cursor, y_cursor, z_cursor, modelview, projection, viewport)
-        return x,y,z
+        x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, z_cursor, modelview, projection, viewport)
+        #x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, 1.0, modelview, projection, viewport)
+        #xx,yy, zz = gluUnProject(x_cursor, viewport[3]-y_cursor, 90.0, modelview, projection, viewport)
+        return (x,y,z)
 
+        # 그냥 바운드박스로 한다. 레이를 구하는데 마우스->
 
     def Render(self, t, m, k):
         self.Reload()
@@ -1477,8 +1694,6 @@ void main(void)
 
         GameDrawMode()
         self.cam1.ApplyCamera()
-        dirV = self.cam1.GetDirV().Normalized().MultScalar(7.0)
-        glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
         glBindTexture(GL_TEXTURE_2D, self.tex2)
         glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -1486,7 +1701,8 @@ void main(void)
         glUseProgram(0)
         glColor4ub(13,92,7,255)
         self.map.Render()
-        print self.GetWorldMouse(m.x, m.y) # 이걸 인버스 카메라와 트랙볼용 glTranslatef만큼으로 조정해주면 오브젝트스페이스좌표가 나온다.
+        print (self.GetWorldMouse(m.x, m.y)) # 이걸 인버스 카메라와 트랙볼용 glTranslatef만큼으로 조정해주면 오브젝트스페이스좌표가 나온다. 이 코드는 꼭 렌더 직후에 구해야 한다.
+        #print self.cam1.GetInversedPos(self.GetWorldMouse(m.x, m.y)) # 이걸 인버스 카메라와 트랙볼용 glTranslatef만큼으로 조정해주면 오브젝트스페이스좌표가 나온다. 이 코드는 꼭 렌더 직후에 구해야 한다.
         glUseProgram(self.program2)
         """
         for j in range(-4,1):
@@ -1497,6 +1713,7 @@ void main(void)
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
         #glTranslatef(self.tr, 3.0, 0.0)
+        """
         glRotatef(270, 1.0, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
         glScalef(0.4, 0.4, 0.4)
@@ -1517,6 +1734,7 @@ void main(void)
 
         self.model.Draw()
 
+        """
         glUseProgram(0)
         pygame.display.flip()
 
@@ -1593,6 +1811,7 @@ void main(void)
         import chunkhandler
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
+        self.Test()
         while not done:
             fps.Start()
             for e in pygame.event.get():
@@ -1614,7 +1833,7 @@ void main(void)
 
 
             fps.End()
-            print fps.GetFPS()
+            #print fps.GetFPS()
 
 
 if __name__ == '__main__':

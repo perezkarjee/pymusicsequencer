@@ -122,7 +122,7 @@ set smarttab
 set softtabstop=4
 set whichwrap=b,s,<,>,[,]
 set wildignore=*.pyc
-set window=49
+set window=48
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -133,20 +133,20 @@ endif
 set shortmess=aoO
 badd +275 TheorySequencer.py
 badd +43 asd.py
-badd +167 pysynth.py
+badd +1 pysynth.py
 badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +1092 simpleMud.py
-badd +7417 digdig.py
+badd +7956 digdig.py
 badd +82 chunkhandler.pyx
-badd +1477 simpleConstruct.py
+badd +1684 simpleConstruct.py
 badd +47 cpart.c
 badd +18 cpart.h
-badd +57 chunk.pyx
+badd +3252 chunk.pyx
 badd +1 glut.py
 silent! argdel *
-set lines=50 columns=165
-winpos -4 -4
+set lines=49 columns=165
+winpos 1 0
 edit simpleConstruct.py
 set splitbelow splitright
 set nosplitbelow
@@ -196,7 +196,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -249,12 +249,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1489 - ((24 * winheight(0) + 24) / 49)
+let s:l = 1683 - ((6 * winheight(0) + 24) / 48)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1489
-normal! 0172l
+1683
+normal! 08l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
