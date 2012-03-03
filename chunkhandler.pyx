@@ -92,6 +92,8 @@ cdef class Map:
         self.chunks[0].tiles = <Tile*>malloc(sizeof(Tile)*32*32)
         for i in range(32*32):
             self.chunks[0].tiles[i].height = 0.0
+    def Regen(self):
+        pass
     def Render(self):
         pass
     def __dealloc__(self):

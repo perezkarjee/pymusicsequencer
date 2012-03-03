@@ -1313,6 +1313,8 @@ class ConstructorApp:
         if self.reload:
             self.reload = False
             self.model.Regen()
+            glEnable(GL_TEXTURE_2D)
+            glEnable(GL_TEXTURE_1D)
 
             image = pygame.image.load("./img/tile_wall.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -1321,6 +1323,15 @@ class ConstructorApp:
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+
+            image = pygame.image.load("./img/sat.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.tex3 = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_1D, texture)
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
 
             image = pygame.image.load("./img/tile_grass.png")
@@ -1335,7 +1346,7 @@ class ConstructorApp:
             self.program3 = compile_program('''
             // Vertex program
 
-#version 150
+#version 150 compatibility
 
 
 varying vec3 vNormal;
@@ -1360,7 +1371,7 @@ void main(void)
    
 }
             ''', '''
-#version 150
+#version 150 compatibility
 #ifdef GL_FRAGMENT_PRECISION_HIGH
    // Default precision
    precision highp float;
@@ -1369,7 +1380,6 @@ void main(void)
 #endif
 
 uniform vec4 color;
-
 varying vec3 vNormal;
 varying vec3 vViewVec;
 
@@ -1381,7 +1391,7 @@ void main(void)
 }
             ''')
             self.program = compile_program('''
-#version 150
+#version 150 compatibility
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
             void main() {
@@ -1389,7 +1399,7 @@ void main(void)
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
             }
             ''', '''
-#version 150
+#version 150 compatibility
 #ifdef GL_FRAGMENT_PRECISION_HIGH
    // Default precision
    precision highp float;
@@ -1398,18 +1408,25 @@ void main(void)
 #endif
 
             // Fragment program
+            uniform sampler1D colorLookup;
+            uniform vec2 updown;
             varying vec3 pos;
             void main() {
+                float base = updown.x;
+                float high = updown.y;
+                float cur = pos.z-base;
+                float curCol = cur/(high-base);
+                curCol *=0.79;
                 vec3 col;
                 col.x = 0.4;
-                col.y = pos.y/2;
+                col.y = curCol;
                 col.z = 0.2;
-                gl_FragColor.rgb = col;
+                gl_FragColor.rgb = texture1D(colorLookup, curCol).rgb;
             }
             ''')
 
             self.program2 = compile_program('''
-#version 150
+#version 150 compatibility
             // Vertex program
             varying vec3 pos;
             varying vec2 texture_coordinate;
@@ -1419,7 +1436,7 @@ void main(void)
                 texture_coordinate = vec2(gl_MultiTexCoord0);
             }
             ''', '''
-#version 150
+#version 150 compatibility
             // Fragment program
             varying vec2 texture_coordinate;
             uniform sampler2D my_color_texture;
@@ -1453,15 +1470,24 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        glTranslatef(self.tr, 0.0, 0.0)
-        glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
+        glTranslatef(self.tr, 3.0, 0.0)
+        glRotatef(270, 1.0, 0.0, 0.0)
+        #glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
         self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
 
         glUseProgram(self.program)
-        
-        glUniform4f(glGetUniformLocation(self.program3, "color"), 1.0,0.0,0.0,1.0)
+
+        bounds = self.model.GetBounds()
+
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+
+        glEnable(GL_TEXTURE_1D)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glBindTexture(GL_TEXTURE_1D, self.tex3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
+
         self.model.Draw()
 
         glUseProgram(0)
