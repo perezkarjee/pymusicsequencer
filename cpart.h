@@ -14,6 +14,6 @@ typedef struct tVector2 {
     float x;
     float y;
 } Vector2;
-
+char HitBoundingBox(float minB[3],float maxB[3], float origin[3], float dir[3],float coord[3]);
 int ReadInt(char *);
 #endif

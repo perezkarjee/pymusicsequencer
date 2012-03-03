@@ -1458,6 +1458,14 @@ void main(void)
             }
             ''')
 
+    def GetWorldMouse(self, x_cursor, y_cursor):
+        viewport = glGetIntegerv(GL_VIEWPORT)
+        modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
+        projection = glGetDoublev(GL_PROJECTION_MATRIX)
+
+        z_cursor = glReadPixels(x_cursor, viewport[3]-y_cursor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
+        x,y,z = gluUnProject(x_cursor, y_cursor, z_cursor, modelview, projection, viewport)
+        return x,y,z
 
 
     def Render(self, t, m, k):
@@ -1478,6 +1486,7 @@ void main(void)
         glUseProgram(0)
         glColor4ub(13,92,7,255)
         self.map.Render()
+        print self.GetWorldMouse(m.x, m.y) # 이걸 인버스 카메라와 트랙볼용 glTranslatef만큼으로 조정해주면 오브젝트스페이스좌표가 나온다.
         glUseProgram(self.program2)
         """
         for j in range(-4,1):

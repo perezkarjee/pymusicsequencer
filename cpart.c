@@ -4,6 +4,107 @@
 #include "cpart.h"
 
 
+float
+dot_product(float v1[3], float v2[3])
+{
+	return (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
+}
+
+void
+normalize(float v[3])
+{
+	float f = 1.0f / sqrt(dot_product(v, v));
+
+	v[0] *= f;
+	v[1] *= f;
+	v[2] *= f;
+}
+
+void
+cross_product(const float *v1, const float *v2, float *out)
+{
+	out[0] = v1[1] * v2[2] - v1[2] * v2[1];
+	out[1] = v1[2] * v2[0] - v1[0] * v2[2];
+	out[2] = v1[0] * v2[1] - v1[1] * v2[0];
+}
+
+void
+multiply_vector_by_matrix(const float m[9], float v[3])
+{
+	float tmp[3];
+
+	tmp[0] = v[0] * m[0] + v[1] * m[3] + v[2] * m[6];
+	tmp[1] = v[0] * m[1] + v[1] * m[4] + v[2] * m[7];
+	tmp[2] = v[0] * m[2] + v[1] * m[5] + v[2] * m[8];
+
+	v[0] = tmp[0];
+	v[1] = tmp[1];
+	v[2] = tmp[2];
+}
+#define NUMDIM	3
+#define RIGHT	0
+#define LEFT	1
+#define MIDDLE	2
+char HitBoundingBox(minB,maxB, origin, dir,coord)
+float minB[NUMDIM], maxB[NUMDIM];		/*box */
+float origin[NUMDIM], dir[NUMDIM];		/*ray */
+float coord[NUMDIM];				/* hit point */
+{
+	char inside = true;
+	char quadrant[NUMDIM];
+	register int i;
+	int whichPlane;
+	float maxT[NUMDIM];
+	float candidatePlane[NUMDIM];
+
+	/* Find candidate planes; this loop can be avoided if
+   	rays cast all from the eye(assume perpsective view) */
+	for (i=0; i<NUMDIM; i++)
+		if(origin[i] < minB[i]) {
+			quadrant[i] = LEFT;
+			candidatePlane[i] = minB[i];
+			inside = false;
+		}else if (origin[i] > maxB[i]) {
+			quadrant[i] = RIGHT;
+			candidatePlane[i] = maxB[i];
+			inside = false;
+		}else	{
+			quadrant[i] = MIDDLE;
+		}
+
+	/* Ray origin inside bounding box */
+	if(inside)	{
+		coord = origin;
+		return (true);
+	}
+
+
+	/* Calculate T distances to candidate planes */
+	for (i = 0; i < NUMDIM; i++)
+		if (quadrant[i] != MIDDLE && dir[i] !=0.)
+			maxT[i] = (candidatePlane[i]-origin[i]) / dir[i];
+		else
+			maxT[i] = -1.;
+
+	/* Get largest of the maxT's for final choice of intersection */
+	whichPlane = 0;
+	for (i = 1; i < NUMDIM; i++)
+		if (maxT[whichPlane] < maxT[i])
+			whichPlane = i;
+
+	/* Check final candidate actually inside box */
+	if (maxT[whichPlane] < 0.) return (false);
+	for (i = 0; i < NUMDIM; i++)
+		if (whichPlane != i) {
+			coord[i] = origin[i] + maxT[whichPlane] *dir[i];
+			if (coord[i] < minB[i] || coord[i] > maxB[i])
+				return (false);
+		} else {
+			coord[i] = candidatePlane[i];
+		}
+	return (true);				/* ray hits box */
+}	
+
 void tangent(Vector2 *out, Vector2 *a, Vector2 *b)
 {
     out->x = (a->x-b->x)/2.0f;

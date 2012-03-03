@@ -138,16 +138,16 @@ badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +1092 simpleMud.py
 badd +7417 digdig.py
-badd +289 chunkhandler.pyx
+badd +82 chunkhandler.pyx
 badd +1477 simpleConstruct.py
-badd +57 cpart.c
-badd +16 cpart.h
+badd +47 cpart.c
+badd +18 cpart.h
 badd +57 chunk.pyx
 badd +1 glut.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
-edit chunkhandler.pyx
+edit simpleConstruct.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -179,8 +179,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'pyrex'
-setlocal filetype=pyrex
+if &filetype != 'python'
+setlocal filetype=python
 endif
 setlocal foldcolumn=0
 setlocal foldenable
@@ -196,7 +196,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
+setlocal iminsert=2
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -237,8 +237,8 @@ setlocal statusline=
 setlocal suffixesadd=.py
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'pyrex'
-setlocal syntax=pyrex
+if &syntax != 'python'
+setlocal syntax=python
 endif
 setlocal tabstop=8
 setlocal tags=
@@ -249,12 +249,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 289 - ((24 * winheight(0) + 24) / 49)
+let s:l = 1489 - ((24 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-289
-normal! 040l
+1489
+normal! 0172l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

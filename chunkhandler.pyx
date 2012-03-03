@@ -77,6 +77,10 @@ cdef extern from "cpart.h":
     ctypedef tChunk Chunk
     ctypedef tTile Tile
     cdef int ReadInt(char *str)
+    cdef char HitBoundingBox(float minB[3],float maxB[3], float origin[3], float dir[3],float coord[3])
+
+
+
 cdef void FreeChunk(Chunk* chunk):
     free(chunk.tiles)
     free(chunk)
