@@ -143,14 +143,14 @@ cdef class Map:
                 self.topquads[y*SIZE_CHUNK*4*3+11+i+x*4*3] = zz-1.0
 
 
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+0+x*4*2] = 0.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+1+x*4*2] = 0.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+2+x*4*2] = 1.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+3+x*4*2] = 0.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+4+x*4*2] = 1.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+5+x*4*2] = 1.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+6+x*4*2] = 0.0
-                self.texcs[y*SIZE_CHUNK*4*2+2+i+7+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+0+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+1+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+2+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+3+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+4+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+5+x*4*2] = 1.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+6+x*4*2] = 0.0
+                self.texcs[y*SIZE_CHUNK*4*2+i+7+x*4*2] = 1.0
 
 
                 xx += 1.0
@@ -256,6 +256,8 @@ cdef class Map:
 
 
     def Render(self):
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glDisable(GL.GL_TEXTURE_1D)
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
@@ -270,6 +272,7 @@ cdef class Map:
         glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
 
+        GL.glDisable(GL.GL_TEXTURE_2D)
         self.vbos.vbos[1].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
         glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
@@ -278,8 +281,8 @@ cdef class Map:
         #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
-
-        pass
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_TEXTURE_1D)
     def __dealloc__(self):
         for i in range(NUMCHUNKS):
             if self.chunks[i]:

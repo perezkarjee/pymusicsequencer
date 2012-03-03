@@ -1418,9 +1418,10 @@ void main(void)
             void main() {
                 float base = updown.x;
                 float high = updown.y;
+                base *=1.4;
+                high *=1.4;
                 float cur = pos.z-base;
                 float curCol = cur/(high-base);
-                curCol *=0.79;
                 vec3 light;
                 light.x = 1000.0;
                 light.y = 1000.0;
@@ -1471,6 +1472,11 @@ void main(void)
         dirV = self.cam1.GetDirV().Normalized().MultScalar(7.0)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
         glBindTexture(GL_TEXTURE_2D, self.tex2)
+        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+        glUseProgram(0)
+        glColor4ub(13,92,7,255)
         self.map.Render()
         glUseProgram(self.program2)
         """
@@ -1483,8 +1489,9 @@ void main(void)
         """
         #glTranslatef(self.tr, 3.0, 0.0)
         glRotatef(270, 1.0, 0.0, 0.0)
-        #glRotatef(self.tr*200.0, 0.0, 1.0, 0.0)
-        self.tr += 0.01
+        glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
+        glScalef(0.4, 0.4, 0.4)
+        self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
 
@@ -1575,7 +1582,7 @@ void main(void)
 
         fps = FPS()
         import chunkhandler
-        self.model = chunkhandler.Model("./blend/321323.jrpg")
+        self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
         while not done:
             fps.Start()
