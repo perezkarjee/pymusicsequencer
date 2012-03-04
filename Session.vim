@@ -250,12 +250,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 4600 - ((26 * winheight(0) + 24) / 49)
+let s:l = 4484 - ((43 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-4600
-normal! 030l
+4484
+normal! 0118l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

@@ -4169,6 +4169,8 @@ class ConstructorApp:
         self.prevAniTime = pygame.time.get_ticks()
         self.prevAniDelay = 50
         self.aniOffset = 0.0
+        self.aniOffset2 = 0.0
+        self.aniOffset3 = 0.0
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
         y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
@@ -4412,9 +4414,12 @@ void main(void)
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
             varying vec3 vNorm;
+            uniform vec4 eye;
+            varying vec4 eyeWorld;
             void main() {
                 pos = gl_Vertex.xyz;
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                eyeWorld = gl_ModelViewProjectionMatrix * eye;
                 vNorm = gl_Normal;
             }
             ''', '''
@@ -4429,10 +4434,14 @@ void main(void)
             // Fragment program
             uniform sampler1D colorLookup;
             uniform float offset;
+            uniform float offset2;
+            uniform float offset3;
             uniform vec2 updown;
             uniform vec2 leftright;
+            uniform vec2 frontback;
             varying vec3 pos;
             varying vec3 vNorm;
+            varying vec4 eyeWorld;
             void main() {
                 float base = updown.x;
                 float high = updown.y;
@@ -4440,6 +4449,9 @@ void main(void)
                 high *=1.4;
                 float cur = pos.z-base;
                 float curCol = cur/(high-base);
+                curCol += offset;
+                if(curCol > 1.0)
+                    curCol -= 1.0;
 
                 base = leftright.x;
                 high = leftright.y;
@@ -4447,21 +4459,29 @@ void main(void)
                 high *=1.4;
                 cur = pos.x-base;
                 float curCol2 = cur/(high-base);
-                curCol2 += offset;
+                curCol2 += offset2;
                 if(curCol2 > 1.0)
                     curCol2 -= 1.0;
+
+                base = frontback.x;
+                high = frontback.y;
+                base *=1.4;
+                high *=1.4;
+                cur = pos.y-base;
+                float curCol3 = cur/(high-base);
+                curCol3 += offset3;
+                if(curCol3 > 1.0)
+                    curCol3 -= 1.0;
 
                 vec3 light;
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(light);
+                light = normalize(eyeWorld).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+2.0)/3.0;
+                float fac = (dot(light, norm)+0.0)/1.0;
                 vec3 color = texture1D(colorLookup, curCol).rgb;
-                color.g *= fac;
-                color.r *= fac;
-                gl_FragColor.rgb = (color + texture1D(colorLookup, curCol2).rgb)/2.0;
+                gl_FragColor.rgb = (color + texture1D(colorLookup, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
             }
             ''')
 
@@ -4537,16 +4557,26 @@ void main(void)
 
         if t-self.prevAniTime > self.prevAniDelay:
             self.aniOffset += (t-self.prevAniTime)/500.0
+            self.aniOffset2 += (t-self.prevAniTime)/1000.0
+            self.aniOffset3 += (t-self.prevAniTime)/1500.0
             self.prevAniTime = t
             if self.aniOffset > 1.0:
                 self.aniOffset = 0.0
+            if self.aniOffset2 > 1.0:
+                self.aniOffset2 = 0.0
+            if self.aniOffset3 > 1.0:
+                self.aniOffset3 = 0.0
         glUseProgram(self.program)
 
         bounds = self.model.GetBounds()
 
         glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
         glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
         glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
