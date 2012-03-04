@@ -2983,7 +2983,7 @@ class Camera:
         #pos = Vector(self.posx, self.posy, self.posz).Normalized()
         #glpLookAt(pos, self.view,
         #        Vector(0.0, 1.0, 0.0).Normalized())
-        dirV = self.GetDirV().Normalized().MultScalar(14.0)
+        dirV = self.GetDirV().Normalized().MultScalar(AppSt.camZoom)
         glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
     def GetInversedPos(self, vec):
         vec = vec+(1.0,)
@@ -4165,6 +4165,7 @@ class ConstructorApp:
         self.camMoveMode = False
         self.reload = True
         self.tr = -3.0
+        self.camZoom = 8.0
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
         y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
@@ -4425,6 +4426,7 @@ void main(void)
             // Fragment program
             uniform sampler1D colorLookup;
             uniform vec2 updown;
+            uniform vec2 leftright;
             varying vec3 pos;
             varying vec3 vNorm;
             void main() {
@@ -4434,16 +4436,25 @@ void main(void)
                 high *=1.4;
                 float cur = pos.z-base;
                 float curCol = cur/(high-base);
+
+                base = leftright.x;
+                high = leftright.y;
+                base *=1.4;
+                high *=1.4;
+                cur = pos.x-base;
+                float curCol2 = cur/(high-base);
+
                 vec3 light;
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
                 light = normalize(light);
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+4.0)/5.0;
+                float fac = (dot(light, norm)+2.0)/3.0;
                 vec3 color = texture1D(colorLookup, curCol).rgb;
                 color.g *= fac;
-                gl_FragColor.rgb = color;
+                color.r *= fac;
+                gl_FragColor.rgb = (color + texture1D(colorLookup, curCol2).rgb)/2.0;
             }
             ''')
 
@@ -4522,6 +4533,7 @@ void main(void)
         bounds = self.model.GetBounds()
 
         glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
@@ -4582,6 +4594,14 @@ void main(void)
     def SetReload(self):
         self.reload = True
         pass
+    def FartherCam(self,t,m,k):
+        self.camZoom += 0.5
+        if self.camZoom > 15.0:
+            self.camZoom = 15.0
+    def CloserCam(self,t,m,k):
+        self.camZoom -= 0.5
+        if self.camZoom < 0.5:
+            self.camZoom = 0.5
 
     def Run(self):
         pygame.init()
@@ -4599,6 +4619,8 @@ void main(void)
         emgr.BindMotion(self.DoCam)
         emgr.BindMDown(self.CamMoveMode)
         emgr.BindMUp(self.UnCamMoveMode)
+        emgr.BindWUp(self.CloserCam)
+        emgr.BindWDn(self.FartherCam)
         #phy = Physics()
         #emgr.BindTick(phy.Tick)
 
