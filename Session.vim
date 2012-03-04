@@ -104,6 +104,7 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
+set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -122,7 +123,7 @@ set smarttab
 set softtabstop=4
 set whichwrap=b,s,<,>,[,]
 set wildignore=*.pyc
-set window=48
+set window=49
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -136,16 +137,16 @@ badd +43 asd.py
 badd +1 pysynth.py
 badd +58 exportmy.py
 badd +412 simpleAdv.py
-badd +1092 simpleMud.py
-badd +7956 digdig.py
+badd +3 simpleMud.py
+badd +987 digdig.py
 badd +179 chunkhandler.pyx
-badd +1703 simpleConstruct.py
+badd +83 simpleConstruct.py
 badd +47 cpart.c
 badd +18 cpart.h
 badd +3252 chunk.pyx
 badd +1 glut.py
 silent! argdel *
-set lines=49 columns=165
+set lines=50 columns=165
 winpos 1 0
 edit simpleConstruct.py
 set splitbelow splitright
@@ -249,12 +250,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 1683 - ((18 * winheight(0) + 24) / 48)
+let s:l = 83 - ((24 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-1683
-normal! 066l
+83
+normal! 0
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
