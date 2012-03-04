@@ -80,6 +80,42 @@ def compile_program(vertex_src, fragment_src):
  
     return program
  
+class ConstroctorGUI(object):
+    def __init__(self):
+        self.tex = -1
+        self.botimg = pygame.image.load("./img/guibottombg.png")
+    def Regen(self):
+        self.tex = texture = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, texture)
+        teximg = pygame.image.tostring(self.botimg, "RGBA", 0) 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+
+    def Render(self):
+        texupx = 0
+        texupy = 0
+        x = 0
+        y = SH-256
+        w = 1024
+        h = 256
+        glBindTexture(GL_TEXTURE_2D, self.tex)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+        glBegin(GL_QUADS)
+        glTexCoord2f(texupx, texupy+1.0)
+        glVertex3f(float(x), -float(y+h), 100.0)
+
+        glTexCoord2f(texupx+1.0, texupy+1.0)
+        glVertex3f(float(x+w), -float(y+h), 100.0)
+
+        glTexCoord2f(texupx+1.0, texupy)
+        glVertex3f(float(x+w), -float(y), 100.0)
+
+        glTexCoord2f(texupx, texupy)
+        glVertex3f(x, -float(y), 100.0)
+        glEnd()
+
+
 class DigDigGUI(object):
     def __init__(self):
         self.invPos = (SW-306)/2, 430-186-20
@@ -4289,6 +4325,7 @@ class ConstructorApp:
             self.reload = False
             self.model.Regen()
             self.map.Regen()
+            self.gui.Regen()
             glEnable(GL_TEXTURE_2D)
             glEnable(GL_TEXTURE_1D)
 
@@ -4496,7 +4533,7 @@ void main(void)
         glUseProgram(0)
 
         GUIDrawMode()
-        DrawQuad(0,0,100,35,(128,200,45,255),(40,70,12,255))
+        self.gui.Render()
         pygame.display.flip()
 
     def UnCamMoveMode(self, t,m,k):
@@ -4548,7 +4585,7 @@ void main(void)
 
     def Run(self):
         pygame.init()
-        isFullScreen = 0#FULLSCREEN
+        isFullScreen = FULLSCREEN#0
         screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN)
         done = False
         resize(SW,SH)
@@ -4571,6 +4608,7 @@ void main(void)
         import chunkhandler
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
+        self.gui = ConstroctorGUI()
         self.Test()
         while not done:
             fps.Start()
