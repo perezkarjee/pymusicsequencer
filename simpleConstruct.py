@@ -4166,6 +4166,9 @@ class ConstructorApp:
         self.reload = True
         self.tr = -3.0
         self.camZoom = 8.0
+        self.prevAniTime = pygame.time.get_ticks()
+        self.prevAniDelay = 50
+        self.aniOffset = 0.0
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
         y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
@@ -4425,6 +4428,7 @@ void main(void)
 
             // Fragment program
             uniform sampler1D colorLookup;
+            uniform float offset;
             uniform vec2 updown;
             uniform vec2 leftright;
             varying vec3 pos;
@@ -4443,6 +4447,9 @@ void main(void)
                 high *=1.4;
                 cur = pos.x-base;
                 float curCol2 = cur/(high-base);
+                curCol2 += offset;
+                if(curCol2 > 1.0)
+                    curCol2 -= 1.0;
 
                 vec3 light;
                 light.x = 1000.0;
@@ -4528,12 +4535,18 @@ void main(void)
         if self.tr >= 3.0:
             self.tr = -3.0
 
+        if t-self.prevAniTime > self.prevAniDelay:
+            self.aniOffset += (t-self.prevAniTime)/500.0
+            self.prevAniTime = t
+            if self.aniOffset > 1.0:
+                self.aniOffset = 0.0
         glUseProgram(self.program)
 
         bounds = self.model.GetBounds()
 
         glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
         glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
