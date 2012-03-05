@@ -8,6 +8,8 @@ import sys
 from ctypes import *
 from math import radians 
 from OpenGL import platform
+from OpenGL.GL.EXT.texture_filter_anisotropic import *
+import math
 gl = platform.OpenGL
 
 from OpenGL.GL import *
@@ -15,6 +17,7 @@ from OpenGL.GLU import *
 
 import pygame
 from pygame.locals import *
+import chunkhandler
 
 import random
 import math
@@ -84,36 +87,20 @@ class ConstroctorGUI(object):
     def __init__(self):
         self.tex = -1
         self.botimg = pygame.image.load("./img/guibottombg.png")
+        self.guiRenderer = chunkhandler.GUIBGRenderer()
     def Regen(self):
         self.tex = texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texture)
         teximg = pygame.image.tostring(self.botimg, "RGBA", 0) 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+        self.guiRenderer.Regen()
 
     def Render(self):
-        texupx = 0
-        texupy = 0
-        x = 0
-        y = SH-256
-        w = 1024
-        h = 256
         glBindTexture(GL_TEXTURE_2D, self.tex)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-        glBegin(GL_QUADS)
-        glTexCoord2f(texupx, texupy+1.0)
-        glVertex3f(float(x), -float(y+h), 100.0)
-
-        glTexCoord2f(texupx+1.0, texupy+1.0)
-        glVertex3f(float(x+w), -float(y+h), 100.0)
-
-        glTexCoord2f(texupx+1.0, texupy)
-        glVertex3f(float(x+w), -float(y), 100.0)
-
-        glTexCoord2f(texupx, texupy)
-        glVertex3f(x, -float(y), 100.0)
-        glEnd()
+        self.guiRenderer.Render()
 
 
 class DigDigGUI(object):
@@ -125,13 +112,13 @@ class DigDigGUI(object):
         self.qbarRealPos = (SW-300)/2, 430+4
         self.makeRealPos = (SW-300)/2, 20
 
-        self.inventex = texture = glGenTexturesDebug(1)
+        self.inventex = texture = glGenTextures(1)
         self.invenimg = pygame.image.load("./images/digdig/inven.png")
         glBindTexture(GL_TEXTURE_2D, self.inventex)
         teximg = pygame.image.tostring(self.invenimg, "RGBA", 0) 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
 
-        self.tooltex = texture = glGenTexturesDebug(1)
+        self.tooltex = texture = glGenTextures(1)
         self.toolimg = pygame.image.load("./images/digdig/tools.png")
         glBindTexture(GL_TEXTURE_2D, self.tooltex)
         teximg = pygame.image.tostring(self.toolimg, "RGBA", 0) 
@@ -2538,11 +2525,10 @@ class DynamicTextRenderer(object):
         self.font = font
         self.surfs = []
         for i in range(4):
-            texid = glGenTexturesDebug(1)
+            texid = glGenTextures(1)
             self.surfs += [[pygame.Surface((512,512), flags=SRCALPHA), texid, True]]
         self.surfIdx = 0
         self.texts = []
-        EMgrSt.BindTick(self.RegenTex)
     def NewTextObject(self, text, color, pos, border=False, borderColor = (255,255,255)):
         if self.surfIdx >= 4:
             return
@@ -2623,11 +2609,10 @@ class DynamicTextRenderer(object):
             textid += 1
     def RenderOne(self, textid, pos):
         self.RenderText(textid, pos)
-    def RegenTex(self, t,m,k):
-        if AppSt.regenTex:
-            for idx in range(len(self.surfs)):
-                self.surfs[idx][1] = glGenTexturesDebug(1)
-                self.surfs[idx][2] = True
+    def RegenTex(self):
+        for idx in range(len(self.surfs)):
+            self.surfs[idx][1] = glGenTextures(1)
+            self.surfs[idx][2] = True
     def RenderText(self, textid, pos):
         surfid, posList, pos_ = self.texts[textid]
         surf, texid, updated = self.surfs[surfid]
@@ -2668,10 +2653,9 @@ class StaticTextRenderer(object):
     # 아이템 숫자 표시는.... 여기서 0~9를 렌더링 한 후에 그 숫자를 가지고 렌더링한다!
     def __init__(self, font):
         self.font = font
-        texid = glGenTexturesDebug(1)
+        texid = glGenTextures(1)
         self.surfs = [[pygame.Surface((512,512), flags=SRCALPHA), texid, True]]
         self.texts = []
-        EMgrSt.BindTick(self.RegenTex)
     def NewTextObject(self, text, color, border=False, borderColor = (255,255,255)):
         if self.texts:
             prevsurfid, prevtextposList = self.texts[-1]
@@ -2698,7 +2682,7 @@ class StaticTextRenderer(object):
         if needLen > 0:
             needYNum = (needLen/512)+2
             if y+needYNum*h >= 512:
-                texid = glGenTexturesDebug(1)
+                texid = glGenTextures(1)
                 self.surfs += [[pygame.Surface((512,512), flags=SRCALPHA), texid, True]]
                 surf = self.surfs[-1][0]
                 surfid = len(self.surfs)-1
@@ -2740,11 +2724,10 @@ class StaticTextRenderer(object):
         self.texts += [[surfid, newtextposList]]
         return len(self.texts)-1
 
-    def RegenTex(self, t,m,k):
-        if AppSt.regenTex:
-            for idx in range(len(self.surfs)):
-                self.surfs[idx][1] = glGenTexturesDebug(1)
-                self.surfs[idx][2] = True
+    def RegenTex(self):
+        for idx in range(len(self.surfs)):
+            self.surfs[idx][1] = glGenTextures(1)
+            self.surfs[idx][2] = True
 
     def RenderText(self, textid, pos):
         surfid, posList = self.texts[textid]
@@ -4171,6 +4154,12 @@ class ConstructorApp:
         self.aniOffset = 0.0
         self.aniOffset2 = 0.0
         self.aniOffset3 = 0.0
+        TILECHANGE1 = 0
+        TILECHANGE2 = 1
+        WALLCHANGE1 = 2
+        WALLCHANGE2 = 3
+        self.mapTilingMode = TILECHANGE1
+
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
         y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
@@ -4330,19 +4319,30 @@ class ConstructorApp:
         
             self.reload = False
             self.model.Regen()
-            self.map.Regen()
             self.gui.Regen()
+            self.textRenderer.RegenTex()
+            self.textRendererSmall.RegenTex()
             glEnable(GL_TEXTURE_2D)
             glEnable(GL_TEXTURE_1D)
+            glInitTextureFilterAnisotropicEXT( )
 
-            image = pygame.image.load("./img/tile_wall.png")
+            image = pygame.image.load("./img/sat3.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
-            self.tex = texture = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+            self.sat3 = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_1D, texture)
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+
+            image = pygame.image.load("./img/sat2.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.sat = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_1D, texture)
+            glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
 
             image = pygame.image.load("./img/sat.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -4351,16 +4351,47 @@ class ConstructorApp:
             glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
             glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
             glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
 
             image = pygame.image.load("./img/tile_grass.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
             self.tex2 = texture = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+
+            image = pygame.image.load("./img/tile_water.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.water = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+
+            image = pygame.image.load("./img/tile_wall.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.tex = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+            self.map.Regen(self.tex2,self.water)
 
             self.program3 = compile_program('''
             // Vertex program
@@ -4433,6 +4464,8 @@ void main(void)
 
             // Fragment program
             uniform sampler1D colorLookup;
+            uniform sampler1D colorLookup2;
+            uniform sampler1D colorLookup3;
             uniform float offset;
             uniform float offset2;
             uniform float offset3;
@@ -4480,8 +4513,8 @@ void main(void)
                 light = normalize(eyeWorld).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+0.0)/1.0;
-                vec3 color = texture1D(colorLookup, curCol).rgb;
-                gl_FragColor.rgb = (color + texture1D(colorLookup, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
+                vec3 color = texture1D(colorLookup2, curCol).rgb;
+                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
             }
             ''')
 
@@ -4521,6 +4554,39 @@ void main(void)
         return (x,y,z)
 
 
+    def HandleMapTiling(self, t,m,k):
+        LEFTTOP = 0
+        RIGHTTOP = 1
+        LEFTBOT = 2
+        RIGHTBOT = 3
+        x,y,z = self.GetWorldMouse(m.x, m.y)
+        if x > 0.0:
+            xTilePos1 = x-(x-math.floor(x))
+            xTilePos2 = math.ceil(x)
+        else:
+            xTilePos2 = x-(x-math.ceil(x))
+            xTilePos1 = math.floor(x)
+        if z > 0.0:
+            zTilePos1 = z-(z-math.floor(z))
+            zTilePos2 = math.ceil(z)
+        else:
+            zTilePos2 = z-(z-math.ceil(z))
+            zTilePos1 = math.floor(z)
+
+        pos = LEFTTOP
+        if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = LEFTTOP
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = RIGHTTOP
+        elif xTilePos1 <= x < xTilePos1+0.5 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = LEFTBOT
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = RIGHTBOT
+
+        # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
+        #if LMB in m.pressedButtons.iterkeys():
+        #    self.map.
+
     def Render(self, t, m, k):
         self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -4530,15 +4596,16 @@ void main(void)
 
         GameDrawMode()
         self.cam1.ApplyCamera()
-        glBindTexture(GL_TEXTURE_2D, self.tex2)
+        glBindTexture(GL_TEXTURE_2D, self.water)
         glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
         glUseProgram(0)
         glColor4ub(13,92,7,255)
+        glColor4ub(10,144,216,255)
         self.map.Render()
-        print (self.GetWorldMouse(m.x, m.y))
-        glUseProgram(self.program2)
+        self.HandleMapTiling(t,m,k)
+        #glUseProgram(self.program2)
         """
         for j in range(-4,1):
             for i in range(-4,1):
@@ -4546,6 +4613,7 @@ void main(void)
         for j in range(-4,1):
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
+        """
         """
         #glTranslatef(self.tr, 3.0, 0.0)
         glRotatef(270, 1.0, 0.0, 0.0)
@@ -4582,13 +4650,26 @@ void main(void)
         glActiveTexture(GL_TEXTURE0 + 0)
         glBindTexture(GL_TEXTURE_1D, self.tex3)
         glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
+        glActiveTexture(GL_TEXTURE0 + 1)
+        glBindTexture(GL_TEXTURE_1D, self.sat)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
+        glActiveTexture(GL_TEXTURE0 + 2)
+        glBindTexture(GL_TEXTURE_1D, self.sat3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
+        glActiveTexture(GL_TEXTURE0 + 0)
+
 
         self.model.Draw()
+        """
 
         glUseProgram(0)
 
         GUIDrawMode()
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.gui.Render()
+        self.RenderNumber(int(self.fps.GetFPS()), 0,0)
+        glDisable(GL_BLEND)
         pygame.display.flip()
 
     def UnCamMoveMode(self, t,m,k):
@@ -4646,9 +4727,31 @@ void main(void)
         if self.camZoom < 0.5:
             self.camZoom = 0.5
 
+    def RenderNumberS(self, num, x, y):
+        count = str(num)
+        x = x
+        y = y
+        for c in count:
+            if c == "-":
+                self.textRendererSmall.RenderText(self.numbersS[10], (x, y))
+            else:
+                self.textRendererSmall.RenderText(self.numbersS[int(c)], (x, y))
+            x += 9
+    def RenderNumber(self, num, x, y):
+        count = str(num)
+        x = x
+        y = y
+        for c in count:
+            if c == "-":
+                self.textRenderer.RenderText(self.numbers[10], (x, y))
+            else:
+                self.textRenderer.RenderText(self.numbers[int(c)], (x, y))
+            x += 9
+
     def Run(self):
         pygame.init()
         isFullScreen = FULLSCREEN#0
+
         screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN)
         done = False
         resize(SW,SH)
@@ -4669,12 +4772,22 @@ void main(void)
 
 
 
-        fps = FPS()
-        import chunkhandler
+        self.fps = fps = FPS()
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
         self.gui = ConstroctorGUI()
-        self.Test()
+        #self.Test()
+
+        self.font = pygame.font.Font("./fonts/NanumGothicBold.ttf", 16)
+        self.font2 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
+        self.textRenderer = StaticTextRenderer(self.font)
+        self.textRendererSmall = StaticTextRenderer(self.font2)
+        self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), True, (50,50,50)) for i in range(10)]
+        self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), True, (0,0,0))]
+        self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
+        self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
+
+        # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
         while not done:
             fps.Start()
             for e in pygame.event.get():
@@ -4689,7 +4802,10 @@ void main(void)
                 elif e.type is MOUSEBUTTONUP:
                     pass
                 elif e.type == ACTIVEEVENT and e.gain == 1:
+                    #pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 1)
+                    #pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 2)
                     screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
+                    glEnable(GL_MULTISAMPLE_ARB)
                     self.SetReload()
 
                 emgr.Event(e)
@@ -4697,7 +4813,6 @@ void main(void)
 
 
             fps.End()
-            #print fps.GetFPS()
 
 
 if __name__ == '__main__':
@@ -4739,4 +4854,6 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 64x64의 맵을 렌더링함. 큐브가 아닌 그냥 쿼드. 한 쿼드가 다른 쿼드보다 높을 때 그냥 단색의 어울리는 색의 색으로 FILL한다.
 ------
 심시티2000과 캐피탈리즘과 울온의 게임방식을 섞자.
+-----------------
+타일이 무지막지하게 크므로 종류가 많으면 곤란?
 """

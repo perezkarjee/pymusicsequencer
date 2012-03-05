@@ -88,12 +88,95 @@ cdef void FreeChunk(Chunk* chunk):
 NUMCHUNKS = 1
 SIZE_CHUNK = 32
 import random
+
+SW = 1024
+SH = 768
+cdef class GUIBGRenderer(object):
+    vbos = VBOs()
+    cdef float *quad
+    cdef float *texcs
+    def __cinit__(self):
+        texupx = 0
+        texupy = 0
+        x = 0
+        y = SH-256
+        w = SW
+        h = 256
+
+
+        self.quad = <float*>malloc(sizeof(float)*4*3)
+        self.texcs = <float*>malloc(sizeof(float)*4*2)
+        # x,y,z,  x,y,z  x,y,z,  x,y,z * 5
+        self.quad[0] = float(x)
+        self.quad[1] = -float(y+h)
+        self.quad[2] = 100.0
+        self.quad[3] = float(x+w)
+        self.quad[4] = -float(y+h)
+        self.quad[5] = 100.0
+        self.quad[6] = float(x+w)
+        self.quad[7] =  -float(y)
+        self.quad[8] =  100.0
+        self.quad[9] = float(x)
+        self.quad[10] =  -float(y)
+        self.quad[11] = 100.0
+        self.texcs[0] = texupx
+        self.texcs[1] = texupy+1.0
+        self.texcs[2] = texupx+1.0
+        self.texcs[3] = texupy+1.0
+        self.texcs[4] = texupx+1.0
+        self.texcs[5] = texupy
+        self.texcs[6] = texupx
+        self.texcs[7] = texupy
+
+    def __dealloc__(self):
+        free(self.texcs)
+        free(self.quad)
+
+    def Regen(self):
+
+        cdef char *quad
+        cdef char *texcs
+
+        if self.vbos.vbos:
+            self.vbos.vbos[0].reload = True
+            self.vbos.vbos[1].reload = True
+            del self.vbos.vbos[0]
+            del self.vbos.vbos[0]
+        quad = <char*>self.quad
+        texcs = <char*>self.texcs
+        self.vbos.vbos += [0,0]
+        self.vbos.vbos[0] = VertexBuffer(quad[:4*3*sizeof(float)])
+        self.vbos.vbos[1] = VertexBuffer(texcs[:4*2*sizeof(float)])
+
+
+
+    def Render(self):
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glDisable(GL.GL_TEXTURE_1D)
+        GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
+        GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+
+        self.vbos.vbos[0].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        self.vbos.vbos[1].bind()
+        GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+
+        glDrawArrays(GL.GL_QUADS, 0, 4*3)
+
+        GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_TEXTURE_1D)
+class Tex:
+    def __init__(self):
+        self.tex = []
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
     cdef float *topquads
     cdef float *texcs
     vbos = VBOs()
+    tex = Tex()
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -103,11 +186,14 @@ cdef class Map:
         self.chunks[0].y = 0
         self.chunks[0].z = 0
         for i in range(SIZE_CHUNK*SIZE_CHUNK):
-            self.chunks[0].tiles[i].height = 0.0+float(random.randint(0,10))
+            self.chunks[0].tiles[i].height = 0.0#+float(random.randint(0,10))
         self.quads = <float*>0
         self.topquads = <float*>0
         self.texcs = <float*>0
-    def Regen(self):
+
+
+    def Regen(self, *textures):
+        self.tex.tex = textures
         cdef char *topquads
         cdef char *quads
         cdef char *texcs
@@ -125,6 +211,12 @@ cdef class Map:
         xx = 0.0
         yy = 0.0
         zz = 0.0
+        # 텍스쳐별로 vbo를 만들던지 아니면 한 vbo로 하되 오프셋을 다르게 하여 텍스쳐를 다르게 적용시킨다?
+        # 아 엘레멘트버퍼를 만들어서 그걸루 나누자.
+
+        for y in range(SIZE_CHUNK):
+            for x in range(SIZE_CHUNK):
+                self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
