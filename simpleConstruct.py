@@ -4512,7 +4512,7 @@ void main(void)
                 light.z = 1000.0;
                 light = normalize(eyeWorld).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+0.0)/1.0;
+                float fac = (dot(light, norm)+2.0)/3.0;
                 vec3 color = texture1D(colorLookup2, curCol).rgb;
                 gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
             }
@@ -4614,7 +4614,6 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        """
         #glTranslatef(self.tr, 3.0, 0.0)
         glRotatef(270, 1.0, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
@@ -4660,7 +4659,6 @@ void main(void)
 
 
         self.model.Draw()
-        """
 
         glUseProgram(0)
 
@@ -4802,10 +4800,7 @@ void main(void)
                 elif e.type is MOUSEBUTTONUP:
                     pass
                 elif e.type == ACTIVEEVENT and e.gain == 1:
-                    #pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 1)
-                    #pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 2)
                     screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN) # SDL의 제한 때문에 어쩔 수가 없다.
-                    glEnable(GL_MULTISAMPLE_ARB)
                     self.SetReload()
 
                 emgr.Event(e)
@@ -4856,4 +4851,6 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 심시티2000과 캐피탈리즘과 울온의 게임방식을 섞자.
 -----------------
 타일이 무지막지하게 크므로 종류가 많으면 곤란?
+-----------------
+벽은 하지 말고 2배 크기의 세로 큐브를 두고 그걸 건물이라고 한다. 안에 들어가면 더 넓음
 """
