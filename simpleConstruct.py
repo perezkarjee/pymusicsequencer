@@ -4450,8 +4450,8 @@ void main(void)
             void main() {
                 pos = gl_Vertex.xyz;
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-                eyeWorld = gl_ModelViewProjectionMatrix * eye;
-                vNorm = gl_Normal;
+                eyeWorld = eye;
+                vNorm = gl_NormalMatrix  * gl_Normal;
             }
             ''', '''
 #version 150 compatibility
@@ -4510,10 +4510,11 @@ void main(void)
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(eyeWorld).xyz;
+                light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+2.0)/3.0;
+                float fac = (dot(light, norm)+0.0)/1.0;
                 vec3 color = texture1D(colorLookup2, curCol).rgb;
+                //gl_FragColor.rgb = color*fac;
                 gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
             }
             ''')
@@ -4643,7 +4644,7 @@ void main(void)
         glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
         glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
         glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
-        glUniform4f(glGetUniformLocation(self.program, "eye"), self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z, 1.0)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
