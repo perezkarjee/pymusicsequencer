@@ -170,6 +170,10 @@ cdef class GUIBGRenderer(object):
 class Tex:
     def __init__(self):
         self.tex = []
+
+class Element:
+    def __init__(self):
+        self.ele = None
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
@@ -177,6 +181,7 @@ cdef class Map:
     cdef float *texcs
     vbos = VBOs()
     tex = Tex()
+    ele = Element()
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -217,9 +222,14 @@ cdef class Map:
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = 0
+        self.ele.ele = [[] for i in range(textures)]
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                for kkk in range(len(textures)):
+                    if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                        self.ele.ele[kkk] += [i,i+1,i+2,i+3]
+                        # 여기에 엘레멘트버퍼를 추가
                 i=0
                 # top
                 self.topquads[y*SIZE_CHUNK*4*3+i+x*4*3] = xx
@@ -252,6 +262,8 @@ cdef class Map:
                 xx += 1.0
             zz -= 1.0
             xx = 0.0
+
+        cdef int *ele = <int*>self
         xx = 0.0
         yy = 0.0
         zz = 0.0
@@ -358,14 +370,17 @@ cdef class Map:
         #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
-        self.vbos.vbos[0].bind()
-        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-        self.vbos.vbos[2].bind()
-        GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-        #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
-        #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
-        #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
-        glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+        for i in range(len(self.tex.tex)):
+            self.vbos.vbos[0].bind()
+            GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+            self.vbos.vbos[2].bind()
+            GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+            #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+            #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+            #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+
+            glDrawElements(GL.GL_TRIANGLES, len(self.ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.inds)
+            #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
 
         GL.glDisable(GL.GL_TEXTURE_2D)
