@@ -4391,7 +4391,7 @@ class ConstructorApp:
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
-            self.map.Regen(self.tex2,self.water)
+            self.map.Regen(self.water, self.tex2,self.water)
 
             self.program3 = compile_program('''
             // Vertex program

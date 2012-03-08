@@ -182,6 +182,7 @@ cdef class Map:
     vbos = VBOs()
     tex = Tex()
     ele = Element()
+    cdef int **eles
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -195,6 +196,7 @@ cdef class Map:
         self.quads = <float*>0
         self.topquads = <float*>0
         self.texcs = <float*>0
+        self.eles = <int**>0
 
 
     def Regen(self, *textures):
@@ -208,6 +210,10 @@ cdef class Map:
             free(self.texcs)
         if self.quads:
             free(self.quads)
+        if self.eles:
+            for i in range(len(textures)):
+                free(self.eles[i])
+            free(self.eles)
         self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
         self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
         self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
@@ -222,14 +228,16 @@ cdef class Map:
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = 0
-        self.ele.ele = [[] for i in range(textures)]
+        self.ele.ele = [[] for i in range(len(textures))]
+        ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
                 for kkk in range(len(textures)):
                     if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
-                        self.ele.ele[kkk] += [i,i+1,i+2,i+3]
+                        self.ele.ele[kkk] += [ii,ii+1,ii+2,ii+3]
                         # 여기에 엘레멘트버퍼를 추가
+                ii += 4
                 i=0
                 # top
                 self.topquads[y*SIZE_CHUNK*4*3+i+x*4*3] = xx
@@ -262,8 +270,12 @@ cdef class Map:
                 xx += 1.0
             zz -= 1.0
             xx = 0.0
+        self.eles = <int**>malloc(sizeof(int*)*len(textures))
+        for i in range(len(textures)):
+            self.eles[i] = <int*>malloc(sizeof(int)*len(self.ele.ele[i])+1)
+            for j in range(len(self.ele.ele[i])):
+                self.eles[i][j] = self.ele.ele[i][j]
 
-        cdef int *ele = <int*>self
         xx = 0.0
         yy = 0.0
         zz = 0.0
@@ -370,17 +382,20 @@ cdef class Map:
         #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
-        for i in range(len(self.tex.tex)):
-            self.vbos.vbos[0].bind()
-            GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-            self.vbos.vbos[2].bind()
-            GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-            #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
-            #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
-            #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+        self.vbos.vbos[0].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        self.vbos.vbos[2].bind()
+        GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
 
-            glDrawElements(GL.GL_TRIANGLES, len(self.ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.inds)
-            #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+        for i in range(len(self.tex.tex)):
+            if len(self.ele.ele[i]):
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex.tex[i])
+                #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+                #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+                #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+
+                glDrawElements(GL.GL_QUADS, len(self.ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.eles[i])
+                #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
 
         GL.glDisable(GL.GL_TEXTURE_2D)
