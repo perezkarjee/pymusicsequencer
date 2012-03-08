@@ -174,6 +174,7 @@ class Tex:
 class Element:
     def __init__(self):
         self.ele = None
+        self.ele2 = None
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
@@ -183,6 +184,7 @@ cdef class Map:
     tex = Tex()
     ele = Element()
     cdef int **eles
+    cdef int **eles2
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -197,8 +199,15 @@ cdef class Map:
         self.topquads = <float*>0
         self.texcs = <float*>0
         self.eles = <int**>0
+        self.eles2 = <int**>0
 
 
+    def ClickTile(self, mode, part, position):
+        x,y,z = position
+        LEFTTOP = 0
+        RIGHTTOP = 1
+        LEFTBOT = 2
+        RIGHTBOT = 3
     def Regen(self, *textures):
         self.tex.tex = textures
         cdef char *topquads
@@ -214,6 +223,10 @@ cdef class Map:
             for i in range(len(textures)):
                 free(self.eles[i])
             free(self.eles)
+        if self.eles2:
+            for i in range(len(textures)):
+                free(self.eles2[i])
+            free(self.eles2)
         self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
         self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
         self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
@@ -227,7 +240,8 @@ cdef class Map:
 
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
-                self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = 0
+                self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = random.randint(0,1)
+                self.chunks[0].tiles[y*SIZE_CHUNK+x].height = random.randint(0,1)
         self.ele.ele = [[] for i in range(len(textures))]
         ii = 0
         for y in range(SIZE_CHUNK):
@@ -276,12 +290,21 @@ cdef class Map:
             for j in range(len(self.ele.ele[i])):
                 self.eles[i][j] = self.ele.ele[i][j]
 
+        self.ele.ele2 = [[] for i in range(len(textures))]
         xx = 0.0
         yy = 0.0
         zz = 0.0
+        ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+
+                for kkk in range(len(textures)):
+                    if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                        for jjj in range(4*4):
+                            self.ele.ele2[kkk] += [ii+jjj]
+                        # 여기에 엘레멘트버퍼를 추가
+                ii += 4*4
                 i=0
                 # front
                 self.quads[y*SIZE_CHUNK*4*4*3+i+x*4*4*3] = xx # top left
@@ -358,6 +381,11 @@ cdef class Map:
                 xx += 1.0
             zz -= 1.0
             xx = 0.0
+        self.eles2 = <int**>malloc(sizeof(int*)*len(textures))
+        for i in range(len(textures)):
+            self.eles2[i] = <int*>malloc(sizeof(int)*len(self.ele.ele2[i])+1)
+            for j in range(len(self.ele.ele2[i])):
+                self.eles2[i][j] = self.ele.ele2[i][j]
 
         if self.vbos.vbos:
             self.vbos.vbos[0].reload = True
@@ -389,7 +417,7 @@ cdef class Map:
 
         for i in range(len(self.tex.tex)):
             if len(self.ele.ele[i]):
-                GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex.tex[i])
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex.tex[i][0])
                 #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
                 #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
                 #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
@@ -401,7 +429,11 @@ cdef class Map:
         GL.glDisable(GL.GL_TEXTURE_2D)
         self.vbos.vbos[1].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-        glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
+        #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
+        for i in range(len(self.tex.tex)):
+            if len(self.ele.ele2[i]):
+                GL.glColor4ub(*self.tex.tex[i][1])
+                glDrawElements(GL.GL_QUADS, len(self.ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>self.eles2[i])
         #glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
         GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)

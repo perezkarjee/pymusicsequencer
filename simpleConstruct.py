@@ -4158,7 +4158,8 @@ class ConstructorApp:
         TILECHANGE2 = 1
         WALLCHANGE1 = 2
         WALLCHANGE2 = 3
-        self.mapTilingMode = TILECHANGE1
+        
+        self.tileMode = TILECHANGE1
 
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
@@ -4391,7 +4392,8 @@ class ConstructorApp:
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
-            self.map.Regen(self.water, self.tex2,self.water)
+            self.map.Regen((self.water, (10,144,216,255)), (self.tex2, (13,92,7,255)))
+
 
             self.program3 = compile_program('''
             // Vertex program
@@ -4565,14 +4567,14 @@ void main(void)
             xTilePos1 = x-(x-math.floor(x))
             xTilePos2 = math.ceil(x)
         else:
-            xTilePos2 = x-(x-math.ceil(x))
             xTilePos1 = math.floor(x)
+            xTilePos2 = x-(x-math.ceil(x))
         if z > 0.0:
             zTilePos1 = z-(z-math.floor(z))
             zTilePos2 = math.ceil(z)
         else:
-            zTilePos2 = z-(z-math.ceil(z))
             zTilePos1 = math.floor(z)
+            zTilePos2 = z-(z-math.ceil(z))
 
         pos = LEFTTOP
         if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
@@ -4583,6 +4585,7 @@ void main(void)
             pos = LEFTBOT
         elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
             pos = RIGHTBOT
+        self.map.ClickTile(self.tileMode, pos, (x,y,z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
         #if LMB in m.pressedButtons.iterkeys():
@@ -4602,8 +4605,6 @@ void main(void)
         glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
         glUseProgram(0)
-        glColor4ub(13,92,7,255)
-        glColor4ub(10,144,216,255)
         self.map.Render()
         self.HandleMapTiling(t,m,k)
         #glUseProgram(self.program2)
@@ -4853,5 +4854,4 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 -----------------
 타일이 무지막지하게 크므로 종류가 많으면 곤란?
 -----------------
-벽은 하지 말고 2배 크기의 세로 큐브를 두고 그걸 건물이라고 한다. 안에 들어가면 더 넓음
 """
