@@ -83,7 +83,7 @@ def compile_program(vertex_src, fragment_src):
  
     return program
  
-class ConstroctorGUI(object):
+class ConstructorGUI(object):
     def __init__(self):
         self.tex = -1
         self.botimg = pygame.image.load("./img/guibottombg.png")
@@ -96,6 +96,8 @@ class ConstroctorGUI(object):
         self.guiRenderer.Regen()
 
     def Render(self):
+        glBindTexture(GL_TEXTURE_2D, AppSt.bgbg)
+        DrawQuadTex(0,0,SW,SH)
         glBindTexture(GL_TEXTURE_2D, self.tex)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -4043,6 +4045,17 @@ def glpLookAt(eye, center, up):
 from OpenGL.GLUT import glutInit, glutSolidTeapot
 AppSt = None
 
+def DrawQuadTex(x,y,w,h):
+    glBegin(GL_QUADS)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
 def DrawQuad(x,y,w,h, color1, color2):
     glBegin(GL_QUADS)
     glColor4ub(*color1)
@@ -4394,6 +4407,19 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
             self.map.Regen((self.water, (10,144,216,255)), (self.tex2, (13,92,7,255)))
 
+            image = pygame.image.load("./img/bgbg.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.bgbg = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+
 
             self.program3 = compile_program('''
             // Vertex program
@@ -4616,10 +4642,10 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        #glTranslatef(self.tr, 3.0, 0.0)
+        glTranslatef(5.0, 1.0, -5.0)
         glRotatef(270, 1.0, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
-        glScalef(0.4, 0.4, 0.4)
+        glScalef(0.2, 0.2, 0.2)
         self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
@@ -4775,7 +4801,7 @@ void main(void)
         self.fps = fps = FPS()
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
-        self.gui = ConstroctorGUI()
+        self.gui = ConstructorGUI()
         #self.Test()
 
         self.font = pygame.font.Font("./fonts/NanumGothicBold.ttf", 16)
