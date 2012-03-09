@@ -204,10 +204,14 @@ cdef class Map:
 
     def ClickTile(self, mode, part, position):
         x,y,z = position
+        x = int(x)
+        z = -int(z)
         LEFTTOP = 0
         RIGHTTOP = 1
         LEFTBOT = 2
         RIGHTBOT = 3
+        self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
+        self.Regen(*self.tex.tex)
     def Regen(self, *textures):
         self.tex.tex = textures
         cdef char *topquads
@@ -241,7 +245,7 @@ cdef class Map:
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = random.randint(0,1)
-                self.chunks[0].tiles[y*SIZE_CHUNK+x].height = random.randint(0,1)
+                #self.chunks[0].tiles[y*SIZE_CHUNK+x].height = random.randint(0,1)
         self.ele.ele = [[] for i in range(len(textures))]
         ii = 0
         for y in range(SIZE_CHUNK):

@@ -4538,10 +4538,10 @@ void main(void)
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(light).xyz;
+                light = normalize(eyeWorld).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+0.0)/1.0;
-                vec3 color = texture1D(colorLookup2, curCol).rgb;
+                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
                 //gl_FragColor.rgb = color*fac;
                 gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
             }
@@ -4584,34 +4584,35 @@ void main(void)
 
 
     def HandleMapTiling(self, t,m,k):
-        LEFTTOP = 0
-        RIGHTTOP = 1
-        LEFTBOT = 2
-        RIGHTBOT = 3
-        x,y,z = self.GetWorldMouse(m.x, m.y)
-        if x > 0.0:
-            xTilePos1 = x-(x-math.floor(x))
-            xTilePos2 = math.ceil(x)
-        else:
-            xTilePos1 = math.floor(x)
-            xTilePos2 = x-(x-math.ceil(x))
-        if z > 0.0:
-            zTilePos1 = z-(z-math.floor(z))
-            zTilePos2 = math.ceil(z)
-        else:
-            zTilePos1 = math.floor(z)
-            zTilePos2 = z-(z-math.ceil(z))
+        if LMB in m.pressedButtons.iterkeys():
+            LEFTTOP = 0
+            RIGHTTOP = 1
+            LEFTBOT = 2
+            RIGHTBOT = 3
+            x,y,z = self.GetWorldMouse(m.x, m.y)
+            if x > 0.0:
+                xTilePos1 = x-(x-math.floor(x))
+                xTilePos2 = math.ceil(x)
+            else:
+                xTilePos1 = math.floor(x)
+                xTilePos2 = x-(x-math.ceil(x))
+            if z > 0.0:
+                zTilePos1 = z-(z-math.floor(z))
+                zTilePos2 = math.ceil(z)
+            else:
+                zTilePos1 = math.floor(z)
+                zTilePos2 = z-(z-math.ceil(z))
 
-        pos = LEFTTOP
-        if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
             pos = LEFTTOP
-        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1 <= z < zTilePos1+0.5:
-            pos = RIGHTTOP
-        elif xTilePos1 <= x < xTilePos1+0.5 and zTilePos1+0.5 <= z < zTilePos2:
-            pos = LEFTBOT
-        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
-            pos = RIGHTBOT
-        self.map.ClickTile(self.tileMode, pos, (x,y,z))
+            if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
+                pos = LEFTTOP
+            elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1 <= z < zTilePos1+0.5:
+                pos = RIGHTTOP
+            elif xTilePos1 <= x < xTilePos1+0.5 and zTilePos1+0.5 <= z < zTilePos2:
+                pos = LEFTBOT
+            elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
+                pos = RIGHTBOT
+            self.map.ClickTile(self.tileMode, pos, (x,y,z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
         #if LMB in m.pressedButtons.iterkeys():
