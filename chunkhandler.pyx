@@ -195,6 +195,7 @@ cdef class Map:
         self.chunks[0].z = 0
         for i in range(SIZE_CHUNK*SIZE_CHUNK):
             self.chunks[0].tiles[i].height = 0.0#+float(random.randint(0,10))
+            self.chunks[0].tiles[i].tileData = 0#+float(random.randint(0,10))
         self.quads = <float*>0
         self.topquads = <float*>0
         self.texcs = <float*>0
@@ -210,7 +211,8 @@ cdef class Map:
         RIGHTTOP = 1
         LEFTBOT = 2
         RIGHTBOT = 3
-        self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
+        #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
+        self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = random.randint(0,1)
         self.Regen(*self.tex.tex)
     def Regen(self, *textures):
         self.tex.tex = textures
@@ -242,10 +244,12 @@ cdef class Map:
         # 텍스쳐별로 vbo를 만들던지 아니면 한 vbo로 하되 오프셋을 다르게 하여 텍스쳐를 다르게 적용시킨다?
         # 아 엘레멘트버퍼를 만들어서 그걸루 나누자.
 
+        """
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = random.randint(0,1)
                 #self.chunks[0].tiles[y*SIZE_CHUNK+x].height = random.randint(0,1)
+        """
         self.ele.ele = [[] for i in range(len(textures))]
         ii = 0
         for y in range(SIZE_CHUNK):
