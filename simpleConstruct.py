@@ -4538,7 +4538,7 @@ void main(void)
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(eyeWorld).xyz;
+                light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+0.0)/1.0;
                 vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
