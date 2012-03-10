@@ -197,6 +197,10 @@ cdef struct Walls:
     int y
     int z
 
+"""
+울온처럼 평평한 땅에만 지을 수 있다.
+평평한 땅을 만들면 거기에 타일의 높낮이 조절 불가능하게 해야함
+"""
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
