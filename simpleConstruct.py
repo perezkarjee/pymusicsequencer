@@ -95,6 +95,8 @@ class ConstructorGUI(object):
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
         self.guiRenderer.Regen()
 
+    def Tick(self,t,m,k):
+        pass
     def Render(self):
         glBindTexture(GL_TEXTURE_2D, AppSt.bgbg)
         DrawQuadTex(0,0,SW,SH)
@@ -103,6 +105,32 @@ class ConstructorGUI(object):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
         self.guiRenderer.Render()
+
+        
+        self.tiles = [
+            AppSt.water,
+            AppSt.tex2,
+            ]
+        self.walls = [
+                AppSt.tex,
+                ]
+        if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
+            x = 400
+            y = SH-256
+            y += 5
+            for tile in self.tiles:
+                glBindTexture(GL_TEXTURE_2D, tile)
+                DrawQuadTex(x,y,32,32)
+                x += 32 + 5
+                if x+32+5 > SW:
+                    x = 400
+                    y += 32+5
+        """
+        glBindTexture(GL_TEXTURE_2D, AppSt.tex2)
+        DrawQuadTex(400+32,SH-256+5,32,32)
+        glBindTexture(GL_TEXTURE_2D, AppSt.tex)
+        DrawQuadTex(400+32+32,SH-256+5,32,64)
+        """
 
 
 class DigDigGUI(object):
@@ -4144,6 +4172,11 @@ class Physics(object):
         total_time+=dt
 
 class ConstructorApp:
+    TILECHANGE1 = 0
+    TILECHANGE2 = 1
+    WALLCHANGE1 = 2
+    WALLCHANGE2 = 3
+
     def __init__(self):
         global AppSt
         AppSt = self
@@ -4167,12 +4200,8 @@ class ConstructorApp:
         self.aniOffset = 0.0
         self.aniOffset2 = 0.0
         self.aniOffset3 = 0.0
-        TILECHANGE1 = 0
-        TILECHANGE2 = 1
-        WALLCHANGE1 = 2
-        WALLCHANGE2 = 3
         
-        self.tileMode = TILECHANGE1
+        self.tileMode = AppSt.TILECHANGE1
 
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
@@ -4883,4 +4912,6 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 -----------------
 타일이 무지막지하게 크므로 종류가 많으면 곤란?
 -----------------
+게임은 NP-Hard
+-------------------
 """
