@@ -96,7 +96,20 @@ class ConstructorGUI(object):
         self.guiRenderer.Regen()
 
     def Tick(self,t,m,k):
-        pass
+        if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
+            x = 400
+            y = SH-256
+            y += 5
+            i = 0
+            for tile in self.tiles:
+                if LMB in m.pressedButtons.iterkeys() and InRect(x,y,32,32,m.x,m.y):
+                    AppSt.map.SetTile(i)
+                x += 32 + 5
+                if x+32+5 > SW:
+                    x = 400
+                    y += 32+5
+                i += 1
+
     def Render(self):
         glBindTexture(GL_TEXTURE_2D, AppSt.bgbg)
         DrawQuadTex(0,0,SW,SH)
@@ -4834,6 +4847,7 @@ void main(void)
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
+        emgr.BindTick(self.gui.Tick)
         #self.Test()
 
         self.font = pygame.font.Font("./fonts/NanumGothicBold.ttf", 16)

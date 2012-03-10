@@ -175,6 +175,7 @@ class Element:
     def __init__(self):
         self.ele = None
         self.ele2 = None
+
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
@@ -185,6 +186,7 @@ cdef class Map:
     ele = Element()
     cdef int **eles
     cdef int **eles2
+    cdef int tileData
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -203,6 +205,8 @@ cdef class Map:
         self.eles2 = <int**>0
 
 
+    def SetTile(self, tile):
+        self.tileData = tile
     def ClickTile(self, mode, part, position):
         x,y,z = position
         x = int(x)
@@ -212,7 +216,7 @@ cdef class Map:
         LEFTBOT = 2
         RIGHTBOT = 3
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
-        self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = random.randint(0,1)
+        self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
         self.Regen(*self.tex.tex)
     def Regen(self, *textures):
         self.tex.tex = textures
