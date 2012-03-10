@@ -101,7 +101,7 @@ class ConstructorGUI(object):
             y = SH-256
             y += 5
             i = 0
-            for tile in self.tiles:
+            for tile in AppSt.tiles:
                 if LMB in m.pressedButtons.iterkeys() and InRect(x,y,32,32,m.x,m.y):
                     AppSt.map.SetTile(i)
                 x += 32 + 5
@@ -122,19 +122,12 @@ class ConstructorGUI(object):
         self.guiRenderer.Render()
 
         
-        self.tiles = [
-            AppSt.water,
-            AppSt.tex2,
-            ]
-        self.walls = [
-                AppSt.tex,
-                ]
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400
             y = SH-256
             y += 5
-            for tile in self.tiles:
-                glBindTexture(GL_TEXTURE_2D, tile)
+            for tile in AppSt.tiles:
+                glBindTexture(GL_TEXTURE_2D, tile[0])
                 DrawQuadTex(x,y,32,32)
                 x += 32 + 5
                 if x+32+5 > SW:
@@ -4460,7 +4453,8 @@ class ConstructorApp:
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
-            self.map.Regen((self.water, (10,144,216,255)), (self.tex2, (13,92,7,255)))
+            self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
+            self.map.Regen(*self.tiles)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 

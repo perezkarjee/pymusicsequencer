@@ -176,11 +176,32 @@ class Element:
         self.ele = None
         self.ele2 = None
 
+FACE_X = 0
+FACE_Z = 1
+NOWALL = 2
+cdef struct WallTile:
+    int facing
+    int frontTile
+    int backTile
+
+
+# 벽은 한 타일에 2개씩 있다.
+# x=0,z=0쪽에 있음.
+# 음................................................
+# 걍 귀찮으니 타일구조로 하고 벽이 있는지 없는지만 표현
+
+cdef struct Walls:
+    WallTile *wallsX
+    WallTile *wallsZ
+    int x
+    int y
+    int z
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
     cdef float *topquads
     cdef float *texcs
+    cdef Walls **wallChunks
     vbos = VBOs()
     tex = Tex()
     ele = Element()
@@ -190,6 +211,22 @@ cdef class Map:
     cdef int prevX
     cdef int prevZ
     def __cinit__(self):
+        self.wallChunks = <Walls**>malloc(sizeof(Walls*)*NUMCHUNKS)
+        memset(self.wallChunks, 0, sizeof(Walls*)*NUMCHUNKS)
+        self.wallChunks[0] = <Walls*>malloc(sizeof(Walls))
+        self.wallChunks[0].wallsX = <WallTile*>malloc(sizeof(WallTile)*SIZE_CHUNK*SIZE_CHUNK)
+        self.wallChunks[0].wallsZ = <WallTile*>malloc(sizeof(WallTile)*SIZE_CHUNK*SIZE_CHUNK)
+        self.wallChunks[0].x = 0
+        self.wallChunks[0].y = 0
+        self.wallChunks[0].z = 0
+        for i in range(SIZE_CHUNK*SIZE_CHUNK):
+            self.wallChunks[0].wallsX[i].facing = NOWALL
+            self.wallChunks[0].wallsX[i].frontTile = 0
+            self.wallChunks[0].wallsX[i].backTile = 0
+            self.wallChunks[0].wallsZ[i].facing = NOWALL
+            self.wallChunks[0].wallsZ[i].frontTile = 0
+            self.wallChunks[0].wallsZ[i].backTile = 0
+
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
         self.chunks[0] = <Chunk*>malloc(sizeof(Chunk))
@@ -200,6 +237,7 @@ cdef class Map:
         for i in range(SIZE_CHUNK*SIZE_CHUNK):
             self.chunks[0].tiles[i].height = 0.0#+float(random.randint(0,10))
             self.chunks[0].tiles[i].tileData = 0#+float(random.randint(0,10))
+
         self.quads = <float*>0
         self.topquads = <float*>0
         self.texcs = <float*>0
