@@ -196,6 +196,7 @@ cdef struct Walls:
     int x
     int y
     int z
+
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
@@ -245,6 +246,9 @@ cdef class Map:
         self.eles2 = <int**>0
 
 
+    def AddWall(self, x, y, z):
+        x = int(x)
+        z = -int(z)
     def SetTile(self, tile):
         self.tileData = tile
     def ClickTile(self, mode, part, position):
