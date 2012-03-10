@@ -86,7 +86,7 @@ cdef void FreeChunk(Chunk* chunk):
     free(chunk)
 
 NUMCHUNKS = 1
-SIZE_CHUNK = 32
+SIZE_CHUNK = 8
 import random
 
 SW = 1024
@@ -187,6 +187,8 @@ cdef class Map:
     cdef int **eles
     cdef int **eles2
     cdef int tileData
+    cdef int prevX
+    cdef int prevZ
     def __cinit__(self):
         self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
         memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
@@ -211,6 +213,10 @@ cdef class Map:
         x,y,z = position
         x = int(x)
         z = -int(z)
+        if self.prevX == x and self.prevZ == z and self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData == self.tileData:
+            return
+        self.prevX = x
+        self.prevZ = z
         LEFTTOP = 0
         RIGHTTOP = 1
         LEFTBOT = 2

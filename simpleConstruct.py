@@ -111,6 +111,8 @@ class ConstructorGUI(object):
                 i += 1
 
     def Render(self):
+        glBindTexture(GL_TEXTURE_2D, AppSt.tvbg)
+        DrawQuadTexTVBG(0,0,SW,SH)
         glBindTexture(GL_TEXTURE_2D, AppSt.bgbg)
         DrawQuadTex(0,0,SW,SH)
         glBindTexture(GL_TEXTURE_2D, self.tex)
@@ -4086,6 +4088,17 @@ def glpLookAt(eye, center, up):
 from OpenGL.GLUT import glutInit, glutSolidTeapot
 AppSt = None
 
+def DrawQuadTexTVBG(x,y,w,h):
+    glBegin(GL_QUADS)
+    glTexCoord2f(0.0, 12.0)
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glTexCoord2f(16.0, 12.0)
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glTexCoord2f(16.0, 0.0)
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
 def DrawQuadTex(x,y,w,h):
     glBegin(GL_QUADS)
     glTexCoord2f(0.0, 1.0)
@@ -4452,6 +4465,19 @@ class ConstructorApp:
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
             self.bgbg = texture = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, texture)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+
+            image = pygame.image.load("./img/tvbg.png")
+            teximg = pygame.image.tostring(image, "RGBA", 0) 
+            self.tvbg = texture = glGenTextures(1)
             glBindTexture(GL_TEXTURE_2D, texture)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
