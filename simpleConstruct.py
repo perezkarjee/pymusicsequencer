@@ -3052,7 +3052,7 @@ class Camera:
         #pos = Vector(self.posx, self.posy, self.posz).Normalized()
         #glpLookAt(pos, self.view,
         #        Vector(0.0, 1.0, 0.0).Normalized())
-        dirV = self.GetDirV().Normalized().MultScalar(7.0)
+        dirV = self.GetDirV().Normalized().MultScalar(14.0)
         #glTranslatef(dirV.x, dirV.y, -dirV.z) # Trackball implementation
         matrix1 = [1, 0, 0, dirV.x,
                    0, 1, 0, dirV.y,
