@@ -3853,14 +3853,14 @@ def GameDrawMode():
     h = SH
     if SH == 0: h = 1
     aspect = float(SW) / float(h)
-    fov = 90.0
+    fov = 45.0*2.0
     near = 0.1 # 이게 너무 작으면 Z버퍼가 정확도가 낮으면 글픽 깨짐
     far = G_FAR
 
     #glViewport(0, 0, SW, SH)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glpPerspective(90.0, aspect, near, far)
+    glpPerspective(fov, aspect, near, far)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
