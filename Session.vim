@@ -104,6 +104,7 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
+set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -145,8 +146,8 @@ badd +18 cpart.h
 badd +3252 chunk.pyx
 badd +1 glut.py
 silent! argdel *
-set lines=50 columns=165
-winpos 2 0
+set lines=50 columns=167
+winpos -4 -4
 edit simpleConstruct.py
 set splitbelow splitright
 set nosplitbelow
@@ -249,12 +250,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 4651 - ((27 * winheight(0) + 24) / 49)
+let s:l = 4453 - ((44 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-4651
-normal! 061l
+4453
+normal! 053l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

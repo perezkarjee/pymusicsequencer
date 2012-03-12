@@ -101,7 +101,7 @@ class ConstructorGUI(object):
             y = SH-256
             y += 5
             i = 0
-            for tile in AppSt.tiles:
+            for tile in AppSt.texTiles.itervalues():
                 if LMB in m.pressedButtons.iterkeys() and InRect(x,y,32,32,m.x,m.y):
                     AppSt.map.SetTile(i)
                 x += 32 + 5
@@ -126,7 +126,7 @@ class ConstructorGUI(object):
             x = 400
             y = SH-256
             y += 5
-            for tile in AppSt.tiles:
+            for tile in AppSt.texTiles.itervalues():
                 glBindTexture(GL_TEXTURE_2D, tile[0])
                 DrawQuadTex(x,y,32,32)
                 x += 32 + 5
@@ -4415,31 +4415,27 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
 
-            image = pygame.image.load("./img/tile_grass.png")
-            teximg = pygame.image.tostring(image, "RGBA", 0) 
-            self.tex2 = texture = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
 
-            image = pygame.image.load("./img/tile_water.png")
-            teximg = pygame.image.tostring(image, "RGBA", 0) 
-            self.water = texture = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+            tiles = ["water",
+                    "grass",
+                    "sand"]
+            self.texTiles = {}
+            for tile in tiles:
+                image = pygame.image.load("./img/tile_%s.png" % tile)
+                # 타일의 top/left의 픽셀값을 읽어서 벽부분의 색으로 쓴다.
+                teximg = pygame.image.tostring(image, "RGBA", 0) 
+                texture = glGenTextures(1)
+                self.texTiles[tile] = (texture, image.get_at((0,0)))
+                glBindTexture(GL_TEXTURE_2D, texture)
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
+                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
+                glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
+
 
             image = pygame.image.load("./img/tile_wall.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -4453,8 +4449,8 @@ class ConstructorApp:
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
-            self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
-            self.map.Regen(*self.tiles)
+            #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
+            self.map.Regen(*self.texTiles.itervalues())
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -4691,10 +4687,6 @@ void main(void)
 
         GameDrawMode()
         self.cam1.ApplyCamera()
-        glBindTexture(GL_TEXTURE_2D, self.water)
-        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
         glUseProgram(0)
         self.map.Render()
         self.HandleMapTiling(t,m,k)
