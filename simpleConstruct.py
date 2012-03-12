@@ -4648,7 +4648,7 @@ void main(void)
     def HandleMapTiling(self, t,m,k):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
-        if LMB in m.pressedButtons.iterkeys():
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
             LEFTTOP = 0
             RIGHTTOP = 1
             LEFTBOT = 2

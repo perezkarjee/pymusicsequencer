@@ -104,7 +104,6 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -139,7 +138,7 @@ badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +3 simpleMud.py
 badd +2041 digdig.py
-badd +181 chunkhandler.pyx
+badd +202 chunkhandler.pyx
 badd +126 simpleConstruct.py
 badd +47 cpart.c
 badd +18 cpart.h
@@ -148,7 +147,7 @@ badd +1 glut.py
 silent! argdel *
 set lines=50 columns=165
 winpos 2 0
-edit chunkhandler.pyx
+edit simpleConstruct.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -180,8 +179,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'pyrex'
-setlocal filetype=pyrex
+if &filetype != 'python'
+setlocal filetype=python
 endif
 setlocal foldcolumn=0
 setlocal foldenable
@@ -197,7 +196,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -238,8 +237,8 @@ setlocal statusline=
 setlocal suffixesadd=.py
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'pyrex'
-setlocal syntax=pyrex
+if &syntax != 'python'
+setlocal syntax=python
 endif
 setlocal tabstop=8
 setlocal tags=
@@ -250,12 +249,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 202 - ((14 * winheight(0) + 24) / 49)
+let s:l = 4651 - ((27 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-202
-normal! 086l
+4651
+normal! 061l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
