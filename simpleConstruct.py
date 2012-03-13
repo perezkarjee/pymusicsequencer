@@ -101,7 +101,7 @@ class ConstructorGUI(object):
             y = SH-256
             y += 5
             i = 0
-            for tile in AppSt.texTiles.itervalues():
+            for tile in AppSt.texTiles:
                 if LMB in m.pressedButtons.iterkeys() and InRect(x,y,32,32,m.x,m.y):
                     AppSt.map.SetTile(i)
                 x += 32 + 5
@@ -122,16 +122,17 @@ class ConstructorGUI(object):
         self.guiRenderer.Render()
 
         
+        DrawQuad(400,SH-256,SW-400,256,(128,128,128,128),(128,128,128,128))
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
-            x = 400
+            x = 400+5
             y = SH-256
             y += 5
-            for tile in AppSt.texTiles.itervalues():
+            for tile in AppSt.texTiles:
                 glBindTexture(GL_TEXTURE_2D, tile[0])
                 DrawQuadTex(x,y,32,32)
                 x += 32 + 5
                 if x+32+5 > SW:
-                    x = 400
+                    x = 400+5
                     y += 32+5
         """
         glBindTexture(GL_TEXTURE_2D, AppSt.tex2)
@@ -4104,6 +4105,8 @@ def DrawQuadTex(x,y,w,h):
     glVertex3f(float(x), -float(y), 100.0)
     glEnd()
 def DrawQuad(x,y,w,h, color1, color2):
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_TEXTURE_1D)
     glBegin(GL_QUADS)
     glColor4ub(*color1)
     glVertex3f(float(x), -float(y+h), 100.0)
@@ -4112,6 +4115,8 @@ def DrawQuad(x,y,w,h, color1, color2):
     glVertex3f(float(x+w), -float(y), 100.0)
     glVertex3f(float(x), -float(y), 100.0)
     glEnd()
+    glEnable(GL_TEXTURE_2D)
+    glEnable(GL_TEXTURE_1D)
 
 
 def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
@@ -4419,13 +4424,13 @@ class ConstructorApp:
             tiles = ["water",
                     "grass",
                     "sand"]
-            self.texTiles = {}
+            self.texTiles = []
             for tile in tiles:
                 image = pygame.image.load("./img/tile_%s.png" % tile)
                 # 타일의 top/left의 픽셀값을 읽어서 벽부분의 색으로 쓴다.
                 teximg = pygame.image.tostring(image, "RGBA", 0) 
                 texture = glGenTextures(1)
-                self.texTiles[tile] = (texture, image.get_at((0,0)))
+                self.texTiles += [(texture, image.get_at((0,0)))]
                 glBindTexture(GL_TEXTURE_2D, texture)
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
@@ -4450,7 +4455,7 @@ class ConstructorApp:
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
-            self.map.Regen(*self.texTiles.itervalues())
+            self.map.Regen(*self.texTiles)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
