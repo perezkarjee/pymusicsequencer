@@ -104,7 +104,7 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set imsearch=0
+set iminsert=0
 set incsearch
 set keymodel=startsel,stopsel
 set omnifunc=syntaxcomplete#Complete
@@ -196,7 +196,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -249,12 +249,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 117 - ((31 * winheight(0) + 24) / 49)
+let s:l = 4600 - ((15 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-117
-normal! 0
+4600
+normal! 025l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

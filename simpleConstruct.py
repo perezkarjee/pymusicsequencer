@@ -83,6 +83,17 @@ def compile_program(vertex_src, fragment_src):
  
     return program
  
+class Terrain(object):
+    def __init__(self):
+        self.vertices = []
+        self.screenPos = (0,0)
+
+    def AddVert(self, x,y):
+        self.vertices += [(x,y)]
+    def RemoveVert(self, vertIdx):
+        del self.vertices[vertIdx]
+    # 버텍스사이의 거리가 10픽셀 이상이어야 함. 뉴 버텍스 추가는 무조건 맨 오른쪽에만 됨
+    # 걍 귀찮으니 땅속은 없도록 하자. 걍 사각형을 추가해서 그 위로 올라가도록 한다.
 class Button(object):
     def __init__(self, ren, txt, func, x,y):
         self.rect = x,y
@@ -103,6 +114,9 @@ class Button(object):
 
 
 class ConstructorGUI(object):
+    ADDREMOVE_TILE = 0
+    TILE_BATCH = 2
+    SCROLL = 3
     def __init__(self):
         self.tex = -1
         """
@@ -111,17 +125,19 @@ class ConstructorGUI(object):
         """
         self.font = pygame.font.Font("./fonts/NanumGothicBold.ttf", 11)
         self.textRenderer = StaticTextRenderer(self.font)
-        self.button = Button(self.textRenderer, u"정점찍기", self.AddDot, 5, SH-128+5)
-        self.button = Button(self.textRenderer, u"정점제거", self.RemoveDot, 60, SH-128+5)
-        self.button = Button(self.textRenderer, u"스크롤", self.RemoveDot, 60+55, SH-128+5)
+        self.button = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
+        self.button = Button(self.textRenderer, u"타일배치찍기", self.AddTileBatch, 30+55, SH-128+5)
+        self.button = Button(self.textRenderer, u"스크롤", self.Scroll, 60+55+45, SH-128+5)
 
         #self.button = Button(self.Print, 
-    def AddDot(self):
-        pass
-    def RemoveDot(self):
-        pass
-    def Print(self):
-        print 'a'
+
+        self.mode = self.ADDREMOVE_TILE
+    def AddTile(self):
+        self.mode = self.ADDREMOVE_TILE
+    def Scroll(self):
+        self.mode = self.SCROLL
+    def AddTileBatch(self):
+        self.mode = self.TILE_BATCH
     def Regen(self):
         """
         self.tex = texture = glGenTextures(1)
@@ -132,6 +148,10 @@ class ConstructorGUI(object):
         """
 
     def Tick(self,t,m,k):
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
+            pass
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
+            pass
         """
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400
@@ -182,6 +202,14 @@ class ConstructorGUI(object):
         """
 
         DrawQuad(0,SH-128,SW,128,(128,128,128,128),(128,128,128,128))
+
+        x = 400
+        y = SH-128+5
+        for i in range(len(AppSt._2d_grndtiles)):
+            glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
+            DrawQuadTex(x,y,64,64)
+            x += 64+5
+
 
 
 class DigDigGUI(object):
@@ -4565,6 +4593,16 @@ class ConstructorApp:
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
 
+            tiles = [
+                    "tile1",
+                    "tile2",
+                    "tile3",
+                    "tile4",
+                    ]
+            self._2d_grndtiles = []
+            for tile in tiles:
+                self._2d_grndtiles += [LoadTex("./img/2d_%s.png" % tile, 64, 64)]
+
             self._2d_logo = LoadTex("./img/logo.png", 512, 512)
 
             image = pygame.image.load("./img/2d_beam.png")
@@ -4929,6 +4967,7 @@ void main(void)
         glBindTexture(GL_TEXTURE_2D, self._2d_logo)
         DrawQuadTex(SW/2-512/2,SH/2-512/2,512,512)
         """
+
         for guiF in self.renderGUIs:
             guiF()
         glDisable(GL_BLEND)
@@ -5125,4 +5164,6 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 그러지 말고 땅은 무조건 울퉁불퉁하지 않고 평평하게 한 다음에 그냥 대충 한다.
 
 아 맵 에디터에서 점을 찍어서 맵을 울퉁불퉁하게 만들자. 높이만 결정 가능하고 x축 정점은 맘대로
+
+지하가 필요하면? 지하던젼은 레이어를 찍어서 다른층을 따로 만든다.
 """
