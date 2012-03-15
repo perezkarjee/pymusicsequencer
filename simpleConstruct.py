@@ -162,6 +162,164 @@ class Stage:
         except:
             pass
 
+
+class Enemy:
+    LEFT=0
+    RIGHT=1
+    def __init__(self, name, x, y):
+        self.hp = 30
+
+
+
+        self.pos = [x,y]
+        self.name = name
+        self.leftOn = False
+        self.rightOn = False
+        self.jumpOn = False
+        self.atkOn = False
+        EMgrSt.BindTick(self.Tick)
+
+        self.fallSpeed = 15
+        self.fallWait = pygame.time.get_ticks()
+        self.fallDelay = 25
+        self.facing = self.RIGHT
+        self.jumping = False
+        self.jumpStart = 0
+        self.jumpMax = 500
+        self.jumpMin = 250
+        self.grounded = False
+        self.moving = False
+        self.keyBinds = {
+                "UP": K_w,
+                "LEFT": K_a,
+                "DOWN": K_s,
+                "RIGHT": K_d,
+                "ATK": K_j,
+                "JUMP": K_k,
+                "ACT": K_u,
+                "ACT2": K_i,
+                }
+        self.beamDelay = 250
+        self.prevBeam = pygame.time.get_ticks()
+        self.beams = []
+
+
+
+    def Tick(self, t,m,k):
+        if self.hp <= 0:
+            GUISt.enemies.remove(self)
+            EMgrSt.bindTick.remove(self.Tick)
+        if t-self.fallWait > self.fallDelay:
+            self.fallWait = t
+            tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
+            self.moving = False
+
+            if not self.jumping:
+                collide = False
+                collideY = 0
+                for tile in tiles:
+                    x,y,tile_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32
+                    yy = py-128+self.fallSpeed
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideY = y
+                if not collide:
+                    self.pos[1] += self.fallSpeed
+                else:
+                    self.grounded = True
+                    self.pos[1] = collideY
+            else:
+                collide = False
+                collideY = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32
+                    yy = py-128-self.fallSpeed
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideY = y+h+128
+                if not collide:
+                    self.pos[1] -= self.fallSpeed
+                else:
+                    self.pos[1] = collideY
+
+            if self.leftOn:
+                self.moving = True
+                self.facing = self.LEFT
+                collide = False
+                collideX = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32-self.fallSpeed
+                    yy = py-128
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideX = x+w+32
+                if not collide:
+                    self.pos[0] -= self.fallSpeed
+                else:
+                    self.pos[0] = collideX
+
+            if self.rightOn:
+                self.moving = True
+                self.facing = self.RIGHT
+                collide = False
+                collideX = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32+self.fallSpeed
+                    yy = py-128
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideX = x-32
+                if not collide:
+                    self.pos[0] += self.fallSpeed
+                else:
+                    self.pos[0] = collideX
+            if self.jumpOn:
+                if not self.jumping and self.grounded:
+                    self.jumping = True
+                    self.jumpStart = t
+                    self.grounded = False
+            else:
+                if self.jumping and t-self.jumpStart > self.jumpMin:
+                    self.jumping = False
+
+            if self.atkOn:
+                if t-self.prevBeam > self.beamDelay:
+                    self.prevBeam = t
+                    beamY = self.pos[1]-128
+                    if self.facing == self.LEFT:
+                        beamX = self.pos[0]-128-32
+                    else:
+                        beamX = self.pos[0]+32
+                    self.beams += [Beam(beamX,beamY,self.facing, self)]
+
+        if t-self.jumpStart > self.jumpMax:
+            self.jumping = False
+
+
 GUISt = None
 class ConstructorGUI(object):
     ADDREMOVE_TILE = 0
@@ -186,6 +344,7 @@ class ConstructorGUI(object):
         self.buttonGame1.enabled = False
 
         #self.button = Button(self.Print, 
+        self.enemies = [Enemy("enemy1", 1100, -700)]
 
         self.mode = self.ADDREMOVE_TILE
         self.emode = self.EDIT_MODE
@@ -314,6 +473,16 @@ class ConstructorGUI(object):
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
                 DrawQuadTex(x,y,64,64)
                 x += 64+5
+        else:
+            scrX = self.stages[self.curStageIdx].scrX
+            scrY = self.stages[self.curStageIdx].scrY
+            for enemy in self.enemies:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_enemy[AppSt.ani[AppSt.aniIdx]])
+                DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+            for beam in AppSt.player.beams:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_beam)
+                DrawQuadTex(beam.x-scrX,beam.y-scrY,128,64)
+                
 
 
 
@@ -4439,10 +4608,62 @@ def RectRectCollide(rect1,rect2):
 
 
     return False
+
+class Beam:
+    LEFT=0
+    RIGHT=1
+    def __init__(self,x,y,dir_, owner):
+        self.owner = owner
+        self.orgX = x
+        self.orgY = y
+        self.x = x
+        self.y = y
+        self.dir = dir_
+        EMgrSt.BindTick(self.Tick)
+        self.waitPrev = pygame.time.get_ticks()
+        self.delay = 25
+        self.speed = 30
+        self.deleted = False
+        self.power = 30
+
+    def Delete(self):
+        AppSt.player.beams.remove(self)
+        EMgrSt.bindTick.remove(self.Tick)
+        self.deleted = True
+
+    def Tick(self,t,m,k):
+        if not self.deleted:
+            if t-self.waitPrev > self.delay:
+                self.waitPrev = t
+                if self.dir == self.LEFT:
+                    self.x -= self.speed
+                if self.dir == self.RIGHT:
+                    self.x += self.speed
+
+                for enemy in GUISt.enemies:
+                    x,y = enemy.pos
+                    x -= 32
+                    y -= 128
+                    w=64
+                    h=128
+                    xx = self.x
+                    yy = self.y
+                    ww = 128
+                    hh = 64
+                    if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
+                        enemy.hp -= self.power
+                        self.Delete()
+                if abs(self.x-self.orgX) > 1000:
+                    self.Delete()
+            
 class Player:
     LEFT = 0
     RIGHT = 1
     def __init__(self):
+        self.hp = 1000
+
+
+
         self.pos = [1100, -700]
         self.fallSpeed = 15
         self.fallWait = pygame.time.get_ticks()
@@ -4453,6 +4674,7 @@ class Player:
         self.jumpMax = 500
         self.jumpMin = 250
         self.grounded = False
+        self.moving = False
         EMgrSt.BindTick(self.Tick)
         self.keyBinds = {
                 "UP": K_w,
@@ -4464,11 +4686,15 @@ class Player:
                 "ACT": K_u,
                 "ACT2": K_i,
                 }
+        self.beamDelay = 250
+        self.prevBeam = pygame.time.get_ticks()
+        self.beams = []
 
     def Tick(self,t,m,k):
         if t-self.fallWait > self.fallDelay:
             self.fallWait = t
             tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
+            self.moving = False
 
             if not self.jumping:
                 collide = False
@@ -4511,6 +4737,7 @@ class Player:
                     self.pos[1] = collideY
 
             if pygame.key.get_pressed()[self.keyBinds["LEFT"]]:
+                self.moving = True
                 self.facing = self.LEFT
                 collide = False
                 collideX = 0
@@ -4532,6 +4759,7 @@ class Player:
                     self.pos[0] = collideX
 
             if pygame.key.get_pressed()[self.keyBinds["RIGHT"]]:
+                self.moving = True
                 self.facing = self.RIGHT
                 collide = False
                 collideX = 0
@@ -4560,12 +4788,24 @@ class Player:
                 if self.jumping and t-self.jumpStart > self.jumpMin:
                     self.jumping = False
 
+            if pygame.key.get_pressed()[self.keyBinds["ATK"]]:
+                if t-self.prevBeam > self.beamDelay:
+                    self.prevBeam = t
+                    beamY = self.pos[1]-128
+                    if self.facing == self.LEFT:
+                        beamX = self.pos[0]-128-32
+                    else:
+                        beamX = self.pos[0]+32
+                    self.beams += [Beam(beamX,beamY,self.facing, self)]
+
         if t-self.jumpStart > self.jumpMax:
             self.jumping = False
 
 
     def Render(self):
         pass
+
+
 class ConstructorApp:
     TILECHANGE1 = 0
     TILECHANGE2 = 1
@@ -4607,6 +4847,7 @@ class ConstructorApp:
         self.delayBeam = 1000/20
         self.waitBeam = pygame.time.get_ticks()
         self.aniBeamX = 0
+        self.ani = [0,1,2,1]
 
 
 
@@ -4853,7 +5094,6 @@ class ConstructorApp:
                 image = pygame.image.load(path)
                 teximg = pygame.image.tostring(image, "RGBA", 0) 
                 texture = glGenTextures(1)
-                self._2d_beam = texture
                 glBindTexture(GL_TEXTURE_2D, texture)
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
@@ -4880,21 +5120,7 @@ class ConstructorApp:
                 self._2d_grndtiles += [LoadTex("./img/2d_%s.png" % tile, 64, 64)]
 
             self._2d_logo = LoadTex("./img/logo.png", 512, 512)
-
-            image = pygame.image.load("./img/2d_beam.png")
-            teximg = pygame.image.tostring(image, "RGBA", 0) 
-            texture = glGenTextures(1)
-            self._2d_beam = texture
-            glBindTexture(GL_TEXTURE_2D, texture)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8.0)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-            glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
-
+            self._2d_beam = LoadTex("./img/2d_beam.png", 128,64)
 
 
             """
@@ -5219,14 +5445,16 @@ void main(void)
         self.gui.Render()
         self.RenderNumber(int(self.fps.GetFPS()), 0,0)
 
-        self.ani = [0,1,2,1]
         if t - self.waitAni > self.delayAni:
             self.waitAni = t
             self.aniIdx += 1
             if self.aniIdx >= 4:
                 self.aniIdx = 0
         if GUISt.emode == GUISt.GAME_MODE:
-            glBindTexture(GL_TEXTURE_2D, self._2d_tiles[self.ani[self.aniIdx]])
+            if self.player.moving:
+                glBindTexture(GL_TEXTURE_2D, self._2d_tiles[self.ani[self.aniIdx]])
+            else:
+                glBindTexture(GL_TEXTURE_2D, self._2d_tiles[1])
             if self.player.facing == Player.LEFT:
                 DrawQuadTexFlipX(SW/2-64,SH/2-128,128,128)
             if self.player.facing == Player.RIGHT:
