@@ -209,16 +209,19 @@ class Enemy:
         if self.hp <= 0:
             GUISt.enemies.remove(self)
             EMgrSt.bindTick.remove(self.Tick)
+            x = self.pos[0]-32
+            y = self.pos[1]-64-32
+            GUISt.deads += [DeadEnemy(x,y)]
         if t-self.fallWait > self.fallDelay:
             self.fallWait = t
-            tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
+            tiles = GUISt.stages[GUISt.curStageIdx].tiles
             self.moving = False
 
             if not self.jumping:
                 collide = False
                 collideY = 0
-                for tile in tiles:
-                    x,y,tile_ = tile
+                for tile in tiles.iterkeys():
+                    x,y = tile
                     w = 64
                     h = 64
                     px,py = self.pos
@@ -237,8 +240,8 @@ class Enemy:
             else:
                 collide = False
                 collideY = 0
-                for tile in tiles:
-                    x,y,t_ = tile
+                for tile in tiles.iterkeys():
+                    x,y = tile
                     w = 64
                     h = 64
                     px,py = self.pos
@@ -259,8 +262,8 @@ class Enemy:
                 self.facing = self.LEFT
                 collide = False
                 collideX = 0
-                for tile in tiles:
-                    x,y,t_ = tile
+                for tile in tiles.iterkeys():
+                    x,y = tile
                     w = 64
                     h = 64
                     px,py = self.pos
@@ -281,8 +284,8 @@ class Enemy:
                 self.facing = self.RIGHT
                 collide = False
                 collideX = 0
-                for tile in tiles:
-                    x,y,t_ = tile
+                for tile in tiles.iterkeys():
+                    x,y = tile
                     w = 64
                     h = 64
                     px,py = self.pos
@@ -329,6 +332,11 @@ class ConstructorGUI(object):
     def __init__(self):
         global GUISt
         GUISt = self
+        self.sounds = {
+                "Beam": pygame.mixer.Sound("./snds/beam.wav"),
+                "Hurt": pygame.mixer.Sound("./snds/hurt.wav"),
+                }
+
         self.tex = -1
         """
         self.botimg = pygame.image.load("./img/guibottombg.png")
@@ -345,6 +353,7 @@ class ConstructorGUI(object):
 
         #self.button = Button(self.Print, 
         self.enemies = [Enemy("enemy1", 1100, -700)]
+        self.deads = []
 
         self.mode = self.ADDREMOVE_TILE
         self.emode = self.EDIT_MODE
@@ -476,6 +485,9 @@ class ConstructorGUI(object):
         else:
             scrX = self.stages[self.curStageIdx].scrX
             scrY = self.stages[self.curStageIdx].scrY
+            for dead in self.deads:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
+                DrawQuadTex(dead.pos[0]-scrX,dead.pos[1]-scrY, 64,64)
             for enemy in self.enemies:
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_enemy[AppSt.ani[AppSt.aniIdx]])
                 DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
@@ -4608,7 +4620,16 @@ def RectRectCollide(rect1,rect2):
 
 
     return False
-
+class DeadEnemy:
+    def __init__(self,x,y):
+        EMgrSt.BindTick(self.Tick)
+        self.wait = pygame.time.get_ticks()
+        self.delay = 500
+        self.pos = x,y
+    def Tick(self,t,m,k):
+        if t-self.wait > self.delay:
+            GUISt.deads.remove(self)
+            EMgrSt.bindTick.remove(self.Tick)
 class Beam:
     LEFT=0
     RIGHT=1
@@ -4652,6 +4673,7 @@ class Beam:
                     hh = 64
                     if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
                         enemy.hp -= self.power
+                        GUISt.sounds["Hurt"].play()
                         self.Delete()
                 if abs(self.x-self.orgX) > 1000:
                     self.Delete()
@@ -4796,6 +4818,7 @@ class Player:
                         beamX = self.pos[0]-128-32
                     else:
                         beamX = self.pos[0]+32
+                    GUISt.sounds["Beam"].play()
                     self.beams += [Beam(beamX,beamY,self.facing, self)]
 
         if t-self.jumpStart > self.jumpMax:
@@ -5121,6 +5144,7 @@ class ConstructorApp:
 
             self._2d_logo = LoadTex("./img/logo.png", 512, 512)
             self._2d_beam = LoadTex("./img/2d_beam.png", 128,64)
+            self._2d_tiles_dead = LoadTex("./img/2d_enemy_dead.png", 64,64)
 
 
             """
@@ -5570,6 +5594,7 @@ void main(void)
         self.renderGUIs += [func]
     def Run(self):
         pygame.init()
+        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
         isFullScreen = FULLSCREEN#0
 
         screen = pygame.display.set_mode((SW,SH), HWSURFACE|OPENGL|DOUBLEBUF|isFullScreen)#|FULLSCREEN)
