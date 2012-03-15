@@ -94,6 +94,24 @@ class Terrain(object):
         del self.vertices[vertIdx]
     # 버텍스사이의 거리가 10픽셀 이상이어야 함. 뉴 버텍스 추가는 무조건 맨 오른쪽에만 됨
     # 걍 귀찮으니 땅속은 없도록 하자. 걍 사각형을 추가해서 그 위로 올라가도록 한다.
+class ButtonGame(object):
+    def __init__(self, ren, txt, func, x,y):
+        self.rect = x,y
+        self.func = func
+        self.ren = ren
+        self.txtID = ren.NewTextObject(txt, (0,0,0))
+        AppSt.BindRenderGameGUI(self.Render)
+        EMgrSt.BindLDown(self.OnClick)
+        self.enabled = True
+    def OnClick(self, t,m,k):
+        if self.enabled:
+            w,h = self.ren.GetDimension(self.txtID)
+            if InRect(self.rect[0],self.rect[1],w+10,h+10,m.x,m.y):
+                self.func()
+    def Render(self):
+        w,h = self.ren.GetDimension(self.txtID)
+        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,255),(164,164,164,255))
+        self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 class Button(object):
     def __init__(self, ren, txt, func, x,y):
         self.rect = x,y
@@ -102,22 +120,57 @@ class Button(object):
         self.txtID = ren.NewTextObject(txt, (0,0,0))
         AppSt.BindRenderGUI(self.Render)
         EMgrSt.BindLDown(self.OnClick)
+        self.enabled = True
     def OnClick(self, t,m,k):
-        w,h = self.ren.GetDimension(self.txtID)
-        if InRect(self.rect[0],self.rect[1],w,h,m.x,m.y):
-            self.func()
+        if self.enabled:
+            w,h = self.ren.GetDimension(self.txtID)
+            if InRect(self.rect[0],self.rect[1],w+10,h+10,m.x,m.y):
+                self.func()
     def Render(self):
         w,h = self.ren.GetDimension(self.txtID)
-        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(128,128,128,255),(128,128,128,255))
+        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,255),(164,164,164,255))
         self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 
 
 
+class Stage:
+    def __init__(self):
+        self.scrX = 0
+        self.scrY = 0
+        self.tiles = {}
+
+    def ScrollTo(self,x,y):
+        self.scrX = x
+        self.scrY = y
+
+    def GetTiles(self):
+        x = self.scrX
+        y = self.scrY
+        w = SW
+        h = SH-128
+        tiles = []
+        for coord in self.tiles:
+            cx,cy = coord
+            if InRect(x-64,y-64,w+64,h+64,cx,cy):
+                tiles += [(cx,cy,self.tiles[coord])]
+        return tiles
+    def AddTile(self,x,y,tile):
+        self.tiles[(x,y)] = tile
+    def DelTile(self,x,y):
+        try:
+            del self.tiles[(x,y)]
+        except:
+            pass
+
+GUISt = None
 class ConstructorGUI(object):
     ADDREMOVE_TILE = 0
-    TILE_BATCH = 2
-    SCROLL = 3
+    TILE_BATCH = 1
+    EDIT_MODE = 0
+    GAME_MODE = 1
     def __init__(self):
+        global GUISt
+        GUISt = self
         self.tex = -1
         """
         self.botimg = pygame.image.load("./img/guibottombg.png")
@@ -125,17 +178,52 @@ class ConstructorGUI(object):
         """
         self.font = pygame.font.Font("./fonts/NanumGothicBold.ttf", 11)
         self.textRenderer = StaticTextRenderer(self.font)
-        self.button = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
-        self.button = Button(self.textRenderer, u"타일배치찍기", self.AddTileBatch, 30+55, SH-128+5)
-        self.button = Button(self.textRenderer, u"스크롤", self.Scroll, 60+55+45, SH-128+5)
+        self.button1 = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
+        self.button2 = Button(self.textRenderer, u"타일배치찍기", self.AddTileBatch, 30+55, SH-128+5)
+        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45, SH-128+5)
+
+        self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128+5)
+        self.buttonGame1.enabled = False
 
         #self.button = Button(self.Print, 
 
         self.mode = self.ADDREMOVE_TILE
+        self.emode = self.EDIT_MODE
+
+        try:
+            self.stages = pickle.load(open("./stages.pkl", "r"))
+        except:
+            self.stages = [Stage()]
+        self.curStageIdx = 0
+        self.tileIdx = 0
+        EMgrSt.BindMDown(self.DragStart)
+        EMgrSt.BindMUp(self.DragEnd)
+        self.dragStartPos = (0,0)
+        self.scrStartPos = (0,0)
+        self.dragging = False
+    def DragStart(self,t,m,k):
+        self.dragging = True
+        self.dragStartPos = (m.x,m.y)
+        self.scrStartPos = (
+            self.stages[self.curStageIdx].scrX,
+            self.stages[self.curStageIdx].scrY)
+    def DragEnd(self,t,m,k):
+        self.dragging = False
+
     def AddTile(self):
         self.mode = self.ADDREMOVE_TILE
-    def Scroll(self):
-        self.mode = self.SCROLL
+    def GameMode(self):
+        self.button1.enabled = False
+        self.button2.enabled = False
+        self.button3.enabled = False
+        self.buttonGame1.enabled = True
+        self.emode = self.GAME_MODE
+    def EditMode(self):
+        self.button1.enabled = True
+        self.button2.enabled = True
+        self.button3.enabled = True
+        self.buttonGame1.enabled = False
+        self.emode = self.EDIT_MODE
     def AddTileBatch(self):
         self.mode = self.TILE_BATCH
     def Regen(self):
@@ -148,25 +236,32 @@ class ConstructorGUI(object):
         """
 
     def Tick(self,t,m,k):
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
-            pass
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
-            pass
-        """
-        if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
-            x = 400
-            y = SH-256
-            y += 5
-            i = 0
-            for tile in AppSt.texTiles:
-                if LMB in m.pressedButtons.iterkeys() and InRect(x,y,32,32,m.x,m.y):
-                    AppSt.map.SetTile(i)
-                x += 32 + 5
-                if x+32+5 > SW:
-                    x = 400
-                    y += 32+5
-                i += 1
-        """
+
+        if self.emode == self.EDIT_MODE:
+            x = self.stages[self.curStageIdx].scrX+m.x
+            y = self.stages[self.curStageIdx].scrY+m.y
+            x,y = x-(x%64), y-(y%64)
+            if LMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
+                self.stages[self.curStageIdx].AddTile(x,y,self.tileIdx)
+            elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128 and self.mode in [self.ADDREMOVE_TILE]:
+                self.stages[self.curStageIdx].DelTile(x,y)
+            elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
+                x = 400
+                y = SH-128+5
+                for i in range(len(AppSt._2d_grndtiles)):
+                    if InRect(x,y,64,64, m.x,m.y):
+                        self.tileIdx = i
+                        break
+                    x += 64+5
+            elif self.dragging:
+
+                self.stages[self.curStageIdx].scrX = self.scrStartPos[0] + (self.dragStartPos[0]-m.x)
+                self.stages[self.curStageIdx].scrY = self.scrStartPos[1] + (self.dragStartPos[1]-m.y)
+                self.stages[self.curStageIdx].scrX = max(0, self.stages[self.curStageIdx].scrX)
+                self.stages[self.curStageIdx].scrY = min(0, self.stages[self.curStageIdx].scrY)
+        elif self.emode == self.GAME_MODE:
+            self.stages[self.curStageIdx].scrX = AppSt.player.pos[0]-SW/2
+            self.stages[self.curStageIdx].scrY = AppSt.player.pos[1]-SH/2
 
     def Render(self):
         """
@@ -201,14 +296,24 @@ class ConstructorGUI(object):
         DrawQuadTex(400+32+32,SH-256+5,32,64)
         """
 
-        DrawQuad(0,SH-128,SW,128,(128,128,128,128),(128,128,128,128))
 
-        x = 400
-        y = SH-128+5
-        for i in range(len(AppSt._2d_grndtiles)):
-            glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
+
+        tiles = self.stages[self.curStageIdx].GetTiles()
+        for tile_ in tiles:
+            x,y,tile = tile_
+            x -= self.stages[self.curStageIdx].scrX
+            y -= self.stages[self.curStageIdx].scrY
+            glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[tile])
             DrawQuadTex(x,y,64,64)
-            x += 64+5
+
+        DrawQuad(0,SH-128,SW,128,(128,128,128,255),(128,128,128,255))
+        if self.emode == self.EDIT_MODE:
+            x = 400
+            y = SH-128+5
+            for i in range(len(AppSt._2d_grndtiles)):
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
+                DrawQuadTex(x,y,64,64)
+                x += 64+5
 
 
 
@@ -3445,7 +3550,7 @@ class EventManager(object):
         self.tick = 0
 
         self.prevEvent = 0
-        self.eventDelay = 50
+        self.eventDelay = 0
 
     def BindWUp(self, func):
         self.wup += [func]
@@ -4297,6 +4402,170 @@ class Physics(object):
 class MenuScreen:
     def __init__(self):
         pass
+
+def RectRectCollide2(rect1,rect2):
+    x,y,w,h = rect1
+    xx,yy,ww,hh = rect2
+    if InRect(x,y,w,h,xx,yy):
+        return True, 0
+    if InRect(x,y,w,h,xx+ww,yy):
+        return True, 1
+    if InRect(x,y,w,h,xx,yy+hh):
+        return True, 2
+    if InRect(x,y,w,h,xx+ww,yy+hh):
+        return True, 3
+
+    return False
+def RectRectCollide(rect1,rect2):
+    x,y,w,h = rect1
+    xx,yy,ww,hh = rect2
+    if InRect(x,y,w,h,xx,yy):
+        return True
+    if InRect(x,y,w,h,xx+ww,yy):
+        return True
+    if InRect(x,y,w,h,xx+ww,yy+hh):
+        return True
+    if InRect(x,y,w,h,xx,yy+hh):
+        return True
+
+    if InRect(xx,yy,ww,hh,x,y):
+        return True
+    if InRect(xx,yy,ww,hh,x+w,y):
+        return True
+    if InRect(xx,yy,ww,hh,x+w,y+h):
+        return True
+    if InRect(xx,yy,ww,hh,x,y+h):
+        return True
+
+
+    return False
+class Player:
+    LEFT = 0
+    RIGHT = 1
+    def __init__(self):
+        self.pos = [1100, -700]
+        self.fallSpeed = 15
+        self.fallWait = pygame.time.get_ticks()
+        self.fallDelay = 25
+        self.facing = self.RIGHT
+        self.jumping = False
+        self.jumpStart = 0
+        self.jumpMax = 500
+        self.jumpMin = 250
+        self.grounded = False
+        EMgrSt.BindTick(self.Tick)
+        self.keyBinds = {
+                "UP": K_w,
+                "LEFT": K_a,
+                "DOWN": K_s,
+                "RIGHT": K_d,
+                "ATK": K_j,
+                "JUMP": K_k,
+                "ACT": K_u,
+                "ACT2": K_i,
+                }
+
+    def Tick(self,t,m,k):
+        if t-self.fallWait > self.fallDelay:
+            self.fallWait = t
+            tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
+
+            if not self.jumping:
+                collide = False
+                collideY = 0
+                for tile in tiles:
+                    x,y,tile_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32
+                    yy = py-128+self.fallSpeed
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideY = y
+                if not collide:
+                    self.pos[1] += self.fallSpeed
+                else:
+                    self.grounded = True
+                    self.pos[1] = collideY
+            else:
+                collide = False
+                collideY = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32
+                    yy = py-128-self.fallSpeed
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideY = y+h+128
+                if not collide:
+                    self.pos[1] -= self.fallSpeed
+                else:
+                    self.pos[1] = collideY
+
+            if pygame.key.get_pressed()[self.keyBinds["LEFT"]]:
+                self.facing = self.LEFT
+                collide = False
+                collideX = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32-self.fallSpeed
+                    yy = py-128
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideX = x+w+32
+                if not collide:
+                    self.pos[0] -= self.fallSpeed
+                else:
+                    self.pos[0] = collideX
+
+            if pygame.key.get_pressed()[self.keyBinds["RIGHT"]]:
+                self.facing = self.RIGHT
+                collide = False
+                collideX = 0
+                for tile in tiles:
+                    x,y,t_ = tile
+                    w = 64
+                    h = 64
+                    px,py = self.pos
+                    xx = px-32+self.fallSpeed
+                    yy = py-128
+                    ww = 64
+                    hh = 128
+                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                        collide = True
+                        collideX = x-32
+                if not collide:
+                    self.pos[0] += self.fallSpeed
+                else:
+                    self.pos[0] = collideX
+            if pygame.key.get_pressed()[self.keyBinds["JUMP"]]:
+                if not self.jumping and self.grounded:
+                    self.jumping = True
+                    self.jumpStart = t
+                    self.grounded = False
+            else:
+                if self.jumping and t-self.jumpStart > self.jumpMin:
+                    self.jumping = False
+
+        if t-self.jumpStart > self.jumpMax:
+            self.jumping = False
+
+
+    def Render(self):
+        pass
 class ConstructorApp:
     TILECHANGE1 = 0
     TILECHANGE2 = 1
@@ -4308,6 +4577,7 @@ class ConstructorApp:
         AppSt = self
         self.guiMode = False
         self.renderGUIs = []
+        self.renderGameGUIs = []
         self.keyBinds = {
                 "UP": K_w,
                 "LEFT": K_a,
@@ -4337,6 +4607,7 @@ class ConstructorApp:
         self.delayBeam = 1000/20
         self.waitBeam = pygame.time.get_ticks()
         self.aniBeamX = 0
+
 
 
     def MultMat4x4(self, mat, vec):
@@ -4577,6 +4848,7 @@ class ConstructorApp:
                 glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
 
+
             def LoadTex(path, w, h):
                 image = pygame.image.load(path)
                 teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -4592,6 +4864,10 @@ class ConstructorApp:
                 glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
+
+            self._2d_tiles_enemy = []
+            for path in imgs:
+                self._2d_tiles_enemy += [LoadTex("./img/2d_enemy1_%s.png" % path, 128, 128)]
 
             tiles = [
                     "tile1",
@@ -4943,20 +5219,27 @@ void main(void)
         self.gui.Render()
         self.RenderNumber(int(self.fps.GetFPS()), 0,0)
 
-        """
-        ani = [0,1,2,1]
-        if self.delayAni < self.waitAni + t:
-            self.waitAni -= self.delayAni
+        self.ani = [0,1,2,1]
+        if t - self.waitAni > self.delayAni:
+            self.waitAni = t
             self.aniIdx += 1
             if self.aniIdx >= 4:
                 self.aniIdx = 0
+        if GUISt.emode == GUISt.GAME_MODE:
+            glBindTexture(GL_TEXTURE_2D, self._2d_tiles[self.ani[self.aniIdx]])
+            if self.player.facing == Player.LEFT:
+                DrawQuadTexFlipX(SW/2-64,SH/2-128,128,128)
+            if self.player.facing == Player.RIGHT:
+                DrawQuadTex(SW/2-64,SH/2-128,128,128)
 
-        glBindTexture(GL_TEXTURE_2D, self._2d_tiles[ani[self.aniIdx]])
-        DrawQuadTex(32,32,128,128)
+        """
         DrawQuadTexFlipX(32,32+128,128,128)
+        glBindTexture(GL_TEXTURE_2D, self._2d_tiles_enemy[ani[self.aniIdx]])
+        DrawQuadTex(32,32+128+128,128,128)
+        DrawQuadTexFlipX(32,32+128+128+128,128,128)
 
-        if self.delayBeam < self.waitBeam + t:
-            self.waitBeam -= self.delayBeam
+        if t - self.waitBeam > self.delayBeam:
+            self.waitBeam = t
             self.aniBeamX += 50
             if self.aniBeamX > SW:
                 self.aniBeamX = 0
@@ -4968,8 +5251,12 @@ void main(void)
         DrawQuadTex(SW/2-512/2,SH/2-512/2,512,512)
         """
 
-        for guiF in self.renderGUIs:
-            guiF()
+        if self.gui.emode == ConstructorGUI.EDIT_MODE:
+            for guiF in self.renderGUIs:
+                guiF()
+        elif self.gui.emode == ConstructorGUI.GAME_MODE:
+            for guiF in self.renderGameGUIs:
+                guiF()
         glDisable(GL_BLEND)
         pygame.display.flip()
 
@@ -5048,6 +5335,8 @@ void main(void)
             else:
                 self.textRenderer.RenderText(self.numbers[int(c)], (x, y))
             x += 9
+    def BindRenderGameGUI(self, func):
+        self.renderGameGUIs += [func]
 
     def BindRenderGUI(self, func):
         self.renderGUIs += [func]
@@ -5079,6 +5368,7 @@ void main(void)
         #self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         #self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
+        self.player = Player()
         emgr.BindTick(self.gui.Tick)
         #self.Test()
 
@@ -5114,6 +5404,7 @@ void main(void)
 
 
             fps.End()
+        pickle.dump(self.gui.stages, open("./stages.pkl", "w"))
 
 
 if __name__ == '__main__':
