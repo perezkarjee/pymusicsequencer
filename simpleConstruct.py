@@ -335,6 +335,7 @@ class ConstructorGUI(object):
         self.sounds = {
                 "Beam": pygame.mixer.Sound("./snds/beam.wav"),
                 "Hurt": pygame.mixer.Sound("./snds/hurt.wav"),
+                "Jump": pygame.mixer.Sound("./snds/jump.wav"),
                 }
 
         self.tex = -1
@@ -352,7 +353,7 @@ class ConstructorGUI(object):
         self.buttonGame1.enabled = False
 
         #self.button = Button(self.Print, 
-        self.enemies = [Enemy("enemy1", 1100, -700)]
+        self.enemies = [Enemy("enemy1", 1100, -700), Enemy("enemy1", 1200, -700), Enemy("enemy1", 1300, -700), Enemy("enemy1", 1400, -700)]
         self.deads = []
 
         self.mode = self.ADDREMOVE_TILE
@@ -4708,7 +4709,7 @@ class Player:
                 "ACT": K_u,
                 "ACT2": K_i,
                 }
-        self.beamDelay = 250
+        self.beamDelay = 125
         self.prevBeam = pygame.time.get_ticks()
         self.beams = []
 
@@ -4803,6 +4804,7 @@ class Player:
                     self.pos[0] = collideX
             if pygame.key.get_pressed()[self.keyBinds["JUMP"]]:
                 if not self.jumping and self.grounded:
+                    GUISt.sounds["Jump"].play()
                     self.jumping = True
                     self.jumpStart = t
                     self.grounded = False
