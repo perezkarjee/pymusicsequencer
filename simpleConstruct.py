@@ -132,11 +132,13 @@ class Button(object):
         self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 
 class EnemyDef:
-    def __init__(self, name, x, y):
+    def __init__(self, tileIdx, name, x, y, args):
+        self.tileIdx = tileIdx
         self.name = name
         self.pos = [x,y]
+        self.args = args
     def Gen(self):
-        return Enemy(self.name, self.pos[0], self.pos[1])
+        return Enemy(self.tileIdx, self.name, self.pos[0], self.pos[1], args)
 
 class Stage:
     def __init__(self):
@@ -184,9 +186,11 @@ class Stage:
 class Enemy:
     LEFT=0
     RIGHT=1
-    def __init__(self, name, x, y):
+    def __init__(self, tileIdx, name, x, y, args):
         self.hp = 100
+        self.args = args
 
+        self.tileIdx = tileIdx
         self.pos = [x,y]
         self.name = name
         self.leftOn = False
@@ -219,9 +223,24 @@ class Enemy:
         self.prevBeam = pygame.time.get_ticks()
         self.beams = []
 
+        self.prevLeft = pygame.time.get_ticks()
+        self.moveDelay = 1000
+        self.goleft = False
+
 
 
     def Tick(self, t,m,k):
+        if t-self.prevLeft > self.moveDelay:
+            self.prevLeft = t
+            self.goleft = not self.goleft
+        if self.goleft:
+            self.facing = self.LEFT
+            self.leftOn = True
+            self.rightOn = False
+        else:
+            self.facing = self.RIGHT
+            self.leftOn = False
+            self.rightOn = True
         if self.hp <= 0:
             try:
                 GUISt.stages[GUISt.curStageIdx].enemies.remove(self)
@@ -449,19 +468,17 @@ class ConstructorGUI(object):
             elif self.mode == self.ADD_MOB:
                 x,y = x-(x%128), y-(y%128)
                 if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
-                    self.stages[self.curStageIdx].AddEnemy(EnemyDef('enemy', x+64,y+128))
+                    self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.tileIdx, 'enemy', x+64,y+128, {}))
                 elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
                     self.stages[self.curStageIdx].DelEnemy(x+64,y+128)
                 elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
-                    """
                     x = 400
-                    y = SH-128+5
-                    for i in range(len(AppSt._2d_grndtiles)):
-                        if InRect(x,y,64,64, m.x,m.y):
+                    y = SH-128
+                    for i in range(len(AppSt._2d_enemy_tiles)):
+                        if InRect(x,y,128,128, m.x,m.y):
                             self.tileIdx = i
                             break
-                        x += 64+5
-                    """
+                        x += 128+5
             if self.dragging:
                 self.stages[self.curStageIdx].scrX = self.scrStartPos[0] + (self.dragStartPos[0]-m.x)
                 self.stages[self.curStageIdx].scrY = self.scrStartPos[1] + (self.dragStartPos[1]-m.y)
@@ -519,13 +536,19 @@ class ConstructorGUI(object):
         scrY = self.stages[self.curStageIdx].scrY
         if self.emode == self.EDIT_MODE:
             x = 400
-            y = SH-128+5
-            for i in range(len(AppSt._2d_grndtiles)):
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
-                DrawQuadTex(x,y,64,64)
-                x += 64+5
+            y = SH-128
+            if self.mode == self.ADDREMOVE_TILE:
+                for i in range(len(AppSt._2d_grndtiles)):
+                    glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
+                    DrawQuadTex(x,y,64,64)
+                    x += 64+5
+            elif self.mode == self.ADD_MOB:
+                for i in range(len(AppSt._2d_enemy_tiles)):
+                    glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[i][1])
+                    DrawQuadTex(x,y,128,128)
+                    x += 128+5
             for enemy in self.stages[self.curStageIdx].enemyDefs.itervalues():
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_enemy[AppSt.ani[AppSt.aniIdx]])
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
                 DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
 
         else:
@@ -533,8 +556,11 @@ class ConstructorGUI(object):
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
                 DrawQuadTex(dead.pos[0]-scrX,dead.pos[1]-scrY, 64,64)
             for enemy in self.stages[self.curStageIdx].enemies:
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_enemy[AppSt.ani[AppSt.aniIdx]])
-                DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
+                if enemy.facing == enemy.LEFT:
+                    DrawQuadTexFlipX(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+                else:
+                    DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
             for beam in AppSt.player.beams:
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_beam)
                 DrawQuadTex(beam.x-scrX,beam.y-scrY,128,64)
@@ -5174,6 +5200,7 @@ class ConstructorApp:
             self._2d_tiles_enemy = []
             for path in imgs:
                 self._2d_tiles_enemy += [LoadTex("./img/2d_enemy1_%s.png" % path, 128, 128)]
+            self._2d_enemy_tiles = [self._2d_tiles_enemy]
 
             tiles = [
                     "tile1",
