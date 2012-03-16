@@ -83,17 +83,6 @@ def compile_program(vertex_src, fragment_src):
  
     return program
  
-class Terrain(object):
-    def __init__(self):
-        self.vertices = []
-        self.screenPos = (0,0)
-
-    def AddVert(self, x,y):
-        self.vertices += [(x,y)]
-    def RemoveVert(self, vertIdx):
-        del self.vertices[vertIdx]
-    # 버텍스사이의 거리가 10픽셀 이상이어야 함. 뉴 버텍스 추가는 무조건 맨 오른쪽에만 됨
-    # 걍 귀찮으니 땅속은 없도록 하자. 걍 사각형을 추가해서 그 위로 올라가도록 한다.
 class ButtonGame(object):
     def __init__(self, ren, txt, func, x,y):
         self.rect = x,y
@@ -226,140 +215,167 @@ class Enemy:
         self.prevLeft = pygame.time.get_ticks()
         self.moveDelay = 1000
         self.goleft = False
+        self.atkWait = pygame.time.get_ticks()
+        self.atkDelay = 500
+
+    def Attack(self, t):
+        ppos = AppSt.player.pos
+        pos = self.pos
+        ppos = Vector2(*ppos)
+        pos = Vector2(*pos)
+        if (ppos-pos).length() < 1024:
+            if (ppos.x < pos.x and self.facing == self.LEFT) or (ppos.x >= pos.x and self.facing == self.RIGHT):
+                self.atkWait = t
+                beamY = self.pos[1]-128
+                if self.facing == self.LEFT:
+                    beamX = self.pos[0]-128-32
+                else:
+                    beamX = self.pos[0]+32
+
+                self.beams += [Beam(beamX,beamY,self.facing,self)]
 
 
 
     def Tick(self, t,m,k):
-        if t-self.prevLeft > self.moveDelay:
-            self.prevLeft = t
-            self.goleft = not self.goleft
-        if self.goleft:
-            self.facing = self.LEFT
-            self.leftOn = True
-            self.rightOn = False
-        else:
-            self.facing = self.RIGHT
-            self.leftOn = False
-            self.rightOn = True
-        if self.hp <= 0:
-            try:
-                GUISt.stages[GUISt.curStageIdx].enemies.remove(self)
-        
-                EMgrSt.bindTick.remove(self.Tick)
-            except:
-                pass
-            x = self.pos[0]-32
-            y = self.pos[1]-64-32
-            GUISt.deads += [DeadEnemy(x,y)]
-        if t-self.fallWait > self.fallDelay:
-            self.fallWait = t
-            tiles = GUISt.stages[GUISt.curStageIdx].tiles
-            self.moving = False
+        ppos = AppSt.player.pos
+        pos = self.pos
+        ppos = Vector2(*ppos)
+        pos = Vector2(*pos)
+        if (ppos-pos).length() < 1024:
 
-            if not self.jumping:
-                collide = False
-                collideY = 0
-                for tile in tiles.iterkeys():
-                    x,y = tile
-                    w = 64
-                    h = 64
-                    px,py = self.pos
-                    xx = px-32
-                    yy = py-128+self.fallSpeed
-                    ww = 64
-                    hh = 128
-                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                        collide = True
-                        collideY = y
-                if not collide:
-                    self.pos[1] += self.fallSpeed
-                else:
-                    self.grounded = True
-                    self.pos[1] = collideY
-            else:
-                collide = False
-                collideY = 0
-                for tile in tiles.iterkeys():
-                    x,y = tile
-                    w = 64
-                    h = 64
-                    px,py = self.pos
-                    xx = px-32
-                    yy = py-128-self.fallSpeed
-                    ww = 64
-                    hh = 128
-                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                        collide = True
-                        collideY = y+h+128
-                if not collide:
-                    self.pos[1] -= self.fallSpeed
-                else:
-                    self.pos[1] = collideY
+            if t-self.atkWait > self.atkDelay:
+                self.Attack(t)
 
-            if self.leftOn:
-                self.moving = True
+            if t-self.prevLeft > self.moveDelay:
+                self.prevLeft = t
+                self.goleft = not self.goleft
+            if self.goleft:
                 self.facing = self.LEFT
-                collide = False
-                collideX = 0
-                for tile in tiles.iterkeys():
-                    x,y = tile
-                    w = 64
-                    h = 64
-                    px,py = self.pos
-                    xx = px-32-self.fallSpeed
-                    yy = py-128
-                    ww = 64
-                    hh = 128
-                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                        collide = True
-                        collideX = x+w+32
-                if not collide:
-                    self.pos[0] -= self.fallSpeed
-                else:
-                    self.pos[0] = collideX
-
-            if self.rightOn:
-                self.moving = True
-                self.facing = self.RIGHT
-                collide = False
-                collideX = 0
-                for tile in tiles.iterkeys():
-                    x,y = tile
-                    w = 64
-                    h = 64
-                    px,py = self.pos
-                    xx = px-32+self.fallSpeed
-                    yy = py-128
-                    ww = 64
-                    hh = 128
-                    if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                        collide = True
-                        collideX = x-32
-                if not collide:
-                    self.pos[0] += self.fallSpeed
-                else:
-                    self.pos[0] = collideX
-            if self.jumpOn:
-                if not self.jumping and self.grounded:
-                    self.jumping = True
-                    self.jumpStart = t
-                    self.grounded = False
+                self.leftOn = True
+                self.rightOn = False
             else:
-                if self.jumping and t-self.jumpStart > self.jumpMin:
-                    self.jumping = False
+                self.facing = self.RIGHT
+                self.leftOn = False
+                self.rightOn = True
+            if self.hp <= 0:
+                try:
+                    GUISt.stages[GUISt.curStageIdx].enemies.remove(self)
+            
+                    EMgrSt.bindTick.remove(self.Tick)
+                except:
+                    pass
+                x = self.pos[0]-32
+                y = self.pos[1]-64-32
+                GUISt.deads += [DeadEnemy(x,y)]
+            if t-self.fallWait > self.fallDelay:
+                self.fallWait = t
+                tiles = GUISt.stages[GUISt.curStageIdx].tiles
+                self.moving = False
 
-            if self.atkOn:
-                if t-self.prevBeam > self.beamDelay:
-                    self.prevBeam = t
-                    beamY = self.pos[1]-128
-                    if self.facing == self.LEFT:
-                        beamX = self.pos[0]-128-32
+                if not self.jumping:
+                    collide = False
+                    collideY = 0
+                    for tile in tiles.iterkeys():
+                        x,y = tile
+                        w = 64
+                        h = 64
+                        px,py = self.pos
+                        xx = px-32
+                        yy = py-128+self.fallSpeed
+                        ww = 64
+                        hh = 128
+                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                            collide = True
+                            collideY = y
+                    if not collide:
+                        self.pos[1] += self.fallSpeed
                     else:
-                        beamX = self.pos[0]+32
-                    self.beams += [Beam(beamX,beamY,self.facing, self)]
+                        self.grounded = True
+                        self.pos[1] = collideY
+                else:
+                    collide = False
+                    collideY = 0
+                    for tile in tiles.iterkeys():
+                        x,y = tile
+                        w = 64
+                        h = 64
+                        px,py = self.pos
+                        xx = px-32
+                        yy = py-128-self.fallSpeed
+                        ww = 64
+                        hh = 128
+                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                            collide = True
+                            collideY = y+h+128
+                    if not collide:
+                        self.pos[1] -= self.fallSpeed
+                    else:
+                        self.pos[1] = collideY
 
-        if t-self.jumpStart > self.jumpMax:
-            self.jumping = False
+                if self.leftOn:
+                    self.moving = True
+                    self.facing = self.LEFT
+                    collide = False
+                    collideX = 0
+                    for tile in tiles.iterkeys():
+                        x,y = tile
+                        w = 64
+                        h = 64
+                        px,py = self.pos
+                        xx = px-32-self.fallSpeed
+                        yy = py-128
+                        ww = 64
+                        hh = 128
+                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                            collide = True
+                            collideX = x+w+32
+                    if not collide:
+                        self.pos[0] -= self.fallSpeed
+                    else:
+                        self.pos[0] = collideX
+
+                if self.rightOn:
+                    self.moving = True
+                    self.facing = self.RIGHT
+                    collide = False
+                    collideX = 0
+                    for tile in tiles.iterkeys():
+                        x,y = tile
+                        w = 64
+                        h = 64
+                        px,py = self.pos
+                        xx = px-32+self.fallSpeed
+                        yy = py-128
+                        ww = 64
+                        hh = 128
+                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                            collide = True
+                            collideX = x-32
+                    if not collide:
+                        self.pos[0] += self.fallSpeed
+                    else:
+                        self.pos[0] = collideX
+                if self.jumpOn:
+                    if not self.jumping and self.grounded:
+                        self.jumping = True
+                        self.jumpStart = t
+                        self.grounded = False
+                else:
+                    if self.jumping and t-self.jumpStart > self.jumpMin:
+                        self.jumping = False
+
+                if self.atkOn:
+                    if t-self.prevBeam > self.beamDelay:
+                        self.prevBeam = t
+                        beamY = self.pos[1]-128
+                        if self.facing == self.LEFT:
+                            beamX = self.pos[0]-128-32
+                        else:
+                            beamX = self.pos[0]+32
+                        self.beams += [Beam(beamX,beamY,self.facing, self)]
+
+            if t-self.jumpStart > self.jumpMax:
+                self.jumping = False
 
 
 GUISt = None
@@ -386,9 +402,12 @@ class ConstructorGUI(object):
         self.textRenderer = StaticTextRenderer(self.font)
         self.button1 = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
         self.button2 = Button(self.textRenderer, u"몹찍기/제거", self.AddMob, 30+55, SH-128+5)
-        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45, SH-128+5)
+        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45+45, SH-128+5)
+        self.button4 = Button(self.textRenderer, u"이전", self.PrevStage, 5, SH-128+5+32)
+        self.button5 = Button(self.textRenderer, u"다음", self.NextStage, 5+32+32, SH-128+5+32)
+        self.button6 = Button(self.textRenderer, u"추가", self.AddStage, 5+32+32+32, SH-128+5+32)
 
-        self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128+5)
+        self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128-32+5)
         self.buttonGame1.enabled = False
 
         #self.button = Button(self.Print, 
@@ -397,10 +416,12 @@ class ConstructorGUI(object):
         self.mode = self.ADDREMOVE_TILE
         self.emode = self.EDIT_MODE
 
-        self.stages = [Stage()]
+        numS = pickle.load(open("./numstages.pkl", "r"))
+        self.stages = [Stage() for i in range(numS)]
         try:
-            self.stages[0].tiles = pickle.load(open("./stage1tiles.pkl", "r"))
-            self.stages[0].enemyDefs = pickle.load(open("./stage1enemies.pkl", "r"))
+            for i in range(numS):
+                self.stages[i].tiles = pickle.load(open("./stage%dtiles.pkl" % (i+1), "r"))
+                self.stages[i].enemyDefs = pickle.load(open("./stage%denemies.pkl" % (i+1), "r"))
         except:
             pass
         self.curStageIdx = 0
@@ -410,6 +431,16 @@ class ConstructorGUI(object):
         self.dragStartPos = (0,0)
         self.scrStartPos = (0,0)
         self.dragging = False
+    def PrevStage(self):
+        self.curStageIdx -= 1
+        if self.curStageIdx < 0:
+            self.curStageIdx = 0
+    def NextStage(self):
+        self.curStageIdx += 1
+        if self.curStageIdx >= len(self.stages):
+            self.curStageIdx = len(self.stages)-1
+    def AddStage(self):
+        self.stages += [Stage()]
     def DragStart(self,t,m,k):
         self.dragging = True
         self.dragStartPos = (m.x,m.y)
@@ -425,6 +456,9 @@ class ConstructorGUI(object):
         self.button1.enabled = False
         self.button2.enabled = False
         self.button3.enabled = False
+        self.button4.enabled = False
+        self.button5.enabled = False
+        self.button6.enabled = False
         self.buttonGame1.enabled = True
         self.emode = self.GAME_MODE
         self.stages[self.curStageIdx].StartGame()
@@ -432,6 +466,9 @@ class ConstructorGUI(object):
         self.button1.enabled = True
         self.button2.enabled = True
         self.button3.enabled = True
+        self.button4.enabled = True
+        self.button5.enabled = True
+        self.button6.enabled = True
         self.buttonGame1.enabled = False
         self.emode = self.EDIT_MODE
     def AddMob(self):
@@ -531,12 +568,40 @@ class ConstructorGUI(object):
             glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[tile])
             DrawQuadTex(x,y,64,64)
 
-        DrawQuad(0,SH-128,SW,128,(128,128,128,255),(128,128,128,255))
         scrX = self.stages[self.curStageIdx].scrX
         scrY = self.stages[self.curStageIdx].scrY
+
+        x = 400
+        y = SH-128
         if self.emode == self.EDIT_MODE:
-            x = 400
-            y = SH-128
+            for enemy in self.stages[self.curStageIdx].enemyDefs.itervalues():
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
+                DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+
+        else:
+            for dead in self.deads:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
+                DrawQuadTex(dead.pos[0]-scrX,dead.pos[1]-scrY, 64,64)
+
+            for enemy in self.stages[self.curStageIdx].enemies:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
+                if enemy.facing == enemy.LEFT:
+                    DrawQuadTexFlipX(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+                else:
+                    DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
+                for beam in enemy.beams:
+                    glBindTexture(GL_TEXTURE_2D, AppSt._2d_beam)
+                    DrawQuadTex(beam.x-scrX,beam.y-scrY,128,64)
+
+
+            for beam in AppSt.player.beams:
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_beam)
+                DrawQuadTex(beam.x-scrX,beam.y-scrY,128,64)
+                
+
+        DrawQuad(0,SH-128,SW,128,(128,128,128,255),(128,128,128,255))
+        AppSt.RenderNumber(self.curStageIdx, 32+5, SH-128+5+32)
+        if self.emode == self.EDIT_MODE:
             if self.mode == self.ADDREMOVE_TILE:
                 for i in range(len(AppSt._2d_grndtiles)):
                     glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
@@ -547,2080 +612,6 @@ class ConstructorGUI(object):
                     glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[i][1])
                     DrawQuadTex(x,y,128,128)
                     x += 128+5
-            for enemy in self.stages[self.curStageIdx].enemyDefs.itervalues():
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
-                DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
-
-        else:
-            for dead in self.deads:
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
-                DrawQuadTex(dead.pos[0]-scrX,dead.pos[1]-scrY, 64,64)
-            for enemy in self.stages[self.curStageIdx].enemies:
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
-                if enemy.facing == enemy.LEFT:
-                    DrawQuadTexFlipX(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
-                else:
-                    DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
-            for beam in AppSt.player.beams:
-                glBindTexture(GL_TEXTURE_2D, AppSt._2d_beam)
-                DrawQuadTex(beam.x-scrX,beam.y-scrY,128,64)
-                
-
-
-
-class DigDigGUI(object):
-    def __init__(self):
-        self.invPos = (SW-306)/2, 430-186-20
-        self.qbarPos = (SW-308)/2, 430
-        self.makePos = (SW-306)/2, 20-3
-        self.invRealPos = (SW-300)/2, 430-186-20+3
-        self.qbarRealPos = (SW-300)/2, 430+4
-        self.makeRealPos = (SW-300)/2, 20
-
-        self.inventex = texture = glGenTextures(1)
-        self.invenimg = pygame.image.load("./images/digdig/inven.png")
-        glBindTexture(GL_TEXTURE_2D, self.inventex)
-        teximg = pygame.image.tostring(self.invenimg, "RGBA", 0) 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-
-        self.tooltex = texture = glGenTextures(1)
-        self.toolimg = pygame.image.load("./images/digdig/tools.png")
-        glBindTexture(GL_TEXTURE_2D, self.tooltex)
-        teximg = pygame.image.tostring(self.toolimg, "RGBA", 0) 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, teximg)
-
-
-        self.invShown = False
-        self.setInvShown = False
-        self.toolMode = TM_TOOL # 장비창이냐 제작창이냐 상자창이냐 등등
-        self.font = pygame.font.Font("./fonts/Fanwood.ttf", 18)
-        self.font2 = pygame.font.Font("./fonts/FanwoodText-Italic.ttf", 13)
-        self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 14)
-        
-        self.textRenderer = StaticTextRenderer(self.font)
-        self.textRendererSmall = StaticTextRenderer(self.font2)
-        self.textRendererArea = DynamicTextRenderer(self.font3)
-        self.textRendererItemTitle = DynamicTextRenderer(self.font)
-        self.textRendererItemSmall = DynamicTextRenderer(self.font2)
-        self.msgBox = MsgBox()
-        self.talkBox = TalkBox()
-        self.talkBox.AddText("aaaa", (68,248,93), (8,29,1))
-        def ppp():
-            print 'aaaa'
-        self.talkBox.AddSelection("aaaa", ppp, (68,248,93), (8,29,1))
-        #self.testText = TextArea(0,SH-190,SW,100, 9, 14)
-        self.testFile = FileSelector("./scripts")
-        self.testEdit = SpawnerGUI((SW-400)/2,(SH-50)/2,400,50,14)
-        #self.testText.SetText(u"asdhoihhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhrrㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱrrㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱㄱ가가가가\nadsasd")
-        self.prevAreaT = 0
-        self.prevDescT = 0
-        self.areaDelay = 500
-        self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), True, (50,50,50)) for i in range(10)]
-        self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), True, (0,0,0))]
-        self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
-        self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
-
-
-
-        self.draggingItem = None
-        self.dragging = False
-        self.dragPos = None
-        self.dragCont = None
-        self.otherPoints = [] # 땅에 떨굴 때 사용하는 영역
-        self.selectedItem = 0
-        self.selectedMakeTool = -1
-        self.selectedContItem = ITEM_NONE
-        self.qbMode2 = False
-
-        EMgrSt.BindTick(self.Tick)
-        EMgrSt.BindMotion(self.Motion)
-        EMgrSt.BindLDown(self.LDown)
-        EMgrSt.BindRDown(self.RDown)
-        EMgrSt.BindLUp(self.LUp)
-        EMgrSt.BindRUp(self.RUp)
-        EMgrSt.BindKeyDown(self.KDown)
-        EMgrSt.BindWUp(self.WUp)
-        EMgrSt.BindWDn(self.WDn)
-        self.ime = CustomIMEModule(self.OnIME)
-        self.slotSize = slotSize = 30
-
-        try:
-            self.inventory = pickle.load(open("./map/inv.pkl", "r"))
-        except:
-            self.inventory = [ITEM_NONE for i in range(60)]
-        try:
-            self.qbar1 = pickle.load(open("./map/qb.pkl", "r"))
-        except:
-            self.qbar1 = [ITEM_NONE for i in range(10)]
-
-        self.qbar = self.qbar1
-        try:
-            self.qbar2 = pickle.load(open("./map/qb2.pkl", "r"))
-        except:
-            self.qbar2 = [ITEM_NONE for i in range(10)]
-
-        try:
-            self.boxes = pickle.load(open("./map/chests.pkl", "r"))
-        except:
-            self.boxes = {}
-        try:
-            self.codes = pickle.load(open("./map/codes.pkl", "r"))
-        except:
-            self.codes = {}
-        try:
-            self.spawns = pickle.load(open("./map/spawns.pkl", "r"))
-        except:
-            self.spawns = {}
-        try:
-            self.eqs = pickle.load(open("./map/eqs.pkl", "r"))
-        except:
-            self.eqs = [ITEM_NONE for i in range(8)]
-
-        self.skills = [ITEM_NONE for i in range(10*6)]
-
-
-        
-        eqTexts = [
-        u"RightHand",
-        u"LeftHand",
-        u"Head",
-        u"Body",
-        u"Gloves",
-        u"Boots",
-        u"Necklace",
-        u"Ring",]
-        self.eqTexts = []
-        for t in eqTexts:
-            self.eqTexts += [self.textRendererSmall.NewTextObject(t, (0,0,0))]
-        
-
-        self.makes1 = self.makes = [ITEM_NONE for i in range(60)]
-        self.makes[0] = MakeTool(u"Wood", u"A wood block.", (116,100,46), [(BLOCK_LOG, 1, TYPE_BLOCK)], (BLOCK_WOOD, [], [], 4, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[1] = MakeTool(u"Stick", u"Multi purpose stick", (255,255,255), [(BLOCK_WOOD, 1, TYPE_BLOCK)], (ITEM_STICK, [], [], 4, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[2] = MakeTool(u"Charcoal", u"A charcoal", (60,60,60), [(BLOCK_LOG, 1, TYPE_BLOCK)], (ITEM_COAL, [], [], 1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[3] = MakeTool(u"Glass", u"A glass", (255,255,255), [(BLOCK_SAND, 4, TYPE_BLOCK), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (BLOCK_GLASS, [], [], 4, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[4] = MakeTool(u"Stone", u"A stone block", (255,255,255), [(BLOCK_COBBLESTONE, 1, TYPE_BLOCK)], (BLOCK_STONE, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[5] = MakeTool(u"Brick", u"A brick block", (255,255,255), [(BLOCK_COBBLESTONE, 1, TYPE_BLOCK)], (BLOCK_BRICK, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[6] = MakeTool(u"Wall", u"A wall block", (255,255,255), [(BLOCK_COBBLESTONE, 1, TYPE_BLOCK)], (BLOCK_WALL, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[7] = MakeTool(u"TNT", u"Kaboom!\n- Machine -", (255,255,255), [(BLOCK_GRAVEL, 1, TYPE_BLOCK)], (BLOCK_TNT, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[13] = MakeTool(u"Wooden stair", u"A wooden stair", (116,100,46), [(BLOCK_WOOD, 1, TYPE_BLOCK)], (ITEM_WOODENSTAIR, [], [], 1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[14] = MakeTool(u"Stair", u"A stair", (30,30,30), [(BLOCK_COBBLESTONE, 1, TYPE_BLOCK)], (ITEM_STAIR, [], [], 1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[15] = MakeTool(u"Slotmachine", u"Select silver, gold, diamond\nin the quickbar and \nright click to opeate.\nIf you use silver\nit will yield 1x of result.\nGold 1.5x, Diamond 2x.\n25% chance to win 2 silver\n15% for golds, 10% for diamonds.\n1% to win 64 silvers,\n64 golds, 64 diamonds.\n0.0001% to win\nten chest full of diamonds", (255,255,255), [(ITEM_DIAMOND, 9, TYPE_ITEM, (80,212,217))], (BLOCK_DIAMONDSLOT, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[20] = MakeTool(u"Wooden pickaxe", u"Used to pick stones, ores", (116,100,46), [(BLOCK_WOOD, 5, TYPE_BLOCK)], (ITEM_PICKAXE, [15,20], (BLOCK_IRONORE, BLOCK_SILVERORE, BLOCK_GOLDORE, BLOCK_DIAMONDORE), 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        # returns: 아이템, 체력깎는 정도, 못파는 광물목록
-        self.makes[21] = MakeTool(u"Wooden axe", u"Wood cutting wooden axe", (116,100,46), [(BLOCK_WOOD, 5, TYPE_BLOCK)], (ITEM_AXE, [15,20], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[22] = MakeTool(u"Wooden shovel", u"Digs up dirts or sands", (116,100,46), [(BLOCK_WOOD, 5, TYPE_BLOCK)], (ITEM_SHOVEL, [15,20], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[23] = MakeTool(u"Stone pickaxe", u"Used to pick stones, ores", (47,43,43), [(BLOCK_COBBLESTONE, 5, TYPE_BLOCK)], (ITEM_PICKAXE, [20,10], (BLOCK_IRONORE, BLOCK_SILVERORE, BLOCK_GOLDORE, BLOCK_DIAMONDORE), 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        # returns: 아이템, 체력깎는 정도, 못파는 광물목록
-        self.makes[24] = MakeTool(u"Stone axe", u"Used to cut trees", (47,43,43), [(BLOCK_COBBLESTONE, 5, TYPE_BLOCK)], (ITEM_AXE, [20,10], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[25] = MakeTool(u"Stone shovel", u"Digs up dirts or sands", (47,43,43), [(BLOCK_COBBLESTONE, 5, TYPE_BLOCK)], (ITEM_SHOVEL, [20,10], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[26] = MakeTool(u"Iron pickaxe", u"Used to pick stones, ores", (107,107,107), [(ITEM_IRON, 5, TYPE_ITEM, (107,107,107))], (ITEM_PICKAXE, [40,5], (BLOCK_IRONORE, BLOCK_SILVERORE, BLOCK_GOLDORE, BLOCK_DIAMONDORE), 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        # returns: 아이템, 체력깎는 정도, 못파는 광물목록
-        self.makes[27] = MakeTool(u"Iron axe", u"Used to cut trees", (107,107,107), [(ITEM_IRON, 5, TYPE_ITEM, (107,107,107))], (ITEM_AXE, [40,5], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[28] = MakeTool(u"Iron shovel", u"Digs up dirts or sands", (107,107,107), [(ITEM_IRON, 5, TYPE_ITEM, (107,107,107))], (ITEM_SHOVEL, [40,5], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[32] = MakeTool(u"Diamond pickaxe", u"Used to pick stones, ores", (80,212,217), [(ITEM_DIAMOND, 5, TYPE_ITEM, (80,212,217))], (ITEM_PICKAXE, [100,1], (BLOCK_IRONORE, BLOCK_SILVERORE, BLOCK_GOLDORE, BLOCK_DIAMONDORE), 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        # returns: 아이템, 체력깎는 정도, 못파는 광물목록
-        self.makes[33] = MakeTool(u"Diamond axe", u"Used to cut trees", (80,212,217), [(ITEM_DIAMOND, 5, TYPE_ITEM, (80,212,217))], (ITEM_AXE, [100,1], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[34] = MakeTool(u"Diamond shovel", u"Digs up dirts or sands", (80,212,217), [(ITEM_DIAMOND, 5, TYPE_ITEM, (80,212,217))], (ITEM_SHOVEL, [100,1], [], 0, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[35] = MakeTool(u"Silver Enchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (255,255,255), [(ITEM_SENCHANTSCROLL, 2, TYPE_ITEM, (255,255,255))], (ITEM_SENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[36] = MakeTool(u"Gold Enchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (207,207,101), [(ITEM_GENCHANTSCROLL, 2, TYPE_ITEM, (207,207,101))], (ITEM_GENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[37] = MakeTool(u"Diamond\nEnchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (80,212,217), [(ITEM_DENCHANTSCROLL, 2, TYPE_ITEM, (80,212,217))], (ITEM_DENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-
-        self.makes[11] = MakeTool(u"Torch", u"Lights up dark places", (255,255,255), [(ITEM_STICK, 1, TYPE_ITEM, (255,255,255)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_TORCH, [], [], 1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[12] = MakeTool(u"Chest", u"Can hold items and blocks", (255,255,255), [(BLOCK_WOOD, 8, TYPE_BLOCK)], (ITEM_CHEST, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[30] = MakeTool(u"Code", u"Runs python code.\nUsed to launch commands\nor spawn an object\n(Put scripts in scripts directory)", (255,255,255), [(ITEM_GOLD, 4, TYPE_ITEM, (207,207,101)), (ITEM_SILVER, 4, TYPE_ITEM, (201,201,201))], (BLOCK_CODE, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[31] = MakeTool(u"Spawner", u"Spawning spot\n- Machine -", (255,255,255), [(ITEM_GOLD, 4, TYPE_ITEM, (207,207,101)), (ITEM_SILVER, 4, TYPE_ITEM, (201,201,201))], (BLOCK_SPAWNER, [], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes[40] = MakeTool(u"Sword", u"A sword\n- Weapon -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_SWORD, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[41] = MakeTool(u"Spear", u"A spear\n- Two Handed Weapon -", (107,107,107), [(ITEM_IRON, 16, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_SPEAR, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[42] = MakeTool(u"Mace", u"A mace\n- Weapon -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_MACE, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[43] = MakeTool(u"Brass Knuckle", u"A brass knuckle\n- Weapon -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_KNUCKLE, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[44] = MakeTool(u"Shield", u"A shield\n- Shield -", (107,107,107), [(ITEM_IRON, 16, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_SHIELD, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[45] = MakeTool(u"Helm", u"A Helm\n- Helm -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_HELM, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[46] = MakeTool(u"Armor", u"A body armor\n- Armor -", (107,107,107), [(ITEM_IRON, 16, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_ARMOR, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[47] = MakeTool(u"Gloves", u"A pair of gloves\n- Gloves -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_GLOVES, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[48] = MakeTool(u"Boots", u"A pair of boots\n- Boots -", (107,107,107), [(ITEM_IRON, 8, TYPE_ITEM, (107,107,107)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_BOOTS, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[50] = MakeTool(u"Silver Ring", u"A silver ring\n- Ring -", (201,201,201), [(ITEM_SILVER, 1, TYPE_ITEM, (201,201,201)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_SILVERRING, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[51] = MakeTool(u"Silver Necklace", u"A silver necklace\n- Necklace -", (201,201,201), [(ITEM_SILVER, 1, TYPE_ITEM, (201,201,201)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_SILVERNECLACE, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[52] = MakeTool(u"Gold Ring", u"A gold ring\n- Ring -", (207,207,101), [(ITEM_GOLD, 1, TYPE_ITEM, (207,207,101)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_GOLDRING, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[53] = MakeTool(u"Gold Necklace", u"A gold necklace\n- Necklace -", (207,207,101), [(ITEM_GOLD, 1, TYPE_ITEM, (207,207,101)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_GOLDNECLACE, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[54] = MakeTool(u"Diamond Ring", u"A diamond ring\n- Ring -", (80,212,217), [(ITEM_DIAMOND, 1, TYPE_ITEM, (80,212,217)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_DIAMONDRING, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[55] = MakeTool(u"Diamond Necklace", u"A diamond necklace\n- Necklace -", (80,212,217), [(ITEM_DIAMOND, 1, TYPE_ITEM, (80,212,217)), (ITEM_COAL, 1, TYPE_ITEM, (60,60,60))], (ITEM_DIAMONDNECLACE, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[56] = MakeTool(u"Blank Scroll", u"Used to make enchant scrolls", (255,255,255), [(BLOCK_WOOD, 1, TYPE_BLOCK)], (ITEM_SCROLL, [], [], 64, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[57] = MakeTool(u"Silver Enchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (255,255,255), [(ITEM_SILVER, 5, TYPE_ITEM, (201,201,201)), (ITEM_SCROLL, 1, TYPE_ITEM, (201,201,201))], (ITEM_SENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[58] = MakeTool(u"Gold Enchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (207,207,101), [(ITEM_GOLD, 5, TYPE_ITEM, (207,207,101)), (ITEM_SCROLL, 1, TYPE_ITEM, (201,201,201))], (ITEM_GENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes[59] = MakeTool(u"Diamond\nEnchant Scroll", u"Used to enchant an item\n(Right click on target item\nwhile holding it)", (80,212,217), [(ITEM_DIAMOND, 5, TYPE_ITEM, (80,212,217)), (ITEM_SCROLL, 1, TYPE_ITEM, (201,201,201))], (ITEM_DENCHANTSCROLL, [], [], -1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-
-        self.makes2 = [ITEM_NONE for i in range(60)] # 환전
-        self.makes3 = [ITEM_NONE for i in range(60)] # 컬러블럭. 128컬러만 지원. 인덱스를 가지고 있을 뿐이다. 그 중 60컬러
-        self.makes4 = [ITEM_NONE for i in range(60)] # 컬러블럭. 또다른 60컬러. 120컬러까지만 하자.
-        # 실제 구현은 음.....실제 컬러 버퍼 자체도 128컬러만 지원하도록 하자. 청크 버퍼와 똑같은 컬러버퍼를 둔다. 컬러의 인덱스만 저장하고 있다.
-        # 120개의 컬러를 어떻게 할까? 
-        # GIMP에서 가장 튀어보이는 컬러 11개를 골라 10단계로 나누고, 나머지 1개의 10단계를 그레이스케일.
-        # 컬러블럭은 렌더링도 다르게 해야한다.
-        #
-        # HSV로 S 3단계, V3단계를 하고
-        # H 11단계
-        # 나머지는 그레이스케일 10단계로 한다.
-        # 그냥 360을 12로 나눠서 쓰고
-        # S,V는 25부터 100을 3으로 나눠저 25, 50, 75, 25, 50, 75, (100, 100)
-        # 이렇게 한 후에 RGB로 변환한 표를 만들자.
-        #
-        # 그래도 되고.... 그냥 RGB의 조합을 
-        # R,G,B를 각각 5단계로 나누면 125컬러가 나오는데 여기서 5컬러만 빼면 된다.
-        # 뭘빼지? R,G,B가 약한 51,0,0 0,51,0  0,0,51 빼고 51,51,0, 0,51,51 51,0,51 빼면 될 듯. 119컬러! 검은색인지 빨간색인지 구별이 안감 ㅇㅇ?
-        # 51대신 153? 102를 빼도록 하자. 음....
-        # 으 다 좋은데?;;; 51을 빼자. 아니. 255가 들어가는 게 제일 별로다. 255가 들어가는 걸 빼자.
-
-        self.colors = [
-                ]
-        for b in range(5):
-            for g in range(5):
-                for r in range(5):
-                    if r == 0 and b == 0 and g == 0:
-                        self.colors += [[r*51, g*51, b*51]]
-                    elif r == 4 and b == 4 and g == 4:
-                        self.colors += [[r*51, g*51, b*51]]
-                    elif r in [4,0] and b in [4,0] and g in [4,0]:
-                        pass
-                    else:
-                        self.colors += [[r*51, g*51, b*51]]
-
-
-
-
-
-
-
-
-        self.recipeTextID = self.textRenderer.NewTextObject(u"Recipe:", (0,0,0))
-        self.enchantTextID = self.textRendererSmall.NewTextObject(u"Enchant Count", (0,0,0))
-        self.enchantSlashTextID = self.textRenderer.NewTextObject(u"/", (0,0,0))
-        self.charTabID = self.textRendererSmall.NewTextObject(u"Char", (0,0,0))
-        self.strID = self.textRendererSmall.NewTextObject(u"Str:", (0,0,0))
-        self.dexID = self.textRendererSmall.NewTextObject(u"Dex:", (0,0,0))
-        self.intID = self.textRendererSmall.NewTextObject(u"Int:", (0,0,0))
-        self.skillTabID = self.textRendererSmall.NewTextObject(u"Skills", (0,0,0))
-        self.swordID = self.textRendererSmall.NewTextObject(u"Sword:", (0,0,0))
-        self.maceID = self.textRendererSmall.NewTextObject(u"Mace:", (0,0,0))
-        self.spearID = self.textRendererSmall.NewTextObject(u"Spear:", (0,0,0))
-        self.knuckleID = self.textRendererSmall.NewTextObject(u"Knuckle:", (0,0,0))
-        self.armorID = self.textRendererSmall.NewTextObject(u"Armor:", (0,0,0))
-        self.magicID = self.textRendererSmall.NewTextObject(u"Magic:", (0,0,0))
-        self.atkID = self.textRendererSmall.NewTextObject(u"Melee:", (0,0,0))
-        self.dfnID = self.textRendererSmall.NewTextObject(u"Defense:", (0,0,0))
-        self.patkID = self.textRendererSmall.NewTextObject(u"Poison:", (0,0,0))
-        self.iatkID = self.textRendererSmall.NewTextObject(u"Ice:", (0,0,0))
-        self.fatkID = self.textRendererSmall.NewTextObject(u"Fire:", (0,0,0))
-        self.eatkID = self.textRendererSmall.NewTextObject(u"Electric:", (0,0,0))
-        self.resID = self.textRendererSmall.NewTextObject(u"- Resist -", (0,0,0))
-
-        
-        # 컬러를 저장해야한다. ok
-        # invModeIdx = 0
-        # modeIdx += 1
-        # if modeIdx >= 4
-            # modeIDx = 0
-        # makes3을 만들 때에는 컬러를 잘 넣고, toolStrength있는데다가 컬러 인덱스를 넣어 저장하게 한다.
-        # DoMake를 할 때에는 BLOCK_COLOR인지를 보고 컬러라는 속성을 아이템에 넣는다.
-        self.invModeIdx = 0
-
-        for i in range(60):
-            self.makes3[i] = MakeTool(u"Color Block", u"A color block", tuple(self.colors[i]), [(ITEM_SILVER, 1, TYPE_ITEM, (201,201,201))], (BLOCK_COLOR, [i], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        for i in range(59):
-            self.makes4[i] = MakeTool(u"Color Block", u"A color block", tuple(self.colors[i+60]), [(ITEM_SILVER, 1, TYPE_ITEM, (201,201,201))], (BLOCK_COLOR, [i+60], [], 1, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-
-
-        self.makes2[0] = MakeTool(u"Buy silvers", u"Buy 3 silvers with 2 golds", (201,201,201), [(ITEM_GOLD, 2, TYPE_ITEM, (207,207,101))], (ITEM_SILVER, [], [], 3, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[1] = MakeTool(u"Buy silvers", u"Buy 2 silvers with 1 diamond", (201,201,201), [(ITEM_DIAMOND, 1, TYPE_ITEM,  (80,212,217))], (ITEM_SILVER, [], [], 2, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[2] = MakeTool(u"Buy golds", u"Buy 2 golds with 3 silvers",(207,207,101), [(ITEM_SILVER, 3, TYPE_ITEM,  (201,201,201))], (ITEM_GOLD, [], [], 2, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[3] = MakeTool(u"Buy golds", u"Buy 4 golds with 3 diamonds",(207,207,101), [(ITEM_DIAMOND, 3, TYPE_ITEM,  (80,212,217))], (ITEM_GOLD, [], [], 4, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[4] = MakeTool(u"Buy diamonds", u"Buy 1 diamond with 2 silvers",(80,212,217), [(ITEM_SILVER, 2, TYPE_ITEM,  (201,201,201))], (ITEM_DIAMOND, [], [], 1, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[5] = MakeTool(u"Buy diamonds", u"Buy 3 diamond with 4 golds",(80,212,217), [(ITEM_GOLD, 4, TYPE_ITEM,  (207,207,101))], (ITEM_DIAMOND, [], [], 3, TYPE_ITEM), self.textRenderer, self.textRendererSmall)
-        self.makes2[6] = MakeTool(u"Buy cobblestones", u"Buy 64 cobblestones\nfor 16 silver",(80,212,217), [(ITEM_SILVER, 16, TYPE_ITEM,  (201,201,201))], (BLOCK_COBBLESTONE, [], [], 64, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes2[7] = MakeTool(u"Buy woods", u"Buy 64 woords\nfor 16 silver",(80,212,217), [(ITEM_SILVER, 16, TYPE_ITEM,  (201,201,201))], (BLOCK_WOOD, [], [], 64, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes2[8] = MakeTool(u"Buy glasses", u"Buy 64 glasses\nfor 32 silver",(80,212,217), [(ITEM_SILVER, 32, TYPE_ITEM,  (201,201,201))], (BLOCK_GLASS, [], [], 64, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes2[9] = MakeTool(u"Buy grasses", u"Buy 64 grasses\nfor 16 silver",(80,212,217), [(ITEM_SILVER, 16, TYPE_ITEM,  (201,201,201))], (BLOCK_GRASS, [], [], 64, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-        self.makes2[10] = MakeTool(u"Buy dirts", u"Buy 64 dirts\nfor 16 silver",(80,212,217), [(ITEM_SILVER, 16, TYPE_ITEM,  (201,201,201))], (BLOCK_DIRT, [], [], 64, TYPE_BLOCK), self.textRenderer, self.textRendererSmall)
-
-        self.invSlotPos = []
-        invX, invY = self.invRealPos
-        for y in range(6):
-            for x in range(10):
-                self.invSlotPos += [(invX+x*30, invY+y*30)]
-
-        self.qbSlotPos = []
-        invX, invY = self.qbarRealPos
-        y=0
-        for x in range(10):
-            self.qbSlotPos += [(invX+x*30, invY+y*30)]
-
-        self.makeSlotPos = []
-        invX, invY = self.makeRealPos
-        for y in range(6):
-            for x in range(10):
-                self.makeSlotPos += [(invX+x*30, invY+y*30)]
-
-        self.eqSlotPos = []
-        self.charTab = True
-
-        '''
-        무기
-        방패
-        모자
-        몸통
-        장갑
-        신발
-        목걸이
-        반지
-
-        0, 200
-
-        26,228
-        26,262
-        26,296
-        26,330
-
-        250,228
-        250,262
-        250,296
-        250,330
-
-        '''
-        for i in range(4):
-            self.eqSlotPos += [(self.makeRealPos[0]+23, self.makeRealPos[1]+25+i*34)]
-        for i in range(4):
-            self.eqSlotPos += [(self.makeRealPos[0]+247, self.makeRealPos[1]+25+i*34)]
-
-        '''
-        self.PutItemInInventory(Item(ITEM_GOLD, 64, color = (207,207,101), stackable=True))
-        self.PutItemInInventory(Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True))
-        self.PutItemInInventory(Block(BLOCK_CODE, 64))
-        self.PutItemInInventory(Block(BLOCK_CPU, 64))
-        self.PutItemInInventory(Block(BLOCK_ENERGY, 64))
-        self.PutItemInInventory(Item(ITEM_IRON, 64, color = (107,107,107), stackable=True))
-        self.PutItemInInventory(Item(ITEM_IRON, 64, color = (107,107,107), stackable=True))
-        self.PutItemInInventory(Item(ITEM_GOLD, 64, color = (207,207,101), stackable=True))
-        self.PutItemInInventory(Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True))
-        self.PutItemInInventory(Item(ITEM_DIAMOND, 64, color = (80,212,217), stackable=True))
-        self.PutItemInInventory(Block(BLOCK_LOG, 64))
-        self.PutItemInInventory(Item(ITEM_IRON, 64, color = (107,107,107), stackable=True))
-        self.PutItemInInventory(Item(ITEM_GOLD, 64, color = (207,207,101), stackable=True))
-        self.PutItemInInventory(Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True))
-        self.PutItemInInventory(Item(ITEM_DIAMOND, 64, color = (80,212,217), stackable=True))
-        '''
-        '''
-        self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_DIAMOND, 64, color = (80,212,217), stackable=True) for i in range(60)]))
-        self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_GOLD, 64, color = (207,207,80), stackable=True) for i in range(60)]))
-        self.PutItemInInventory(Item(ITEM_CHEST, 1, color=(255,255,255), stackable=False, inv=[Item(ITEM_SILVER, 64, color = (201,201,201), stackable=True) for i in range(60)]))
-        '''
-        #self.PutItemInInventory(Block(BLOCK_COBBLESTONE, 64))
-        #self.PutItemInInventory(Block(BLOCK_DIRT, 64))
-
-
-        # 여기서 텍스쳐를 생성한다.
-    def OnIME(self, text):
-        pass
-    def CanPutItemInInventory(self, item):
-        for invItem in self.qbar+self.inventory:
-            if not invItem:
-                continue
-            if invItem.type_ == item.type_ and invItem.count+item.count < invItem.maxLen and invItem.name == item.name and invItem.stackable:
-                return True
-
-        idx = 0
-        for item_ in self.qbar[:]:
-            if item_ == ITEM_NONE:
-                return True
-            idx += 1
-
-        idx = 0
-        for item_ in self.inventory[:]:
-            if item_ == ITEM_NONE:
-                return True
-            idx += 1
-        return False
-
-    def PutItemInInventory(self, item):
-        for invItem in self.qbar+self.inventory:
-            if invItem == ITEM_NONE:
-                continue
-            if invItem.type_ == item.type_ and invItem.count+item.count <= invItem.maxLen and invItem.name == item.name and invItem.stackable and invItem.colorIdx == item.colorIdx:
-                invItem.count += item.count
-                return True
-
-        idx = 0
-        for item_ in self.qbar[:]:
-            if item_ == ITEM_NONE:
-                self.qbar[idx] = item
-                return True
-            idx += 1
-
-        idx = 0
-        for item_ in self.inventory[:]:
-            if item_ == ITEM_NONE:
-                self.inventory[idx] = item
-                return True
-            idx += 1
-        return False
-    def ShowInventory(self, show):
-        # 끌 떄: 아이템을 들고 있는 경우 제자리에 돌려놓음 XXX:
-        # 아닌경우 걍 끔
-        #
-        #
-        # 이제 아이템 반으로 나누기
-        # 아이템 반 나눈 거 드랍하기
-        # 아이템 합치기
-        # 아이템 들고있던거 제자리에 못넣을 경우 빈자리에 넣거나 빈공간에 합치기
-        if show == False:
-            pygame.mouse.set_visible(False)
-            pygame.mouse.set_pos(SW/2, SH/2)
-        else:
-            pygame.mouse.set_visible(True)
-        if show == False and self.dragging:
-            self.dragging = False
-            x,y = self.dragPos
-            if not self.dragCont[y*10+x]:
-                self.dragCont[y*10+x] = self.draggingItem
-            else:
-                if self.CanPutItemInInventory(self.draggingItem):
-                    self.PutItemInInventory(self.draggingItem)
-                else:
-                    AppSt.DropItem(self.draggingItem)
-
-        self.setInvShown = show
-
-    def Tick(self, t, m, k):
-        pass
-    def Motion(self, t, m, k):
-        self.selectedMakeTool = -1
-        if self.invShown:
-            if self.toolMode == TM_TOOL:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    x = foundIdx % 10
-                    y = (foundIdx - x) / 10
-                    self.selectedMakeTool = foundIdx
-
-
-            idx = 0
-            foundIdx = -1
-            self.selectedContItem = ITEM_NONE
-            for pos in self.invSlotPos:
-                x,y = pos
-                if InRect(x,y,30,30,m.x,m.y):
-                    foundIdx = idx
-                    break
-                idx += 1
-            if foundIdx != -1:
-                self.selectedContItem = self.inventory[foundIdx]
-
-            idx = 0
-            foundIdx = -1
-            for pos in self.qbSlotPos:
-                x,y = pos
-                if InRect(x,y,30,30,m.x,m.y):
-                    foundIdx = idx
-                    break
-                idx += 1
-
-            if foundIdx != -1:
-                self.selectedContItem = self.qbar[foundIdx]
-
-            if self.toolMode == TM_BOX:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    self.selectedContItem = self.selectedBox[foundIdx]
-            elif self.toolMode == TM_EQ:
-                idx = 0
-                foundIdx = -1
-                for pos in self.eqSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    self.selectedContItem = self.eqs[foundIdx]
-
-            elif self.toolMode == TM_CHAR and not self.charTab:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    skills = self.skills
-                    
-                    if idx < len(skills):
-                        self.selectedContItem = skills[idx]
-
-    def LDown(self, t, m, k):
-        if self.toolMode == TM_CHAR:
-            pass # XXX:#
-        if self.toolMode in [TM_BOX, TM_TOOL, TM_EQ, TM_CHAR]:
-            self.OnDown(t,m,k,False)
-
-
- 
-    def DoCont(self,x,y,cont, rmb = False):
-        if self.dragging:
-            #drop or swap
-            # real crazy nested if elses
-            def Drop():
-                self.dragging = False
-                cont[y*10+x] = self.draggingItem
-                self.draggingItem = None
-                self.dragPos = None
-                self.dragCont = None
-            def Swap():
-                if self.draggingItem.type_ == cont[y*10+x].type_ and self.draggingItem.name == cont[y*10+x].name and self.draggingItem.stackable and self.draggingItem.colorIdx == cont[y*10+x].colorIdx:
-                    if self.draggingItem.count+cont[y*10+x].count <= cont[y*10+x].maxLen:
-                        cont[y*10+x].count += self.draggingItem.count 
-                        self.dragging = False
-                    else:
-                        temp = self.draggingItem.count + cont[y*10+x].count
-                        cont[y*10+x].count = 64
-                        self.draggingItem.count = temp-64
-                else:
-                    self.draggingItem, cont[y*10+x] = cont[y*10+x], self.draggingItem
-                # swap or combine
-
-            if cont[y*10+x]:
-                if not rmb:
-                    Swap()
-                else:
-                    if self.draggingItem.type_ in [ITEM_SENCHANTSCROLL, ITEM_GENCHANTSCROLL, ITEM_DENCHANTSCROLL] and cont[y*10+x].type_ in [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE, ITEM_SHIELD,ITEM_HELM,ITEM_ARMOR,ITEM_BOOTS,ITEM_GLOVES,ITEM_SILVERNECLACE, ITEM_GOLDNECLACE, ITEM_DIAMONDNECLACE,ITEM_SILVERRING, ITEM_GOLDRING, ITEM_DIAMONDRING]:
-                        item = cont[y*10+x]
-                        if item.enchantCount < item.maxEnchant:
-                            self.ApplyEnchantScroll(cont[y*10+x], self.draggingItem)
-                            self.dragging = False
-                            self.draggingItem = None
-                            self.dragPos = None
-                            self.dragCont = None
-                    elif self.draggingItem.type_ == cont[y*10+x].type_ and self.draggingItem.name == cont[y*10+x].name and self.draggingItem.stackable and self.draggingItem.colorIdx == cont[y*10+x].colorIdx:
-                        if self.draggingItem.count > 1:
-                            half = self.draggingItem.count / 2
-                            self.draggingItem.count -= half
-
-                            if half+cont[y*10+x].count <= cont[y*10+x].maxLen:
-                                cont[y*10+x].count += half
-                            else:
-                                temp = half + cont[y*10+x].count
-                                cont[y*10+x].count = 64
-                                self.draggingItem.count += temp-64
-                        else:
-                            Swap()
-                    else:
-                        Swap()
-            else:
-                if not rmb:
-                    Drop()
-                else:
-                    if self.draggingItem.stackable and self.draggingItem.count > 1:
-                        half = self.draggingItem.count / 2
-                        self.draggingItem.count -= half
-                        if self.draggingItem.name == TYPE_BLOCK:
-                            cont[y*10+x] = Block(self.draggingItem.type_, half)
-                        elif self.draggingItem.name == TYPE_ITEM:
-                            cont[y*10+x] = Item(self.draggingItem.type_, half, color=self.draggingItem.color, stackable=True)
-                    else:
-                        Drop()
-        else:
-            # pick
-            if cont[y*10+x]:
-                def Pick():
-                    self.dragging = True
-                    self.draggingItem = cont[y*10+x]
-                    self.dragPos = (x,y)
-                    self.dragCont = cont
-                    cont[y*10+x] = ITEM_NONE
-
-                if not rmb:
-                    Pick()
-                else:
-                    if cont[y*10+x].count > 1 and cont[y*10+x].stackable:
-                        half = cont[y*10+x].count / 2
-                        cont[y*10+x].count -= half
-                        self.dragging = True
-                        item = cont[y*10+x]
-                        if item.name == TYPE_BLOCK:
-                            self.draggingItem = Block(cont[y*10+x].type_, half)
-                        elif item.name == TYPE_ITEM:
-                            self.draggingItem = Item(item.type_, half, color=item.color, stackable=True)
-
-                        self.dragPos = (x,y)
-                        self.dragCont = cont
-                    else:
-                        Pick()
-
-            # start dragging
- 
-    def RDown(self, t, m, k):
-        if self.toolMode in [TM_BOX, TM_TOOL, TM_EQ]:
-            self.OnDown(t,m,k,True)
-
-
-    def ApplyEnchantScroll(self, item, scroll):
-        if not item.element:
-            item.element = FightingElements("Item", (0,0,0), {})
-        item.element.ApplyEnchantScroll(item.type_, scroll)
-        item.enchantCount += 1
-    def DoEquip(self, idx):
-        # dragging이 있으면 그걸 입을수있는지 검사
-        # 없으면 언이큅
-        '''
-        u"RightHand",
-        u"LeftHand",
-        u"Head",
-        u"Body",
-        u"Gloves",
-        u"Boots",
-        u"Necklace",
-        u"Ring",]
-        '''
-
-        if self.draggingItem and self.draggingItem.name == "Item" and self.draggingItem.type_ in [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE, ITEM_SHIELD, ITEM_GLOVES, ITEM_BOOTS, ITEM_GOLDRING, ITEM_GOLDNECLACE, ITEM_HELM, ITEM_ARMOR, ITEM_SILVERRING, ITEM_SILVERNECLACE, ITEM_DIAMONDRING, ITEM_DIAMONDNECLACE]:
-            item = self.draggingItem
-            def Drop():
-                self.dragging = False
-                self.eqs[idx] = self.draggingItem
-                self.draggingItem = None
-                self.dragPos = None
-                self.dragCont = None
-            def Swap():
-                self.draggingItem, self.eqs[idx] = self.eqs[idx], self.draggingItem
-
-            idxToTypes = [
-                    [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE, ITEM_SHIELD],
-                    [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE, ITEM_SHIELD],
-                    [ITEM_HELM],
-                    [ITEM_ARMOR],
-                    [ITEM_GLOVES],
-                    [ITEM_BOOTS],
-                    [ITEM_SILVERNECLACE, ITEM_GOLDNECLACE, ITEM_DIAMONDNECLACE],
-                    [ITEM_SILVERRING, ITEM_GOLDRING, ITEM_DIAMONDRING]
-                    ]
-            idx2 = 0
-            for types in idxToTypes:
-                if idx == idx2:
-                    if item.type_ in types:
-                        if not self.eqs[1] and self.eqs[0] and idx2 == 1 and self.eqs[0].type_ == ITEM_SPEAR:
-                            self.draggingItem, self.eqs[idx2] = self.eqs[0], self.draggingItem
-                            self.eqs[0] = ITEM_NONE
-                        elif not self.eqs[0] and self.eqs[1] and idx2 == 0 and self.eqs[1].type_ == ITEM_SPEAR:
-                            self.draggingItem, self.eqs[idx2] = self.eqs[1], self.draggingItem
-                            self.eqs[1] = ITEM_NONE
-                        elif not self.eqs[1] and self.eqs[0] and idx2 == 1 and self.draggingItem.type_ != self.eqs[0].type_ and not ((self.eqs[0].type_ != ITEM_SHIELD and self.draggingItem.type_ == ITEM_SHIELD) or (self.eqs[0].type_ == ITEM_SHIELD and self.draggingItem.type_ != ITEM_SHIELD)):
-                            self.draggingItem, self.eqs[idx2] = self.eqs[0], self.draggingItem
-                            self.eqs[0] = ITEM_NONE
-                        elif not self.eqs[0] and self.eqs[1] and idx2 == 0 and self.draggingItem.type_ != self.eqs[1].type_ and not ((self.eqs[1].type_ != ITEM_SHIELD and self.draggingItem.type_ == ITEM_SHIELD) or (self.eqs[1].type_ == ITEM_SHIELD and self.draggingItem.type_ != ITEM_SHIELD)):
-                            self.draggingItem, self.eqs[idx2] = self.eqs[1], self.draggingItem
-                            self.eqs[1] = ITEM_NONE
-                        elif self.eqs[idx]:
-                            Swap()
-                        else:
-                            Drop()
-                    break
-                idx2 += 1
-        elif not self.dragging and self.eqs[idx]:
-            def Pick():
-                self.dragging = True
-                self.draggingItem = self.eqs[idx]
-                self.dragPos = (idx,0)
-                self.dragCont = self.eqs
-                self.eqs[idx] = ITEM_NONE
-            Pick()
-
-    def OnDown(self, t, m, k, rmb=False):
-        if self.invShown:
-            idx = 0
-            foundIdx = -1
-            for pos in self.invSlotPos:
-                x,y = pos
-                if InRect(x,y,30,30,m.x,m.y):
-                    foundIdx = idx
-                    break
-                idx += 1
-            if foundIdx != -1:
-                x = foundIdx % 10
-                y = (foundIdx - x) / 10
-                if not self.dragging:
-                    self.DoCont(x,y, self.inventory, rmb)
-                elif self.dragging and self.draggingItem.name != "Skill":
-                    self.DoCont(x,y, self.inventory, rmb)
-
-            idx = 0
-            foundIdx = -1
-            for pos in self.qbSlotPos:
-                x,y = pos
-                if InRect(x,y,30,30,m.x,m.y):
-                    foundIdx = idx
-                    break
-                idx += 1
-
-            if foundIdx != -1:
-                x = foundIdx % 10
-                y = (foundIdx - x) / 10
-                self.DoCont(x,y, self.qbar, rmb)
-
-            if self.toolMode == TM_TOOL:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    x = foundIdx % 10
-                    y = (foundIdx - x) / 10
-                    self.DoMake(foundIdx)
-
-
-            elif self.toolMode == TM_BOX:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    x = foundIdx % 10
-                    y = (foundIdx - x) / 10
-
-                    if self.dragging and self.draggingItem.name != "Skill":
-                        self.DoCont(x,y,self.selectedBox, rmb)
-                    elif not self.dragging:
-                        self.DoCont(x,y,self.selectedBox, rmb)
-
-            elif self.toolMode == TM_EQ:
-                idx = 0
-                foundIdx = -1
-                for pos in self.eqSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    x = foundIdx % 10
-                    y = (foundIdx - x) / 10
-                    self.DoEquip(foundIdx)
-
-            elif self.toolMode == TM_CHAR and not self.charTab:
-                idx = 0
-                foundIdx = -1
-                for pos in self.makeSlotPos:
-                    x,y = pos
-                    if InRect(x,y,30,30,m.x,m.y):
-                        foundIdx = idx
-                        break
-                    idx += 1
-
-                if foundIdx != -1:
-                    x = foundIdx % 10
-                    y = (foundIdx - x) / 10
-                    if self.dragging and self.draggingItem.name == "Skill":
-                        self.DoCont(x,y,self.skills, rmb)
-                    elif not self.dragging:
-                        self.DoCont(x,y,self.skills, rmb)
-
-
-    def GenElement(self, gentype): # 스킬 레벨이 높을수록 보너스도 더 높은게 나온다.
-        # 최대 현재 스킬 레벨과 같은 수준의 인챈트 스크롤이 나올 수 있다. 간단함
-        # 음 스킬이 더럽게 안오르니까 몹을 캐릭터의 수준에 맞춰서 생성하고 그러자....
-        # 굴곡이 좀 있어서 한 번 생성된 몹 중 강한놈 못잡으면 나중에 잡을 수 있도록 하고 강한 몹이라면 더 좋은 걸 줘야겠지....
-        # 울온엔 장식용 아이템이 참 많다. 심즈처럼 많지는 않지만 그정도 수준이다. 음...........
-        #
-        # 아 여러 지역을 두고 그 지역에는 어떤 특정한 몹이 나오도록 뭐 그렇게 해볼까.
-        # 무한 맵이라고 해서 맵을 넓게 쓸 필요가 없음;
-        # 미니맵이나 전체지도 만들어야함 XXX:
-
-
-        # 나머지는 +1~5
-        # 1/10확률로 +10
-        # 1/100 확률로 +20 -- 보통 이걸 뽑을 듯.
-        # 1/1000 확률로 +100 -- 대박, 보스급 몹이 나온다. 일정 확률로 +1000 스크롤을 드랍한다 - 한 100마리 잡으면 나오게 한다. 이 쯤 되면 뽑기가 더 쉬울 정도로 돈을 벌테니까. 실버 골드 다이아 5000개 정도는 껌으로 얻게 한다.
-        # 1/10000 확률로 +1000 -- 나오긴 하나. 특이한 몹이 나온다. 일정 확률로 +5000 스크롤을 드랍한다. 한 1000마리 잡으면 나오게 한다.
-        # 1/100000 확률로 +5000 -- 이게 나오면 진짜 대박.. 숨겨진 최종보스가 나온다.
-        def GenPlus():
-            rand = random.randint(0,100000)
-            if rand == 50000:
-                return 5000
-            elif 60000 <= rand <= 70000:
-                return 10
-            elif 70001 <= rand <= 71000:
-                return 20
-            elif 80001 <= rand <= 80100:
-                return 100
-            elif 90001 <= rand <= 90010:
-                return 1000
-            else:
-                return random.randint(1,5)
-        if gentype == ITEM_SENCHANTSCROLL:
-            skills = [skill.skill for skill in AppSt.entity.magics.itervalues()]
-            skills += [skill.skill for skill in AppSt.entity.swordSkills.itervalues()]
-            skills += [skill.skill for skill in AppSt.entity.maceSkills.itervalues()]
-            skills += [skill.skill for skill in AppSt.entity.spearSkills.itervalues()]
-            skills += [skill.skill for skill in AppSt.entity.knuckleSkills.itervalues()]
-            bonusSkills = {}
-            plus = GenPlus()
-            for skill in skills:
-                bonusSkills[skill.name] = plus
-
-            selected = [bonusSkills.keys()[random.randint(0, len(bonusSkills.values())-1)] for i in range(3)]
-            params = {}
-            for selectedKey in selected:
-                if selectedKey in params:
-                    params[selectedKey] += bonusSkills[selectedKey]
-                else:
-                    params[selectedKey] = bonusSkills[selectedKey]
-            element = FightingElements("Silver", (0,0,0), params) # 여기서 아이템을 제작하는 코드가 다있다. XXX:
-        if gentype == ITEM_GENCHANTSCROLL:
-            plus = GenPlus()
-            basehp = plus
-            basemp = plus
-            str = plus
-            dex = plus
-            int_ = plus
-            atk = plus
-            dfn = plus
-            fatk = plus
-            eatk = plus
-            iatk = plus
-            patk = plus
-            fres = plus
-            eres = plus
-            ires = plus
-            pres = plus
-            stats = {
-                    "HP": basehp,
-                    "MP": basemp,
-                    "Str":str,
-                    "Dex":dex,
-                    "Int":int_,
-                    "Melee Damage":atk,
-                    "Defense":dfn,
-                    "Fire Damage":fatk,
-                    "Electric Damage":eatk,
-                    "Ice Damage":iatk,
-                    "Poison Damage":patk,
-                    "Fire Resist":fres,
-                    "Electric Resist":eres,
-                    "Ice Resist":ires,
-                    "Poison Resist":pres}
-            selected = [stats.keys()[random.randint(0, len(stats.values())-1)] for i in range(3)]
-            params = {}
-            for selectedKey in selected:
-                if selectedKey in params:
-                    params[selectedKey] += stats[selectedKey]
-                else:
-                    params[selectedKey] = stats[selectedKey]
-
-            element = FightingElements("Gold", (0,0,0), params)
-
-        if gentype == ITEM_DENCHANTSCROLL:
-            plus = GenPlus()
-            sword = plus
-            mace = plus
-            spear = plus
-            knuckle = plus
-            armor = plus
-            magic = plus
-            skills = {"Sword Skill": sword, "Mace Skill": mace, "Spear Skill": spear, "Knuckle Skill": knuckle, "Armor Skill": armor, "Magic Skill": magic}
-            selected = [skills.keys()[random.randint(0, len(skills.values())-1)] for i in range(3)]
-            params = {}
-            for selectedKey in selected:
-                if selectedKey in params:
-                    params[selectedKey] += skills[selectedKey]
-                else:
-                    params[selectedKey] = skills[selectedKey]
-            element = FightingElements("Diamond", (0,0,0), params)
-        return element
-        # 음..... maxenchant횟수를 5번으로 적용하고
-        # 만약 스크롤에 maxenchant횟수를 늘리는 게 있다면 그만큼 늘려주고 뭐 이런다.
-        # 맥스인챈트 늘려수는 횟수가 가끔씩 랜덤하게 나온다.
-        # 아이템의 max atk이런건 없고 무제한. 맥스 인챈트 횟수랑
-        # 인챈트 스크롤의 퀄리티가 현재 전투 스킬에 따라 다르게 나오게 한다.
-        # 뭐 SWORD스킬이 좋으면 SWORD스킬 관련 스탯이 좀 더 좋게 나온다던가 이런다.
-        # 마법 스킬이 높으면 방어구나 무기에 마법 관련 스탯이 좋게 나오고 뭐 이런다.
-        # 한 개의 인챈트 스크롤에 나올 수 있는 스탯의 숫자는 정해져있다.
-        # 실버에서는 밀리 전투 스킬관련, 골드에서는 마법 관련 스킬, 다이아에서는 스탯 관련 
-        #
-        # 음......... 어떤 마법 스킬에 따라서 더 좋은 결과가 나온다.
-        # 몬스터도 인챈트 스크롤을 드랍한다. 아이템 대신!
-    def DoMake(self, makeIdx):
-        tool = self.makes[makeIdx]
-        if not tool:
-            return
-
-        type_, stats, disallowed, count, name = tool.returns
-        if name == TYPE_BLOCK:
-            returneditem = Block(type_, count)
-            if type_ == BLOCK_COLOR:
-                returneditem.colorIdx = stats[0]
-                returneditem.color = tool.color
-        elif name == TYPE_ITEM:
-            if type_ in [ITEM_SENCHANTSCROLL, ITEM_GENCHANTSCROLL, ITEM_DENCHANTSCROLL]:
-                #인챈트 스크롤 복사하는 아이템이 고급 몬스터에게서 떨어진다. XXX:
-                element = self.GenElement(type_)
-                returneditem = Item(type_, 1, color=tool.color, element=element)
-                returneditem.maxEnchant = 0
-            elif type_ in [ITEM_GOLDRING, ITEM_GOLDNECLACE, ITEM_HELM, ITEM_ARMOR, ITEM_SILVERRING, ITEM_SILVERNECLACE, ITEM_DIAMONDRING, ITEM_DIAMONDNECLACE]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                if type_ in [ITEM_SILVERNECLACE, ITEM_SILVERRING]:
-                    returneditem.maxEnchant += 2
-                if type_ in [ITEM_GOLDNECLACE, ITEM_GOLDRING]:
-                    returneditem.maxEnchant += 4
-                if type_ in [ITEM_DIAMONDNECLACE, ITEM_DIAMONDRING]:
-                    returneditem.maxEnchant += 6
-            elif type_ in [ITEM_SWORD, ITEM_SPEAR, ITEM_MACE, ITEM_KNUCKLE]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                if type_ == ITEM_SPEAR:
-                    returneditem.element = FightingElements("Weapon", (0,0,0), {"Melee Damage":20})
-                else:
-                    returneditem.element = FightingElements("Weapon", (0,0,0), {"Melee Damage":10})
-            elif type_ in [ITEM_SHIELD]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                returneditem.element = FightingElements("Shield", (0,0,0), {"Defense":10})
-            elif type_ in [ITEM_HELM]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                returneditem.element = FightingElements("Helm", (0,0,0), {"Defense":5})
-            elif type_ in [ITEM_ARMOR]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                returneditem.element = FightingElements("Armor", (0,0,0), {"Defense":10})
-            elif type_ in [ITEM_BOOTS]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                returneditem.element = FightingElements("Boots", (0,0,0), {"Defense":5})
-            elif type_ in [ITEM_GLOVES]:
-                returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                returneditem.element = FightingElements("Gloves", (0,0,0), {"Defense":5})
-
-            # 무기나 방어구에 알맞는 기본 atk, dfn등을 넣어야 한다.
-            # 이용자의 스킬에 따라 더 높은 속성을 넣을 수도 있다?
-            else:
-                if count == 0:
-                    returneditem = Item(type_, 999, color=tool.color, stats=stats)
-                    returneditem.maxEnchant = 0
-                elif count == -1:
-                    returneditem = Item(type_, 1, color=tool.color, stats=stats)
-                    returneditem.maxEnchant = 0
-                else:
-                    returneditem = Item(type_, count, color=tool.color, stackable=True, stats=stats)
-                    returneditem.maxEnchant = 0
-        if not self.CanPutItemInInventory(returneditem):
-            return
-
-        def Make(nDict):
-            for need in tool.needs:
-                count = need[1]
-                makeList = nDict[need]
-                for item, cont in makeList:
-                    if item.count > count:
-                        item.count -= count
-                        count = 0
-                    elif item.count == count:
-                        count = 0
-                        cont[cont.index(item)] = ITEM_NONE
-                    else:
-                        count -= item.count
-                        cont[cont.index(item)] = ITEM_NONE
-            self.PutItemInInventory(returneditem)
-
-        needDict = {}
-        def DoPass(mList, type_, count, name, cont):
-            countNeeds = count
-            for item in cont:
-                if item and item.type_ == type_ and item.name == name:
-                    if item.count >= countNeeds:
-                        mList += [(item, cont)]
-                        return True, countNeeds
-                    else:
-                        mList += [(item, cont)]
-                        countNeeds -= item.count
-            return False, countNeeds
-
-        for need in tool.needs:
-            if len(need) == 3:
-                type_, count, name = need
-            elif len(need) == 4:
-                type_, count, name, color = need
-            cont = self.inventory
-            needDict[need] = []
-            found, count = DoPass(needDict[need], type_, count, name, cont)
-            if not found:
-                cont = self.qbar
-                found, count = DoPass(needDict[need], type_, count, name, cont)
-                if not found:
-                    return
-
-        Make(needDict)
-
-
-
-
-    def LUp(self, t, m, k):
-        pass
-    def RUp(self, t, m, k):
-        pass
-    def WDn(self, t, m, k):
-        self.selectedItem -= 1
-        if self.selectedItem < 0:
-            self.selectedItem = 9
-
-    def WUp(self, t, m, k):
-        self.selectedItem += 1
-        if self.selectedItem > 9:
-            self.selectedItem = 0
-
-    def KDown(self, t, m, k):
-        if k.pressedKey == K_1:
-            self.selectedItem = 0
-        if k.pressedKey == K_2:
-            self.selectedItem = 1
-        if k.pressedKey == K_3:
-            self.selectedItem = 2
-        if k.pressedKey == K_4:
-            self.selectedItem = 3
-        if k.pressedKey == K_5:
-            self.selectedItem = 4
-        if k.pressedKey == K_6:
-            self.selectedItem = 5
-        if k.pressedKey == K_7:
-            self.selectedItem = 6
-        if k.pressedKey == K_8:
-            self.selectedItem = 7
-        if k.pressedKey == K_9:
-            self.selectedItem = 8
-        if k.pressedKey == K_0:
-            self.selectedItem = 9
-
-    def RenderNumberS(self, num, x, y):
-        count = str(num)
-        x = x
-        y = y
-        for c in count:
-            if c == "-":
-                self.textRendererSmall.RenderText(self.numbersS[10], (x, y))
-            else:
-                self.textRendererSmall.RenderText(self.numbersS[int(c)], (x, y))
-            x += 9
-    def RenderNumber(self, num, x, y):
-        count = str(num)
-        x = x
-        y = y
-        for c in count:
-            if c == "-":
-                self.textRenderer.RenderText(self.numbers[10], (x, y))
-            else:
-                self.textRenderer.RenderText(self.numbers[int(c)], (x, y))
-            x += 9
-
-    def Render(self, t, m, k):
-        if t - self.prevAreaT >= self.areaDelay:
-            if self.invShown:
-                self.textRendererArea.Clear()
-                self.prevAreaT = t
-                if self.toolMode == TM_CODE:
-                    self.testFile.Update(self.textRendererArea)
-                elif self.toolMode == TM_SPAWN:
-                    self.testEdit.Update(self.textRendererArea)
-        if self.invShown and self.toolMode == TM_CODE:
-            self.testFile.Render()
-        elif self.invShown and self.toolMode == TM_SPAWN:
-            self.testEdit.Render()
-        if self.invShown:
-            self.textRendererArea.Render()
-        self.talkBox.active = False
-        if self.invShown and self.toolMode == TM_TALK:
-            self.talkBox.active = True
-            self.talkBox.Render()
-        self.msgBox.Render()
-            # XXX: 이거를 음....텍스트 에어리어에 텍스트가 꽉 찼을 때만 업뎃하게 하고 나머지는 그냥
-            # 위로 한칸씩 올리면서 추가하기만 한다.
-
-        glBindTexture(GL_TEXTURE_2D, self.inventex)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-
-    
-        glBegin(GL_QUADS)
-        if self.invShown and self.toolMode in [TM_EQ]:
-            x,y = self.invPos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-
-            x,y = self.makePos
-            glTexCoord2f(0.0, float(186+200)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186+200)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0+200.0/512.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 200.0/512.0)
-            glVertex3f(x, -float(y), 100.0)
-
-        if self.invShown and self.toolMode in [TM_BOX, TM_TOOL]:
-            x,y = self.invPos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-
-            x,y = self.makePos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-
-
-        if self.invShown and self.toolMode == TM_CHAR and not self.charTab:
-            x,y = self.invPos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-
-            x,y = self.makePos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-
-
-
-        x,y = self.qbarPos
-        glTexCoord2f(0.0, float(410+38)/512.0)
-        glVertex3f(float(x), -float(y+38), 100.0)
-
-        glTexCoord2f(float(308)/512.0, float(410+38)/512.0)
-        glVertex3f(float(x+308), -float(y+38), 100.0)
-
-        glTexCoord2f(float(308)/512.0, float(410)/512.0)
-        glVertex3f(float(x+308), -float(y), 100.0)
-
-        glTexCoord2f(0.0, float(410)/512.0)
-        glVertex3f(x, -float(y), 100.0)
-
-        glEnd()
-            # XXX: 여기다가 출력
-            # 출력은 어찌하나.스탯이 오를 때마다 업뎃?
-            # 켤 때마다 업뎃하게 하면 된다. 켠 상태에서 스킬이 올라도 걍 표시하지 않는다?
-            # 아...숫자니까 글자는 스태틱, 숫자는 숫자 렌더러로..
-            # 소수점자리는 표시하지 않음.
-        if self.invShown and self.toolMode == TM_CHAR and self.charTab:
-            glBegin(GL_QUADS)
-            x,y = self.invPos
-            glTexCoord2f(0.0, float(186)/512.0)
-            glVertex3f(float(x), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, float(186)/512.0)
-            glVertex3f(float(x+306), -float(y+186), 100.0)
-
-            glTexCoord2f(float(306)/512.0, 0.0)
-            glVertex3f(float(x+306), -float(y), 100.0)
-
-            glTexCoord2f(0.0, 0.0)
-            glVertex3f(x, -float(y), 100.0)
-            glEnd()
-
-
-            x,y = self.makePos
-            DrawQuad(x,y,306,186, (205,209,184,255), (205,209,184,255))
-            x += 3
-            orgx = x
-            y += 3
-            self.textRendererSmall.RenderText(self.strID, (x,y))
-            x += 25
-            self.RenderNumberS(int(AppSt.entity.str), x,y)
-            x += 30
-            self.textRendererSmall.RenderText(self.dexID, (x,y))
-            x += 25
-            self.RenderNumberS(int(AppSt.entity.dex), x,y)
-            x += 30
-            self.textRendererSmall.RenderText(self.intID, (x,y))
-            x += 25
-            self.RenderNumberS(int(AppSt.entity.int), x,y)
-
-            x = orgx
-            y += 20
-            self.textRendererSmall.RenderText(self.atkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.atk), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.dfnID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.dfn), x,y)
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.swordID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.sword), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.maceID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.mace), x,y)
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.spearID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.spear), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.knuckleID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.knuckle), x,y)
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.armorID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.armor), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.magicID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.magic), x,y)
-
-
-            x = orgx
-            y += 20
-            self.textRendererSmall.RenderText(self.patkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.patk), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.iatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.iatk), x,y)
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.eatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.eatk), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.fatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.fatk), x,y)
-
-            x = orgx
-            y += 20
-            self.textRendererSmall.RenderText(self.resID, (x,y))
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.patkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.pres), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.iatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.ires), x,y)
-
-
-            x = orgx
-            y += 15
-            self.textRendererSmall.RenderText(self.eatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.eres), x,y)
-            x += 100
-            self.textRendererSmall.RenderText(self.fatkID, (x,y))
-            x += 50
-            self.RenderNumberS(int(AppSt.entity.fres), x,y)
-
-
-
-        if self.invShown and self.toolMode == TM_EQ:
-            idx = 0
-            for pos in self.eqSlotPos[:4]:
-                x,y = pos
-                x += 32
-                y += 3
-                self.textRendererSmall.RenderText(self.eqTexts[idx], (x,y))
-                idx += 1
-            for pos in self.eqSlotPos[4:]:
-                x,y = pos
-                x -= 56
-                y += 3
-                self.textRendererSmall.RenderText(self.eqTexts[idx], (x,y))
-                idx += 1
-
-
-
-        def RenderItemEq(item, posx, posy, text=True):
-            x = posx
-            y = posy
-            b = item.type_
-            if item.name == TYPE_BLOCK:
-                glBindTexture(GL_TEXTURE_2D, AppSt.tex)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-                texupx = (BLOCK_TEX_COORDS[b*2*3 + 0]*32.0) / 512.0
-                texupy = (BLOCK_TEX_COORDS[b*2*3 + 1]*32.0) / 512.0
-                glBegin(GL_QUADS)
-                glTexCoord2f(texupx, texupy+float(32)/512.0)
-                glVertex3f(float(x), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(32)/512.0, texupy+float(32)/512.0)
-                glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(32)/512.0, texupy)
-                glVertex3f(float(x+30), -float(y), 100.0)
-
-                glTexCoord2f(texupx, texupy)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-            elif item.name == TYPE_ITEM:
-                glBindTexture(GL_TEXTURE_2D, self.tooltex)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                if item.color:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                else:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-                texupx = (TOOL_TEX_COORDS[b*2 + 0]*30.0) / 512.0
-                texupy = (TOOL_TEX_COORDS[b*2 + 1]*30.0) / 512.0
-                glBegin(GL_QUADS)
-                if item.color:
-                    glColor4ub(*(item.color+(255,)))
-                glTexCoord2f(texupx, texupy+float(30)/512.0)
-                glVertex3f(float(x), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(30)/512.0, texupy+float(30)/512.0)
-                glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(30)/512.0, texupy)
-                glVertex3f(float(x+30), -float(y), 100.0)
-
-                glTexCoord2f(texupx, texupy)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-
-            '''
-            texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
-            texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
-            texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
-            texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            '''
-            if text:
-                self.RenderNumber(item.count, x, y)
-        def RenderSkill(skill, idx, posx, posy, text=True):
-            x = idx%10
-            y = (idx-x)/10
-            x*=30
-            y*=30
-            x += posx
-            y += posy
-            glBindTexture(GL_TEXTURE_2D, self.tooltex)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-            texupx = (skill.texcoord[0]*30.0) / 512.0
-            texupy = (skill.texcoord[1]*30.0) / 512.0
-            glBegin(GL_QUADS)
-            glTexCoord2f(texupx, texupy+float(30)/512.0)
-            glVertex3f(float(x), -float(y+30), 100.0)
-
-            glTexCoord2f(texupx+float(30)/512.0, texupy+float(30)/512.0)
-            glVertex3f(float(x+30), -float(y+30), 100.0)
-
-            glTexCoord2f(texupx+float(30)/512.0, texupy)
-            glVertex3f(float(x+30), -float(y), 100.0)
-
-            glTexCoord2f(texupx, texupy)
-            glVertex3f(x, -float(y), 100.0)
-            glEnd()
-
-            '''
-            texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
-            texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
-            texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
-            texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            '''
-            if text:
-                self.RenderNumber(int(skill.skillPoint), x, y)
-        def RenderItem(item, idx, posx, posy, text=True):
-            x = idx%10
-            y = (idx-x)/10
-            x*=30
-            y*=30
-            x += posx
-            y += posy
-            b = item.type_
-            if item.name == TYPE_BLOCK:
-                glBindTexture(GL_TEXTURE_2D, AppSt.tex)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                if item.type_ == BLOCK_COLOR:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                else:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-                texupx = (BLOCK_TEX_COORDS[b*2*3 + 0]*32.0) / 512.0
-                texupy = (BLOCK_TEX_COORDS[b*2*3 + 1]*32.0) / 512.0
-                glBegin(GL_QUADS)
-                if item.type_ == BLOCK_COLOR:
-                    glColor4ub(*(tuple(item.color)+(255,)))
-                else:
-                    pass
-                glTexCoord2f(texupx, texupy+float(32)/512.0)
-                glVertex3f(float(x), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(32)/512.0, texupy+float(32)/512.0)
-                glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(32)/512.0, texupy)
-                glVertex3f(float(x+30), -float(y), 100.0)
-
-                glTexCoord2f(texupx, texupy)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-                w = 29
-                h = 29
-                y+=1
-                glDisable(GL_TEXTURE_2D)
-
-                glLineWidth(1.0)
-                glBegin(GL_LINES)
-                glColor4f(0.0,0.0,0.0,1.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y), 100.0)
-
-                glVertex3f(float(x+w), -float(y), 100.0)
-                glVertex3f(x, -float(y), 100.0)
-
-                glVertex3f(x, -float(y), 100.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glEnd()
-                glEnable(GL_TEXTURE_2D)
-
-            elif item.name == TYPE_ITEM:
-                glBindTexture(GL_TEXTURE_2D, self.tooltex)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                if item.color:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                else:
-                    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-                texupx = (TOOL_TEX_COORDS[b*2 + 0]*30.0) / 512.0
-                texupy = (TOOL_TEX_COORDS[b*2 + 1]*30.0) / 512.0
-                glBegin(GL_QUADS)
-                if item.color:
-                    glColor4ub(*(item.color+(255,)))
-                glTexCoord2f(texupx, texupy+float(30)/512.0)
-                glVertex3f(float(x), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(30)/512.0, texupy+float(30)/512.0)
-                glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                glTexCoord2f(texupx+float(30)/512.0, texupy)
-                glVertex3f(float(x+30), -float(y), 100.0)
-
-                glTexCoord2f(texupx, texupy)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-
-            '''
-            texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
-            texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
-            texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
-            texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-            '''
-            if text:
-                self.RenderNumber(item.count, x, y)
-
-        if self.invShown:
-            if self.toolMode in [TM_EQ]:
-                idx = 0
-                for item in self.eqs:
-                    if not item:
-                        pass
-                    else:
-                        RenderItemEq(item, self.eqSlotPos[idx][0], self.eqSlotPos[idx][1])
-                    idx += 1
-
-            if self.toolMode in [TM_BOX, TM_TOOL, TM_EQ, TM_CHAR]:
-                idx = 0
-                for item in self.inventory:
-                    if not item:
-                        idx += 1
-                        continue
-
-                    RenderItem(item, idx, self.invRealPos[0], self.invRealPos[1])
-                    idx += 1
-
-            if self.toolMode == TM_CHAR and not self.charTab:
-                idx = 0
-                for skill in self.skills:
-                    if skill:
-                        RenderSkill(skill.skill, idx, self.makeRealPos[0], self.makeRealPos[1])
-                    idx += 1
-                cleared = False
-
-
-            if self.toolMode == TM_BOX:
-                idx = 0
-                for item in self.selectedBox:
-                    if not item:
-                        idx += 1
-                        continue
-
-                    RenderItem(item, idx, self.makeRealPos[0], self.makeRealPos[1])
-                    idx += 1
-            if self.toolMode == TM_TOOL:
-                idx = 0
-                for item in self.makes:
-                    if not item:
-                        idx += 1
-                        continue
-                    type_, stats, disallowed, count, name = item.returns
-                    if name == TYPE_ITEM:
-                        glBindTexture(GL_TEXTURE_2D, self.tooltex)
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-
-                        x = idx%10
-                        y = (idx-x)/10
-                        x*=30
-                        y*=30
-                        x += self.makeRealPos[0]
-                        y += self.makeRealPos[1]
-                        b = item.returns[0]
-                        texupx = (TOOL_TEX_COORDS[b*2 + 0]*30.0) / 512.0
-                        texupy = (TOOL_TEX_COORDS[b*2 + 1]*30.0) / 512.0
-                        '''
-                        texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
-                        texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
-                        texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
-                        texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-                        '''
-
-                        # XXX: 재료가 없으면 배경을 빨간색으로 표시
-                        '''
-                        glDisable(GL_TEXTURE_2D)
-                        glBegin(GL_QUADS)
-                        glColor4ub(200,0,0,200)
-                        glVertex3f(float(x), -float(y+30), 100.0)
-                        glVertex3f(float(x+30), -float(y+30), 100.0)
-                        glVertex3f(float(x+30), -float(y), 100.0)
-                        glVertex3f(x, -float(y), 100.0)
-                        glEnd()
-                        glEnable(GL_TEXTURE_2D)
-                        '''
-
-                        glBegin(GL_QUADS)
-                        glColor4ub(*item.color + (255,))
-                        glTexCoord2f(texupx, texupy+float(30)/512.0)
-                        glVertex3f(float(x), -float(y+30), 100.0)
-
-                        glTexCoord2f(texupx+float(30)/512.0, texupy+float(30)/512.0)
-                        glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                        glTexCoord2f(texupx+float(30)/512.0, texupy)
-                        glVertex3f(float(x+30), -float(y), 100.0)
-
-                        glTexCoord2f(texupx, texupy)
-                        glVertex3f(x, -float(y), 100.0)
-                        glEnd()
-                        idx += 1
-                    elif name == TYPE_BLOCK:
-                        glBindTexture(GL_TEXTURE_2D, AppSt.tex)
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                        if item.returns[0] == BLOCK_COLOR:
-                            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                        else:
-                            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-
-                        x = idx%10
-                        y = (idx-x)/10
-                        x*=30
-                        y*=30
-                        x += self.makeRealPos[0]
-                        y += self.makeRealPos[1]
-                        b = item.returns[0]
-                        texupx = (BLOCK_TEX_COORDS[b*2*3 + 0]*32.0) / 512.0
-                        texupy = (BLOCK_TEX_COORDS[b*2*3 + 1]*32.0) / 512.0
-                        '''
-                        texmidx = (BLOCK_TEX_COORDS[b*2*3 + 2]*32.0) / 512.0
-                        texmidy = (BLOCK_TEX_COORDS[b*2*3 + 3]*32.0) / 512.0
-                        texbotx = (BLOCK_TEX_COORDS[b*2*3 + 4]*32.0) / 512.0
-                        texboty = (BLOCK_TEX_COORDS[b*2*3 + 5]*32.0) / 512.0
-                        '''
-
-                        # XXX: 재료가 없으면 배경을 빨간색으로 표시
-                        '''
-                        glDisable(GL_TEXTURE_2D)
-                        glBegin(GL_QUADS)
-                        glColor4ub(200,0,0,200)
-                        glVertex3f(float(x), -float(y+30), 100.0)
-                        glVertex3f(float(x+30), -float(y+30), 100.0)
-                        glVertex3f(float(x+30), -float(y), 100.0)
-                        glVertex3f(x, -float(y), 100.0)
-                        glEnd()
-                        glEnable(GL_TEXTURE_2D)
-                        '''
-
-                        glBegin(GL_QUADS)
-                        glColor4ub(*item.color + (255,))
-                        glTexCoord2f(texupx, texupy+float(32)/512.0)
-                        glVertex3f(float(x), -float(y+30), 100.0)
-
-                        glTexCoord2f(texupx+float(32)/512.0, texupy+float(32)/512.0)
-                        glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                        glTexCoord2f(texupx+float(32)/512.0, texupy)
-                        glVertex3f(float(x+30), -float(y), 100.0)
-
-                        glTexCoord2f(texupx, texupy)
-                        glVertex3f(x, -float(y), 100.0)
-                        glEnd()
-
-                        w=29
-                        h=29
-                        y+=1
-                        glDisable(GL_TEXTURE_2D)
-                        glLineWidth(1.0)
-                        glBegin(GL_LINES)
-                        glColor4f(0.0,0.0,0.0,1.0)
-                        glVertex3f(float(x), -float(y+h), 100.0)
-                        glVertex3f(float(x+w), -float(y+h), 100.0)
-                        
-                        glVertex3f(float(x+w), -float(y+h), 100.0)
-                        glVertex3f(float(x+w), -float(y), 100.0)
-
-                        glVertex3f(float(x+w), -float(y), 100.0)
-                        glVertex3f(x, -float(y), 100.0)
-
-                        glVertex3f(x, -float(y), 100.0)
-                        glVertex3f(float(x), -float(y+h), 100.0)
-                        glEnd()
-                        glEnable(GL_TEXTURE_2D)
-
-                        idx += 1
-
-                if self.selectedMakeTool != -1 and self.makes[self.selectedMakeTool]:
-                    x,y,w,h = 5, 20, 165, 380
-                    glDisable(GL_TEXTURE_2D)
-                    glBegin(GL_QUADS)
-                    glColor4f(1.0,1.0,1.0,0.85)
-                    glVertex3f(float(x), -float(y+h), 100.0)
-                    glVertex3f(float(x+w), -float(y+h), 100.0)
-                    glVertex3f(float(x+w), -float(y), 100.0)
-                    glVertex3f(x, -float(y), 100.0)
-                    glEnd()
-
-                    glLineWidth(3.0)
-                    glBegin(GL_LINES)
-                    glColor4f(0.0,0.0,0.0,1.0)
-                    glVertex3f(float(x), -float(y+h), 100.0)
-                    glVertex3f(float(x+w), -float(y+h), 100.0)
-                    
-                    glVertex3f(float(x+w), -float(y+h), 100.0)
-                    glVertex3f(float(x+w), -float(y), 100.0)
-
-                    glVertex3f(float(x+w), -float(y), 100.0)
-                    glVertex3f(x, -float(y), 100.0)
-
-                    glVertex3f(x, -float(y), 100.0)
-                    glVertex3f(float(x), -float(y+h), 100.0)
-                    glEnd()
-                    glEnable(GL_TEXTURE_2D)
-
-                    tool = self.makes[self.selectedMakeTool]
-                    y = 0
-                    for textid in tool.textidName:
-                        self.textRenderer.RenderText(textid, (10, 25+y))
-                        y += 20
-                    y += 10
-                    for textid in tool.textidDesc:
-                        self.textRendererSmall.RenderText(textid, (10, 25+y))
-                        y += 15
-                    y += 10
-                    self.textRenderer.RenderText(self.recipeTextID, (10, 25+y))
-                    y += 20+25
-
-                    x = 10
-                    for need in tool.needs:
-                        if len(need) == 3:
-                            item, count, textype = need
-                            color=(255,255,255)
-                        elif len(need) == 4:
-                            item, count, textype, color = need
-                        if textype == TYPE_BLOCK:
-                            glBindTexture(GL_TEXTURE_2D, AppSt.tex)
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
-                            texupx = (BLOCK_TEX_COORDS[item*2*3 + 0]*32.0) / 512.0
-                            texupy = (BLOCK_TEX_COORDS[item*2*3 + 1]*32.0) / 512.0
-                            glBegin(GL_QUADS)
-                            glTexCoord2f(texupx, texupy+float(32)/512.0)
-                            glVertex3f(float(x), -float(y+30), 100.0)
-
-                            glTexCoord2f(texupx+float(32)/512.0, texupy+float(32)/512.0)
-                            glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                            glTexCoord2f(texupx+float(32)/512.0, texupy)
-                            glVertex3f(float(x+30), -float(y), 100.0)
-
-                            glTexCoord2f(texupx, texupy)
-                            glVertex3f(x, -float(y), 100.0)
-                            glEnd()
-                            self.RenderNumber(count, x, y)
-                        elif textype == TYPE_ITEM:
-                            glBindTexture(GL_TEXTURE_2D, self.tooltex)
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-                            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                            texupx = (TOOL_TEX_COORDS[item*2 + 0]*30.0) / 512.0
-                            texupy = (TOOL_TEX_COORDS[item*2 + 1]*30.0) / 512.0
-                            glBegin(GL_QUADS)
-                            glColor3ub(*color)
-                            glTexCoord2f(texupx, texupy+float(30)/512.0)
-                            glVertex3f(float(x), -float(y+30), 100.0)
-
-                            glTexCoord2f(texupx+float(30)/512.0, texupy+float(30)/512.0)
-                            glVertex3f(float(x+30), -float(y+30), 100.0)
-
-                            glTexCoord2f(texupx+float(30)/512.0, texupy)
-                            glVertex3f(float(x+30), -float(y), 100.0)
-
-                            glTexCoord2f(texupx, texupy)
-                            glVertex3f(x, -float(y), 100.0)
-                            glEnd()
-                            self.RenderNumber(count, x, y)
-                        x += 35
-                        if x+35 >= 160:
-                            x = 10
-                            y += 35
-
-
-
-
-
-            def GenItemName(item):
-                textTitle = ["Item"]
-                if item.type_ == ITEM_SENCHANTSCROLL:
-                    textTitle = [u"Silver Enchant Scroll"]
-                # 여기서 text width에 맞게 적당히 split을 하고
-                # 접두사 접미사를 붙인다.
-                # param에 뭐가 있느냐에 따라 접두사 접미사를..
-                # 굉장히 귀찮을 듯.
-                # 음.....아이템 생성에 대해서도 디아처럼 생성하면 되겠네 구조를 아니까...
-                # 데이지서버 할 때 처럼 스탯 맞추면 될 듯.
-                return textTitle
-            def GenItemDesc(item):
-                textDesc = ["Enchant"]
-                if item.type_ == ITEM_SENCHANTSCROLL:
-                    textDesc = [u"Individual Skills"]
-                if item.type_ == ITEM_GENCHANTSCROLL:
-                    textDesc = [u"Stats"]
-                if item.type_ == ITEM_DENCHANTSCROLL:
-                    textDesc = [u"Skill Levels"]
-                return textDesc
-            def GenItemParams(item):
-                textParams = str(item.element.params).replace("{","").replace("}","").split(', ')
-                return textParams
-
-            cleared = False
-            if t - self.prevDescT >= self.areaDelay:
-                self.prevDescT = t
-                self.textRendererItemTitle.Clear()
-                self.textRendererItemSmall.Clear()
-                cleared = True
-            
-
-            def RenderItemDesc(item):
-                if not item.element:
-                    return
-                x,y,w,h = 5, 20, 165, 380
-                glDisable(GL_TEXTURE_2D)
-                glBegin(GL_QUADS)
-                glColor4f(1.0,1.0,1.0,0.85)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y), 100.0)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-
-                glLineWidth(3.0)
-                glBegin(GL_LINES)
-                glColor4f(0.0,0.0,0.0,1.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y), 100.0)
-
-                glVertex3f(float(x+w), -float(y), 100.0)
-                glVertex3f(x, -float(y), 100.0)
-
-                glVertex3f(x, -float(y), 100.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glEnd()
-                glEnable(GL_TEXTURE_2D)
-
-                y = 0
-                textTitle = GenItemName(item)
-                if not item.textTitleIdx or cleared:
-                    item.textTitleIdx = [self.textRendererItemTitle.NewTextObject(text, (0,0,0), (10, 25+y)) for text in textTitle]
-
-                try:
-                    for idx in item.textTitleIdx:
-                        self.textRendererItemTitle.RenderOne(idx, (10, 25+y))
-                        y += 20
-                except:
-                    pass
-                y += 10
-
-                textDesc = GenItemDesc(item)
-                paramText = GenItemParams(item)
-                if not item.textDescIdx or cleared:
-                    item.textDescIdx = [self.textRendererItemSmall.NewTextObject(text, (0,0,0), (10, 25+y)) for text in textDesc]
-                    item.textDescIdx += [self.textRendererItemSmall.NewTextObject(text, (0,0,0), (10, 25+y)) for text in paramText]
-
-
-                try:
-                    for textid in item.textDescIdx:
-                        self.textRendererItemSmall.RenderOne(textid, (10, 25+y))
-                        y += 15
-                except:
-                    pass
-                y += 10
-                if item.maxEnchant:
-                    self.textRendererSmall.RenderText(self.enchantTextID, (10, 25+y))
-                    y += 10
-                    self.RenderNumber(item.enchantCount, 10, 25+y)
-                    self.textRenderer.RenderText(self.enchantSlashTextID, (25, 25+y))
-                    self.RenderNumber(item.maxEnchant, 40, 25+y)
-
-
-            def RenderSkillDesc(skill):
-                x,y,w,h = 5, 20, 165, 380
-                glDisable(GL_TEXTURE_2D)
-                glBegin(GL_QUADS)
-                glColor4f(1.0,1.0,1.0,0.85)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y), 100.0)
-                glVertex3f(x, -float(y), 100.0)
-                glEnd()
-
-                glLineWidth(3.0)
-                glBegin(GL_LINES)
-                glColor4f(0.0,0.0,0.0,1.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                
-                glVertex3f(float(x+w), -float(y+h), 100.0)
-                glVertex3f(float(x+w), -float(y), 100.0)
-
-                glVertex3f(float(x+w), -float(y), 100.0)
-                glVertex3f(x, -float(y), 100.0)
-
-                glVertex3f(x, -float(y), 100.0)
-                glVertex3f(float(x), -float(y+h), 100.0)
-                glEnd()
-                glEnable(GL_TEXTURE_2D)
-
-                y = 0
-                textTitle = [skill.name]
-                if not skill.textTitleIdx or cleared:
-                    skill.textTitleIdx = [self.textRendererItemTitle.NewTextObject(text, (0,0,0), (10, 25+y)) for text in textTitle]
-
-                try:
-                    for idx in skill.textTitleIdx:
-                        self.textRendererItemTitle.RenderOne(idx, (10, 25+y))
-                        y += 20
-                except:
-                    pass
-                y += 10
-
-                textDesc = ["Level: %d" % skill.skillPoint, "Range: %d" % skill.range]
-                textDesc += ["Cost: %d" % (skill.cost*(skill.skillPoint*0.5))]
-                for raw in skill.raws:
-                    typetexts = {SKILL_PHYSICAL: "Physical",
-                            SKILL_FIRE: "Fire",
-                            SKILL_ICE: "Ice",
-                            SKILL_ELECTRIC: "Electric",
-                            SKILL_POISON: "Poison",
-                            SKILL_HEAL: "Heal",
-                            SKILL_CURE: "Cure Poison",
-                            SKILL_STR: "Increse Strength",
-                            SKILL_DEX: "Increase Dexterity",
-                            SKILL_INT: "Increase Intelligence",
-                            SKILL_BASEHP: "Increase Max HP",
-                            SKILL_BASEMP: "Increase Max MP",
-                            SKILL_SKILL: "Increase %s" % raw.targetskillname,}
-                    if raw.skilltype == SKILL_FIRE:
-                        textDesc += ["Point: %d" % (((AppSt.entity.fatk+raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    elif raw.skilltype == SKILL_PHYSICAL:
-                        textDesc += ["Point: %d" % (((AppSt.entity.atk+raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    elif raw.skilltype == SKILL_ICE:
-                        textDesc += ["Point: %d" % (((AppSt.entity.iatk+raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    elif raw.skilltype == SKILL_POISON:
-                        textDesc += ["Point: %d" % (((AppSt.entity.patk+raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    elif raw.skilltype == SKILL_ELECTRIC:
-                        textDesc += ["Point: %d" % (((AppSt.entity.eatk+raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    else:
-                        textDesc += ["Point: %d" % (((raw.value*(skill.skillPoint*raw.incFactor)))*(AppSt.entity.int**1.8/AppSt.entity.int))]
-                    textDesc += ["Type: %s" % typetexts[raw.skilltype]]
-                    if raw.targettype == TARGET_SELF:
-                        textDesc += ["Target: Self"]
-                    if raw.targettype == TARGET_OTHER:
-                        textDesc += ["Target: Enemy"]
-                    if raw.duration == 0:
-                        textDesc += ["Duration: Instant"]
-                    else:
-                        textDesc += ["Duration: %s sec." % raw.duration]
-                #paramText = GenItemParams(skill)
-                if not skill.textDescIdx or cleared:
-                    skill.textDescIdx = [self.textRendererItemSmall.NewTextObject(text, (0,0,0), (10, 25+y)) for text in textDesc]
-                    #skill.textDescIdx += [self.textRendererItemSmall.NewTextObject(text, (0,0,0), (10, 25+y)) for text in paramText]
-
-
-                try:
-                    for textid in skill.textDescIdx:
-                        self.textRendererItemSmall.RenderOne(textid, (10, 25+y))
-                        y += 15
-                except:
-                    pass
-                y += 10
-
-
-
-
-            if self.selectedContItem and self.selectedContItem.name == "Skill" and self.selectedContItem.skill:
-                RenderSkillDesc(self.selectedContItem.skill)
-            elif self.selectedContItem:
-                if self.selectedContItem.name == "Item":
-                    RenderItemDesc(self.selectedContItem)
-
-
-
-
-
-
-
-        idx = 0
-        for item in self.qbar:
-            if not item:
-                idx += 1
-                continue
-
-            if item.name == "Skill":
-                RenderSkill(item.skill, idx, self.qbarRealPos[0], self.qbarRealPos[1])
-            else:
-                RenderItem(item, idx, self.qbarRealPos[0], self.qbarRealPos[1])
-            idx += 1
-
-        x = self.selectedItem%10
-        y = (self.selectedItem-x)/10
-        x*=30
-        y*=30
-        x += self.qbarRealPos[0]
-        y += self.qbarRealPos[1]
-        glDisable(GL_TEXTURE_2D)
-        glLineWidth(3.0)
-        glBegin(GL_LINES)
-        glColor4f(0.0,0.0,0.0,1.0)
-        glVertex3f(float(x), -float(y+30), 100.0)
-        glVertex3f(float(x+30), -float(y+30), 100.0)
-        
-        glVertex3f(float(x+30), -float(y+30), 100.0)
-        glVertex3f(float(x+30), -float(y), 100.0)
-
-        glVertex3f(float(x+30), -float(y), 100.0)
-        glVertex3f(x, -float(y), 100.0)
-
-        glVertex3f(x, -float(y), 100.0)
-        glVertex3f(float(x), -float(y+30), 100.0)
-        glEnd()
-        glEnable(GL_TEXTURE_2D)
-
-        if self.invShown and self.dragging:
-            if self.draggingItem.name == "Skill":
-                RenderSkill(self.draggingItem.skill, 0, m.x-15,m.y-15)
-            else:
-                RenderItem(self.draggingItem, 0, m.x-15,m.y-15)
 
 
 
@@ -3633,143 +1624,6 @@ def InRect(x,y,w,h, x2, y2):
         return False
 
 
-class CustomIMEModule:
-    def __init__(self, printFunc):
-        EMgrSt.BindTick(self._OnTick)
-        EMgrSt.BindKeyDown(self._OnKeyPressed)
-        self.printFunc = printFunc
-
-        self.cmdText = u""
-
-        self.composingText = u""
-        self.composing = False
-
-        self.hangulMode = False
-        self.chatMode = False
-
-        self.keyPressedWaitedFor = 0
-        self.keyRepeatStartWaitedFor = 0
-        self.pressedDelay = 50
-        self.repeatStartDelay = 250
-
-        self.lastKey = 0
-        self.lastText = 0
-        self.lastTick = pygame.time.get_ticks()
-        
-
-        import hangul
-        self.hangulComposer = hangul.HangulComposer()
-
-    def ResetTexts(self):
-        self._FinishChatMode()
-        self.cmdText = u""
-    def SetText(self, text):
-        self._FinishChatMode()
-        self.cmdText = unicode(text)
-    def SetPrintFunc(self, func):
-        self.printFunc = func
-    def SetActive(self, mode):
-        self.chatMode = mode
-        if not mode:
-            self._FinishChatMode()
-        else:
-            pass
-
-    def _ToggleHangulMode(self):
-        self.hangulMode = not self.hangulMode
-
-    def _FinishChatMode(self):
-        self._FinishHangulComposing()
-
-    def _OnTick(self, tick, lastMouseState, lastKeyState):
-        tick2 = tick - self.lastTick
-        self.lastTick = tick
-        def RepeatKeyEvent():
-            if lastKeyState.GetPressedKey():
-                # check if it's time to start to repeat
-                if self.keyRepeatStartWaitedFor > self.repeatStartDelay and \
-                        self.keyPressedWaitedFor > self.pressedDelay: # check if last repeat waiting is over
-                    self.keyPressedWaitedFor = 0
-                    if self.lastKey != K_RETURN:
-                        self._ProcessKeyPressed(self.lastKey, self.lastText)
-                self.keyPressedWaitedFor += tick2
-                self.keyRepeatStartWaitedFor += tick2
-
-        if self.chatMode:
-            RepeatKeyEvent()
-
-    def _OnKeyPressed(self, tick, m, k):
-        if self.chatMode:
-            def ResetRepeatKeyEvent():
-                self.keyPressedWaitedFor = 0
-                self.keyRepeatStartWaitedFor = 0
-            ResetRepeatKeyEvent()
-            self._ProcessKeyPressed(k.pressedKey, k.pressedChar)
-
-    def _ProcessKeyPressed(self, key, text):
-        self.lastKey = key
-        self.lastText = text
-
-        if key == K_RALT:
-            self._ToggleHangulMode()
-
-        elif key == K_BACKSPACE:
-            if self.hangulComposer.iscomposing():
-                self._DoHangulBackspace()
-            else:
-                if self.cmdText:
-                    self.cmdText = self.cmdText[:-1]
-            self._PrintCmd(self.cmdText + self.composingText)
-
-        else:
-            self._ProcessChar(text)
-            self._PrintCmd(self.cmdText + self.composingText)
-
-    def _DoHangulBackspace(self):
-        bs = self.hangulComposer.backspace()
-        if bs:
-            uni, finished, finishedUni = bs
-            if uni:
-                self._StartHangulComposing(uni)
-            else:
-                self._FinishHangulComposing()
-        else:
-            self._FinishHangulComposing()
-
-    def _StartHangulComposing(self, composingText):
-        self.composing = True
-        self.composingText = composingText
-    def _FinishHangulComposing(self):
-        self.hangulComposer.finish()
-        if self.composing:
-            self.cmdText += self.composingText
-            self.composing = False
-            self.composingText = u''
-
-    def _ProcessChar(self, char):
-        if len(self.cmdText) > 50:
-            return
-        alphabets = SpecialStrings.GetAlphabets()
-        numerics = SpecialStrings.GetNumerics()
-        specials = SpecialStrings.GetSpecials()
-        #char = chr(char)
-
-        if self.hangulMode and char in alphabets:
-            uni, finished, finishedUni = self.hangulComposer.feed(char) # XXX: feel exotic to use huh?
-            if finished:
-                self.cmdText += finishedUni
-                self._StartHangulComposing(uni[len(finishedUni):])
-            else:
-                self._StartHangulComposing(uni)
-
-        elif char in numerics + alphabets + specials:
-            self._FinishHangulComposing()
-            self.cmdText += char
-        else:
-            self._FinishHangulComposing()
-
-    def _PrintCmd(self, text):
-        self.printFunc(text)
 
 
 
@@ -3911,37 +1765,6 @@ class EventManager(object):
 
 def emptyfunc(pos):
     pass
-class MouseEventHandler(object):
-    def __init__(self, rect):
-        self.rect = rect
-        self.ldown = emptyfunc
-        self.rdown = emptyfunc
-
-    def BindLDown(self, func):
-        self.ldown = func
-    def BindRDown(self, func):
-        self.rdown = func
-
-    def Event(self, e):
-        self.OnLDown(e)
-        self.OnRDown(e)
-
-    def OnRDown(self, e):
-        if e.type is MOUSEBUTTONDOWN:
-            if e.button == RMB:
-                x, y = e.pos
-                x2,y2,w,h = self.rect
-                if InRect(x2,y2,w,h,x,y):
-                    self.rdown(e.pos)
-
-    def OnLDown(self, e):
-        if e.type is MOUSEBUTTONDOWN:
-            if e.button == LMB:
-                x, y = e.pos
-                x2,y2,w,h = self.rect
-                if InRect(x2,y2,w,h,x,y):
-                    self.ldown(e.pos)
-
 
 class MouseState(object):
     def __init__(self):
@@ -4715,7 +2538,7 @@ class Beam:
 
     def Delete(self):
         try:
-            AppSt.player.beams.remove(self)
+            self.owner.beams.remove(self)
             EMgrSt.bindTick.remove(self.Tick)
         except:
             pass
@@ -4730,8 +2553,23 @@ class Beam:
                 if self.dir == self.RIGHT:
                     self.x += self.speed
 
-                for enemy in GUISt.stages[GUISt.curStageIdx].enemies:
-                    x,y = enemy.pos
+                if self.owner == AppSt.player:
+                    for enemy in GUISt.stages[GUISt.curStageIdx].enemies:
+                        x,y = enemy.pos
+                        x -= 32
+                        y -= 128
+                        w=64
+                        h=128
+                        xx = self.x
+                        yy = self.y
+                        ww = 128
+                        hh = 64
+                        if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
+                            enemy.hp -= self.power
+                            GUISt.sounds["Hurt"].play()
+                            self.Delete()
+                else:
+                    x,y = AppSt.player.pos
                     x -= 32
                     y -= 128
                     w=64
@@ -4741,7 +2579,7 @@ class Beam:
                     ww = 128
                     hh = 64
                     if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
-                        enemy.hp -= self.power
+                        AppSt.player.hp -= self.power
                         GUISt.sounds["Hurt"].play()
                         self.Delete()
                 if abs(self.x-self.orgX) > 1000:
@@ -5734,8 +3572,10 @@ void main(void)
 
 
             fps.End()
-        pickle.dump(self.gui.stages[0].tiles, open("./stage1tiles.pkl", "w"))
-        pickle.dump(self.gui.stages[0].enemyDefs, open("./stage1enemies.pkl", "w"))
+        pickle.dump(len(self.gui.stages), open("./numstages.pkl", "w"))
+        for i in range(len(self.gui.stages)):
+            pickle.dump(self.gui.stages[i].tiles, open("./stage%dtiles.pkl" % (i+1), "w"))
+            pickle.dump(self.gui.stages[i].enemyDefs, open("./stage%denemies.pkl" % (i+1), "w"))
 
 
 if __name__ == '__main__':
@@ -5789,5 +3629,16 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 
 지하가 필요하면? 지하던젼은 레이어를 찍어서 다른층을 따로 만든다.
 -------
-적의 위치를 맵상에 만들어야함
+이제 "집"을 만들고 스테이지간의 통로를 만든다.
+
+레벨업을 하고 레이져의 파워를 높이고 체력을 높이며 힐링 마법을 쓸 수 있게 하고 마나통을 키운다.
+파워
+체력
+마나
+힐파워
+이렇게 4가지 속성만 있다.
+
+4가지 색깔의 보석을 모아서 4가지 속성값을 올리고
+경험치를 모아서 레벨을 올려서 속성포인트를 얻어 속성을 올린다.
+돈을 벌어서 보석을 구입 가능
 """
