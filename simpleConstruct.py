@@ -138,7 +138,7 @@ class EnemyDef:
         self.pos = [x,y]
         self.args = args
     def Gen(self):
-        return Enemy(self.tileIdx, self.name, self.pos[0], self.pos[1], args)
+        return Enemy(self.tileIdx, self.name, self.pos[0], self.pos[1], self.args)
 
 class Stage:
     def __init__(self):
@@ -5197,10 +5197,17 @@ class ConstructorApp:
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
 
+            self._2d_enemy_tiles = []
+
             self._2d_tiles_enemy = []
             for path in imgs:
                 self._2d_tiles_enemy += [LoadTex("./img/2d_enemy1_%s.png" % path, 128, 128)]
-            self._2d_enemy_tiles = [self._2d_tiles_enemy]
+            self._2d_enemy_tiles += [self._2d_tiles_enemy]
+
+            self._2d_tiles_enemy = []
+            for path in imgs:
+                self._2d_tiles_enemy += [LoadTex("./img/2d_enemy2_%s.png" % path, 128, 128)]
+            self._2d_enemy_tiles += [self._2d_tiles_enemy]
 
             tiles = [
                     "tile1",
