@@ -137,8 +137,19 @@ class Stage:
         self.enemies = []
         self.enemyDefs = {}
         self.doors = {}
+        self.gems = {}
 
+    def AddGem(self,x,y,tile):
+        self.gems[(x,y)] = tile
+    def DelGem(self,x,y):
+        try:
+            del self.gems[(x,y)]
+        except:
+            pass
     def StartGame(self):
+        for enemy in self.enemies:
+            enemy.Delete()
+        self.enemies = []
         for enemy in self.enemyDefs.itervalues():
             self.enemies += [enemy.Gen()]
     def ScrollTo(self,x,y):
@@ -184,6 +195,8 @@ class Stage:
 class Enemy:
     LEFT=0
     RIGHT=1
+    def Delete(self):
+        EMgrSt.bindTick.remove(self.Tick)
     def __init__(self, tileIdx, name, x, y, args):
         self.hp = 100
         self.args = args
@@ -405,6 +418,7 @@ class ConstructorGUI(object):
     ADDREMOVE_TILE = 0
     ADD_MOB = 1
     ADD_DOOR = 2
+    ADD_GEM = 3
     EDIT_MODE = 0
     GAME_MODE = 1
     def __init__(self):
@@ -425,13 +439,14 @@ class ConstructorGUI(object):
         self.textRenderer = StaticTextRenderer(self.font)
         self.button1 = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
         self.button2 = Button(self.textRenderer, u"몹찍기/제거", self.AddMob, 30+55, SH-128+5)
-        self.button2 = Button(self.textRenderer, u"문추가/제거", self.AddDoor, 30+55+45+45, SH-128+5)
-        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45+45+45, SH-128+5)
+        self.button2 = Button(self.textRenderer, u"문추가/제거", self.AddDoor, 30+55+45+25, SH-128+5)
+        self.button2 = Button(self.textRenderer, u"보석추가/제거", self.AddGem, 30+55+45+45+45, SH-128+5)
+        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45+45+45+45, SH-128+5)
         self.button4 = Button(self.textRenderer, u"이전", self.PrevStage, 5, SH-128+5+32)
         self.button5 = Button(self.textRenderer, u"다음", self.NextStage, 5+32+32, SH-128+5+32)
         self.button6 = Button(self.textRenderer, u"추가", self.AddStage, 5+32+32+32, SH-128+5+32)
 
-        self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128-32+5)
+        self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128+5)
         self.buttonGame1.enabled = False
 
         #self.button = Button(self.Print, 
@@ -440,28 +455,49 @@ class ConstructorGUI(object):
         self.mode = self.ADDREMOVE_TILE
         self.emode = self.EDIT_MODE
 
-        numS = pickle.load(open("./numstages.pkl", "r"))
+        try:
+            numS = pickle.load(open("./numstages.pkl", "r"))
+        except:
+            numS = 1
         self.stages = [Stage() for i in range(numS)]
         try:
             for i in range(numS):
-                self.stages[i].tiles = pickle.load(open("./stage%dtiles.pkl" % (i+1), "r"))
-                self.stages[i].enemyDefs = pickle.load(open("./stage%denemies.pkl" % (i+1), "r"))
                 self.stages[i].doors = pickle.load(open("./stage%ddoors.pkl" % (i+1), "r"))
+        except:
+            pass
+        try:
+            for i in range(numS):
+                self.stages[i].enemyDefs = pickle.load(open("./stage%denemies.pkl" % (i+1), "r"))
+        except:
+            pass
+        try:
+            for i in range(numS):
+                self.stages[i].tiles = pickle.load(open("./stage%dtiles.pkl" % (i+1), "r"))
+        except:
+            pass
+        try:
+            for i in range(numS):
+                self.stages[i].gems = pickle.load(open("./stage%dgems.pkl" % (i+1), "r"))
+        except:
+            pass
+        try:
             self.curDoorIdx = pickle.load(open("./stage%ddoorIdx.pkl" % (i+1), "r"))
         except:
             self.curDoorIdx = 0
-        self.curStageIdx = 0
+        self.curStageIdx = 1
         self.tileIdx = 0
+        self.mobIdx = 0
+        self.gemIdx = 0
         EMgrSt.BindMDown(self.DragStart)
         EMgrSt.BindMUp(self.DragEnd)
         self.dragStartPos = (0,0)
         self.scrStartPos = (0,0)
         self.dragging = False
-        self.connects = [(0,2),(1,3)]
+        self.connects = [(0,7),(7,0),(1,8),(6,9),(9,6)]
         # 일단 0에서 2로 이도은 되나 2에서 0이 안되므로 0에서 2로 이동한 순간 2에서 0으로 이동할 수 있도록 (2,0)을 추가해야 한다.
     def GetConnectivity(self, door):
         for con in self.connects:
-            if door in con:
+            if door == con[0]:
                 return con
 
     def GetStageAndPos(self, doorNum):
@@ -492,6 +528,8 @@ class ConstructorGUI(object):
     def DragEnd(self,t,m,k):
         self.dragging = False
 
+    def AddGem(self):
+        self.mode = self.ADD_GEM
     def AddDoor(self):
         self.mode = self.ADD_DOOR
     def AddTile(self):
@@ -563,11 +601,26 @@ class ConstructorGUI(object):
                             break
                         x += 128+5
                     """
+            elif self.mode == self.ADD_GEM:
+                x,y = x-(x%64), y-(y%64)
+                if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+                    self.stages[self.curStageIdx].AddGem(x,y,self.gemIdx)
+                elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+                    self.stages[self.curStageIdx].DelGem(x,y)
+                elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
+                    x = 400
+                    y = SH-128+5
+                    for i in range(len(AppSt._2d_gem_tiles)):
+                        if InRect(x,y,64,64, m.x,m.y):
+                            self.gemIdx = i
+                            break
+                        x += 64+5
+
 
             elif self.mode == self.ADD_MOB:
                 x,y = x-(x%64), y-(y%64)
                 if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
-                    self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.tileIdx, 'enemy', x+64,y+128, {}))
+                    self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.mobIdx, 'enemy', x+64,y+128, {}))
                 elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
                     self.stages[self.curStageIdx].DelEnemy(x+64,y+128)
                 elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
@@ -575,7 +628,7 @@ class ConstructorGUI(object):
                     y = SH-128
                     for i in range(len(AppSt._2d_enemy_tiles)):
                         if InRect(x,y,128,128, m.x,m.y):
-                            self.tileIdx = i
+                            self.mobIdx = i
                             break
                         x += 128+5
             if self.dragging:
@@ -644,11 +697,35 @@ class ConstructorGUI(object):
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_door)
                 xx,yy = doorPos
                 DrawQuadTex(xx-scrX,yy-scrY,128,128)
+            for gem in self.stages[self.curStageIdx].gems.iterkeys():
+                gemTile = self.stages[self.curStageIdx].gems[gem]
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_gem_tiles[gemTile])
+                DrawQuadTex(gem[0]-scrX,gem[1]-scrY, 64,64)
+
         else:
             for doorPos in self.stages[self.curStageIdx].doors.iterkeys():
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_door)
                 xx,yy = doorPos
                 DrawQuadTex(xx-scrX,yy-scrY,128,128)
+
+                num = self.stages[self.curStageIdx].doors[doorPos]
+
+                openDoorFound = False
+                closedDoorFound = False
+                for con in self.connects:
+                    a,b = con
+                    if a == num:
+                        openDoorFound = True
+                    if b == num:
+                        closedDoorFound = True
+
+                if not openDoorFound and closedDoorFound:
+                    AppSt.textRenderer.RenderText(AppSt.lockedText, (doorPos[0]+64-15-scrX, doorPos[1]-32-scrY))
+
+            for gem in self.stages[self.curStageIdx].gems.iterkeys():
+                gemTile = self.stages[self.curStageIdx].gems[gem]
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_gem_tiles[gemTile])
+                DrawQuadTex(gem[0]-scrX,gem[1]-scrY, 64,64)
 
             for dead in self.deads:
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
@@ -676,6 +753,11 @@ class ConstructorGUI(object):
             if self.mode == self.ADDREMOVE_TILE:
                 for i in range(len(AppSt._2d_grndtiles)):
                     glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
+                    DrawQuadTex(x,y,64,64)
+                    x += 64+5
+            elif self.mode == self.ADD_GEM:
+                for i in range(len(AppSt._2d_gem_tiles)):
+                    glBindTexture(GL_TEXTURE_2D, AppSt._2d_gem_tiles[i])
                     DrawQuadTex(x,y,64,64)
                     x += 64+5
             elif self.mode == self.ADD_MOB:
@@ -2702,14 +2784,14 @@ class Player:
                         a,b = con
                         if a == num:
                             stage, pos = GUISt.GetStageAndPos(b)
-                        else:
-                            stage, pos = GUISt.GetStageAndPos(a)
-
-                        self.pos = [pos[0]+64, pos[1]+128]
-                        GUISt.curStageIdx = stage
+                            self.pos = [pos[0]+64, pos[1]+128]
+                            GUISt.curStageIdx = stage
+                            GUISt.stages[GUISt.curStageIdx].StartGame()
+                            if (b,a) not in GUISt.connects:
+                                GUISt.connects += [(b,a)]
+                            break
                     except:
                         pass
-                    break
     def Tick(self,t,m,k):
         if GUISt.emode == GUISt.GAME_MODE:
             if t-self.fallWait > self.fallDelay:
@@ -3130,6 +3212,15 @@ class ConstructorApp:
 
             self._2d_door = LoadTex("./img/door.png", 128, 128)
             self._2d_enemy_tiles = []
+            self._2d_gem_diamond = LoadTex("./img/2d_gem_diamond.png", 64,64)
+            self._2d_gem_emerald = LoadTex("./img/2d_gem_emerald.png", 64,64)
+            self._2d_gem_ruby = LoadTex("./img/2d_gem_ruby.png", 64,64)
+            self._2d_gem_topaz = LoadTex("./img/2d_gem_topaz.png", 64,64)
+            self._2d_gem_tiles = []
+            self._2d_gem_tiles += [self._2d_gem_diamond]
+            self._2d_gem_tiles += [self._2d_gem_ruby]
+            self._2d_gem_tiles += [self._2d_gem_topaz]
+            self._2d_gem_tiles += [self._2d_gem_emerald]
 
             self._2d_tiles_enemy = []
             for path in imgs:
@@ -3631,6 +3722,12 @@ void main(void)
         #self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
         self.player = Player()
+
+        doors = self.gui.stages[1].doors.keys()
+        doors.sort()
+        #pos = doors[0]
+        #self.player.pos = [pos[0]+64, pos[1]+128]
+
         emgr.BindTick(self.gui.Tick)
         #self.Test()
 
@@ -3638,6 +3735,7 @@ void main(void)
         self.font2 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.textRenderer = StaticTextRenderer(self.font)
         self.textRendererSmall = StaticTextRenderer(self.font2)
+        self.lockedText = self.textRenderer.NewTextObject(u"잠김", (255,255,255), True, (50,50,50))
         self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), True, (50,50,50)) for i in range(10)]
         self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), True, (0,0,0))]
         self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
@@ -3671,6 +3769,7 @@ void main(void)
             pickle.dump(self.gui.stages[i].tiles, open("./stage%dtiles.pkl" % (i+1), "w"))
             pickle.dump(self.gui.stages[i].enemyDefs, open("./stage%denemies.pkl" % (i+1), "w"))
             pickle.dump(self.gui.stages[i].doors, open("./stage%ddoors.pkl" % (i+1), "w"))
+            pickle.dump(self.gui.stages[i].gems, open("./stage%dgems.pkl" % (i+1), "w"))
             pickle.dump(self.gui.curDoorIdx, open("./stage%ddoorIdx.pkl" % (i+1), "w"))
 
 
