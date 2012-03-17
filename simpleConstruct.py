@@ -136,6 +136,7 @@ class Stage:
         self.tiles = {}
         self.enemies = []
         self.enemyDefs = {}
+        self.doors = {}
 
     def StartGame(self):
         for enemy in self.enemyDefs.itervalues():
@@ -145,16 +146,24 @@ class Stage:
         self.scrY = y
 
     def GetTiles(self):
-        x = self.scrX
-        y = self.scrY
-        w = SW
-        h = SH-128
+        x = self.scrX-SW
+        y = self.scrY-SH
+        w = SW*3
+        h = SH*3
         tiles = []
         for coord in self.tiles:
             cx,cy = coord
             if InRect(x-64,y-64,w+64,h+64,cx,cy):
                 tiles += [(cx,cy,self.tiles[coord])]
         return tiles
+    def AddDoor(self,x,y):
+        self.doors[(x,y)] = GUISt.curDoorIdx
+        GUISt.curDoorIdx += 1
+    def DelDoor(self,x,y):
+        try:
+            del self.doors[(x,y)]
+        except:
+            pass
     def AddEnemy(self,enemy):
         self.enemyDefs[tuple(enemy.pos)] = enemy
 
@@ -218,6 +227,10 @@ class Enemy:
         self.atkWait = pygame.time.get_ticks()
         self.atkDelay = 500
 
+        self.prevJump = pygame.time.get_ticks()
+        self.jumpOffDelay = 1000
+        self.jumpDelay = 3000
+
     def Attack(self, t):
         ppos = AppSt.player.pos
         pos = self.pos
@@ -237,151 +250,161 @@ class Enemy:
 
 
     def Tick(self, t,m,k):
-        ppos = AppSt.player.pos
-        pos = self.pos
-        ppos = Vector2(*ppos)
-        pos = Vector2(*pos)
-        if (ppos-pos).length() < 1024:
+        if GUISt.emode == GUISt.GAME_MODE:
+            if not self.jumpOn:
+                if t-self.prevJump > self.jumpDelay:
+                    self.prevJump = t
+                    self.jumpOn = not self.jumpOn
+            elif self.jumpOn:
+                if t-self.prevJump > self.jumpOffDelay:
+                    self.prevJump = t
+                    self.jumpOn = not self.jumpOn
+            ppos = AppSt.player.pos
+            pos = self.pos
+            ppos = Vector2(*ppos)
+            pos = Vector2(*pos)
+            if (ppos-pos).length() < 700:
 
-            if t-self.atkWait > self.atkDelay:
-                self.Attack(t)
+                if t-self.atkWait > self.atkDelay:
+                    self.Attack(t)
 
-            if t-self.prevLeft > self.moveDelay:
-                self.prevLeft = t
-                self.goleft = not self.goleft
-            if self.goleft:
-                self.facing = self.LEFT
-                self.leftOn = True
-                self.rightOn = False
-            else:
-                self.facing = self.RIGHT
-                self.leftOn = False
-                self.rightOn = True
-            if self.hp <= 0:
-                try:
-                    GUISt.stages[GUISt.curStageIdx].enemies.remove(self)
-            
-                    EMgrSt.bindTick.remove(self.Tick)
-                except:
-                    pass
-                x = self.pos[0]-32
-                y = self.pos[1]-64-32
-                GUISt.deads += [DeadEnemy(x,y)]
-            if t-self.fallWait > self.fallDelay:
-                self.fallWait = t
-                tiles = GUISt.stages[GUISt.curStageIdx].tiles
-                self.moving = False
-
-                if not self.jumping:
-                    collide = False
-                    collideY = 0
-                    for tile in tiles.iterkeys():
-                        x,y = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32
-                        yy = py-128+self.fallSpeed
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideY = y
-                    if not collide:
-                        self.pos[1] += self.fallSpeed
-                    else:
-                        self.grounded = True
-                        self.pos[1] = collideY
-                else:
-                    collide = False
-                    collideY = 0
-                    for tile in tiles.iterkeys():
-                        x,y = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32
-                        yy = py-128-self.fallSpeed
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideY = y+h+128
-                    if not collide:
-                        self.pos[1] -= self.fallSpeed
-                    else:
-                        self.pos[1] = collideY
-
-                if self.leftOn:
-                    self.moving = True
+                if t-self.prevLeft > self.moveDelay:
+                    self.prevLeft = t
+                    self.goleft = not self.goleft
+                if self.goleft:
                     self.facing = self.LEFT
-                    collide = False
-                    collideX = 0
-                    for tile in tiles.iterkeys():
-                        x,y = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32-self.fallSpeed
-                        yy = py-128
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideX = x+w+32
-                    if not collide:
-                        self.pos[0] -= self.fallSpeed
-                    else:
-                        self.pos[0] = collideX
-
-                if self.rightOn:
-                    self.moving = True
-                    self.facing = self.RIGHT
-                    collide = False
-                    collideX = 0
-                    for tile in tiles.iterkeys():
-                        x,y = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32+self.fallSpeed
-                        yy = py-128
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideX = x-32
-                    if not collide:
-                        self.pos[0] += self.fallSpeed
-                    else:
-                        self.pos[0] = collideX
-                if self.jumpOn:
-                    if not self.jumping and self.grounded:
-                        self.jumping = True
-                        self.jumpStart = t
-                        self.grounded = False
+                    self.leftOn = True
+                    self.rightOn = False
                 else:
-                    if self.jumping and t-self.jumpStart > self.jumpMin:
-                        self.jumping = False
+                    self.facing = self.RIGHT
+                    self.leftOn = False
+                    self.rightOn = True
+                if self.hp <= 0:
+                    try:
+                        GUISt.stages[GUISt.curStageIdx].enemies.remove(self)
+                
+                        EMgrSt.bindTick.remove(self.Tick)
+                    except:
+                        pass
+                    x = self.pos[0]-32
+                    y = self.pos[1]-64-32
+                    GUISt.deads += [DeadEnemy(x,y)]
+                if t-self.fallWait > self.fallDelay:
+                    self.fallWait = t
+                    tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
+                    self.moving = False
 
-                if self.atkOn:
-                    if t-self.prevBeam > self.beamDelay:
-                        self.prevBeam = t
-                        beamY = self.pos[1]-128
-                        if self.facing == self.LEFT:
-                            beamX = self.pos[0]-128-32
+                    if not self.jumping:
+                        collide = False
+                        collideY = 0
+                        for tile in tiles:
+                            x,y,t_ = tile
+                            w = 64
+                            h = 64
+                            px,py = self.pos
+                            xx = px-32
+                            yy = py-128+self.fallSpeed
+                            ww = 64
+                            hh = 128
+                            if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                                collide = True
+                                collideY = y
+                        if not collide:
+                            self.pos[1] += self.fallSpeed
                         else:
-                            beamX = self.pos[0]+32
-                        self.beams += [Beam(beamX,beamY,self.facing, self)]
+                            self.grounded = True
+                            self.pos[1] = collideY
+                    else:
+                        collide = False
+                        collideY = 0
+                        for tile in tiles:
+                            x,y,t_ = tile
+                            w = 64
+                            h = 64
+                            px,py = self.pos
+                            xx = px-32
+                            yy = py-128-self.fallSpeed
+                            ww = 64
+                            hh = 128
+                            if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                                collide = True
+                                collideY = y+h+128
+                        if not collide:
+                            self.pos[1] -= self.fallSpeed
+                        else:
+                            self.pos[1] = collideY
 
-            if t-self.jumpStart > self.jumpMax:
-                self.jumping = False
+                    if self.leftOn:
+                        self.moving = True
+                        self.facing = self.LEFT
+                        collide = False
+                        collideX = 0
+                        for tile in tiles:
+                            x,y,t_ = tile
+                            w = 64
+                            h = 64
+                            px,py = self.pos
+                            xx = px-32-self.fallSpeed
+                            yy = py-128
+                            ww = 64
+                            hh = 128
+                            if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                                collide = True
+                                collideX = x+w+32
+                        if not collide:
+                            self.pos[0] -= self.fallSpeed
+                        else:
+                            self.pos[0] = collideX
+
+                    if self.rightOn:
+                        self.moving = True
+                        self.facing = self.RIGHT
+                        collide = False
+                        collideX = 0
+                        for tile in tiles:
+                            x,y,t_ = tile
+                            w = 64
+                            h = 64
+                            px,py = self.pos
+                            xx = px-32+self.fallSpeed
+                            yy = py-128
+                            ww = 64
+                            hh = 128
+                            if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
+                                collide = True
+                                collideX = x-32
+                        if not collide:
+                            self.pos[0] += self.fallSpeed
+                        else:
+                            self.pos[0] = collideX
+                    if self.jumpOn:
+                        if not self.jumping and self.grounded:
+                            self.jumping = True
+                            self.jumpStart = t
+                            self.grounded = False
+                    else:
+                        if self.jumping and t-self.jumpStart > self.jumpMin:
+                            self.jumping = False
+
+                    if self.atkOn:
+                        if t-self.prevBeam > self.beamDelay:
+                            self.prevBeam = t
+                            beamY = self.pos[1]-128
+                            if self.facing == self.LEFT:
+                                beamX = self.pos[0]-128-32
+                            else:
+                                beamX = self.pos[0]+32
+                            self.beams += [Beam(beamX,beamY,self.facing, self)]
+
+                if t-self.jumpStart > self.jumpMax:
+                    self.jumping = False
 
 
 GUISt = None
 class ConstructorGUI(object):
     ADDREMOVE_TILE = 0
     ADD_MOB = 1
+    ADD_DOOR = 2
     EDIT_MODE = 0
     GAME_MODE = 1
     def __init__(self):
@@ -402,7 +425,8 @@ class ConstructorGUI(object):
         self.textRenderer = StaticTextRenderer(self.font)
         self.button1 = Button(self.textRenderer, u"타일찍기/제거", self.AddTile, 5, SH-128+5)
         self.button2 = Button(self.textRenderer, u"몹찍기/제거", self.AddMob, 30+55, SH-128+5)
-        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45+45, SH-128+5)
+        self.button2 = Button(self.textRenderer, u"문추가/제거", self.AddDoor, 30+55+45+45, SH-128+5)
+        self.button3 = Button(self.textRenderer, u"게임모드", self.GameMode, 60+55+45+45+45, SH-128+5)
         self.button4 = Button(self.textRenderer, u"이전", self.PrevStage, 5, SH-128+5+32)
         self.button5 = Button(self.textRenderer, u"다음", self.NextStage, 5+32+32, SH-128+5+32)
         self.button6 = Button(self.textRenderer, u"추가", self.AddStage, 5+32+32+32, SH-128+5+32)
@@ -422,8 +446,10 @@ class ConstructorGUI(object):
             for i in range(numS):
                 self.stages[i].tiles = pickle.load(open("./stage%dtiles.pkl" % (i+1), "r"))
                 self.stages[i].enemyDefs = pickle.load(open("./stage%denemies.pkl" % (i+1), "r"))
+                self.stages[i].doors = pickle.load(open("./stage%ddoors.pkl" % (i+1), "r"))
+            self.curDoorIdx = pickle.load(open("./stage%ddoorIdx.pkl" % (i+1), "r"))
         except:
-            pass
+            self.curDoorIdx = 0
         self.curStageIdx = 0
         self.tileIdx = 0
         EMgrSt.BindMDown(self.DragStart)
@@ -450,6 +476,8 @@ class ConstructorGUI(object):
     def DragEnd(self,t,m,k):
         self.dragging = False
 
+    def AddDoor(self):
+        self.mode = self.ADD_DOOR
     def AddTile(self):
         self.mode = self.ADDREMOVE_TILE
     def GameMode(self):
@@ -502,8 +530,26 @@ class ConstructorGUI(object):
                             self.tileIdx = i
                             break
                         x += 64+5
+            elif self.mode == self.ADD_DOOR:
+                x,y = x-(x%64), y-(y%64)
+                if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+                    if (x,y) not in self.stages[self.curStageIdx].doors:
+                        self.stages[self.curStageIdx].AddDoor(x,y)
+                elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+                    self.stages[self.curStageIdx].DelDoor(x,y)
+                    """
+                elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
+                    x = 400
+                    y = SH-128
+                    for i in range(len(AppSt._2d_enemy_tiles)):
+                        if InRect(x,y,128,128, m.x,m.y):
+                            self.tileIdx = i
+                            break
+                        x += 128+5
+                    """
+
             elif self.mode == self.ADD_MOB:
-                x,y = x-(x%128), y-(y%128)
+                x,y = x-(x%64), y-(y%64)
                 if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
                     self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.tileIdx, 'enemy', x+64,y+128, {}))
                 elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
@@ -578,7 +624,16 @@ class ConstructorGUI(object):
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[enemy.tileIdx][AppSt.ani[AppSt.aniIdx]])
                 DrawQuadTex(enemy.pos[0]-scrX-64,enemy.pos[1]-scrY-128,128,128)
 
+            for doorPos in self.stages[self.curStageIdx].doors.iterkeys():
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_door)
+                xx,yy = doorPos
+                DrawQuadTex(xx-scrX,yy-scrY,128,128)
         else:
+            for doorPos in self.stages[self.curStageIdx].doors.iterkeys():
+                glBindTexture(GL_TEXTURE_2D, AppSt._2d_door)
+                xx,yy = doorPos
+                DrawQuadTex(xx-scrX,yy-scrY,128,128)
+
             for dead in self.deads:
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_tiles_dead)
                 DrawQuadTex(dead.pos[0]-scrX,dead.pos[1]-scrY, 64,64)
@@ -600,8 +655,8 @@ class ConstructorGUI(object):
                 
 
         DrawQuad(0,SH-128,SW,128,(128,128,128,255),(128,128,128,255))
-        AppSt.RenderNumber(self.curStageIdx, 32+5, SH-128+5+32)
         if self.emode == self.EDIT_MODE:
+            AppSt.RenderNumber(self.curStageIdx, 32+5, SH-128+5+32)
             if self.mode == self.ADDREMOVE_TILE:
                 for i in range(len(AppSt._2d_grndtiles)):
                     glBindTexture(GL_TEXTURE_2D, AppSt._2d_grndtiles[i])
@@ -612,6 +667,9 @@ class ConstructorGUI(object):
                     glBindTexture(GL_TEXTURE_2D, AppSt._2d_enemy_tiles[i][1])
                     DrawQuadTex(x,y,128,128)
                     x += 128+5
+            for door in self.stages[self.curStageIdx].doors.iterkeys():
+                num = self.stages[self.curStageIdx].doors[door]
+                AppSt.RenderNumber(num, door[0]+64-scrX, door[1]+64-scrY)
 
 
 
@@ -3035,6 +3093,7 @@ class ConstructorApp:
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
 
+            self._2d_door = LoadTex("./img/door.png", 128, 128)
             self._2d_enemy_tiles = []
 
             self._2d_tiles_enemy = []
@@ -3576,6 +3635,8 @@ void main(void)
         for i in range(len(self.gui.stages)):
             pickle.dump(self.gui.stages[i].tiles, open("./stage%dtiles.pkl" % (i+1), "w"))
             pickle.dump(self.gui.stages[i].enemyDefs, open("./stage%denemies.pkl" % (i+1), "w"))
+            pickle.dump(self.gui.stages[i].doors, open("./stage%ddoors.pkl" % (i+1), "w"))
+            pickle.dump(self.gui.curDoorIdx, open("./stage%ddoorIdx.pkl" % (i+1), "w"))
 
 
 if __name__ == '__main__':
