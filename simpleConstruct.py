@@ -276,7 +276,7 @@ class Enemy:
             pos = self.pos
             ppos = Vector2(*ppos)
             pos = Vector2(*pos)
-            if (ppos-pos).length() < 700:
+            if (ppos-pos).length() < SW/2+100:
 
                 if t-self.atkWait > self.atkDelay:
                     self.Attack(t)
