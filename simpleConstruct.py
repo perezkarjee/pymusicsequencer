@@ -457,6 +457,22 @@ class ConstructorGUI(object):
         self.dragStartPos = (0,0)
         self.scrStartPos = (0,0)
         self.dragging = False
+        self.connects = [(0,2),(1,3)]
+        # 일단 0에서 2로 이도은 되나 2에서 0이 안되므로 0에서 2로 이동한 순간 2에서 0으로 이동할 수 있도록 (2,0)을 추가해야 한다.
+    def GetConnectivity(self, door):
+        for con in self.connects:
+            if door in con:
+                return con
+
+    def GetStageAndPos(self, doorNum):
+        idx = 0
+        for stage in self.stages:
+            for door in stage.doors.iterkeys():
+                num = stage.doors[door]
+                if doorNum == num:
+                    return idx, door
+            idx += 1
+
     def PrevStage(self):
         self.curStageIdx -= 1
         if self.curStageIdx < 0:
@@ -565,8 +581,8 @@ class ConstructorGUI(object):
             if self.dragging:
                 self.stages[self.curStageIdx].scrX = self.scrStartPos[0] + (self.dragStartPos[0]-m.x)
                 self.stages[self.curStageIdx].scrY = self.scrStartPos[1] + (self.dragStartPos[1]-m.y)
-                self.stages[self.curStageIdx].scrX = max(0, self.stages[self.curStageIdx].scrX)
-                self.stages[self.curStageIdx].scrY = min(0, self.stages[self.curStageIdx].scrY)
+                self.stages[self.curStageIdx].scrX = max(-1000, self.stages[self.curStageIdx].scrX)
+                self.stages[self.curStageIdx].scrY = min(1000, self.stages[self.curStageIdx].scrY)
         elif self.emode == self.GAME_MODE:
             self.stages[self.curStageIdx].scrX = AppSt.player.pos[0]-SW/2
             self.stages[self.curStageIdx].scrY = AppSt.player.pos[1]-SH/2
@@ -2675,6 +2691,25 @@ class Player:
         self.prevBeam = pygame.time.get_ticks()
         self.beams = []
 
+        EMgrSt.BindKeyDown(self.OnUPKey)
+    def OnUPKey(self,t,m,k):
+        if k.pressedKey == self.keyBinds["UP"]:
+            for door in GUISt.stages[GUISt.curStageIdx].doors.iterkeys():
+                if RectRectCollide((self.pos[0]-64, self.pos[1]-128,128,128), (door[0],door[1],128,128)):
+                    num = GUISt.stages[GUISt.curStageIdx].doors[door]
+                    con = GUISt.GetConnectivity(num)
+                    try:
+                        a,b = con
+                        if a == num:
+                            stage, pos = GUISt.GetStageAndPos(b)
+                        else:
+                            stage, pos = GUISt.GetStageAndPos(a)
+
+                        self.pos = [pos[0]+64, pos[1]+128]
+                        GUISt.curStageIdx = stage
+                    except:
+                        pass
+                    break
     def Tick(self,t,m,k):
         if GUISt.emode == GUISt.GAME_MODE:
             if t-self.fallWait > self.fallDelay:
