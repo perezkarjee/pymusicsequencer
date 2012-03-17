@@ -138,6 +138,8 @@ class Stage:
         self.enemyDefs = {}
         self.doors = {}
         self.gems = {}
+        self.gameGems = {}
+
 
     def AddGem(self,x,y,tile):
         self.gems[(x,y)] = tile
@@ -146,12 +148,51 @@ class Stage:
             del self.gems[(x,y)]
         except:
             pass
+    def EndGame(self):
+        try:
+            EMgrSt.bindTick.remove(self.Tick)
+        except:
+            pass
+        for enemy in self.enemies:
+            enemy.Delete()
+        self.enemies = []
+    def Tick(self,t,m,k):
+        x,y = AppSt.player.pos
+        x -= 32
+        y -= 128
+        w=64
+        h=128
+        for gem in self.gameGems.iterkeys():
+            xx,yy = gem
+            ww = 64
+            hh = 64
+            if RectRectCollide((x,y,w,h),(xx,yy,ww,hh)):
+                gem_ = self.gameGems[gem]
+                del self.gameGems[gem]
+                if gem_ == 0:
+                    AppSt.player.args["maxhp"] += 50
+                elif gem_ == 1:
+                    AppSt.player.args["maxmana"] += 50
+                elif gem_ == 2:
+                    AppSt.player.args["atk"] += 50
+                elif gem_ == 3:
+                    AppSt.player.args["heal"] += 50
+                break
+
+
+
+
+        pass
+
     def StartGame(self):
+        EMgrSt.BindTick(self.Tick)
         for enemy in self.enemies:
             enemy.Delete()
         self.enemies = []
         for enemy in self.enemyDefs.itervalues():
             self.enemies += [enemy.Gen()]
+        import copy
+        self.gameGems = copy.copy(self.gems)
     def ScrollTo(self,x,y):
         self.scrX = x
         self.scrY = y
@@ -258,7 +299,7 @@ class Enemy:
                 else:
                     beamX = self.pos[0]+32
 
-                self.beams += [Beam(beamX,beamY,self.facing,self)]
+                self.beams += [Beam(beamX,beamY,self.facing,self.args["atk"],self)]
 
 
 
@@ -407,7 +448,7 @@ class Enemy:
                                 beamX = self.pos[0]-128-32
                             else:
                                 beamX = self.pos[0]+32
-                            self.beams += [Beam(beamX,beamY,self.facing, self)]
+                            self.beams += [Beam(beamX,beamY,self.facing, self.args["atk"], self)]
 
                 if t-self.jumpStart > self.jumpMax:
                     self.jumping = False
@@ -625,7 +666,7 @@ class ConstructorGUI(object):
             elif self.mode == self.ADD_MOB:
                 x,y = x-(x%64), y-(y%64)
                 if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
-                    self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.mobIdx, 'enemy', x+64,y+128, {}))
+                    self.stages[self.curStageIdx].AddEnemy(EnemyDef(self.mobIdx, 'enemy', x+64,y+128, {"hp":100,"atk":30}))
                 elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
                     self.stages[self.curStageIdx].DelEnemy(x+64,y+128)
                 elif LMB in m.pressedButtons.iterkeys() and m.y >= SH-128:
@@ -727,8 +768,8 @@ class ConstructorGUI(object):
                 if not openDoorFound and closedDoorFound:
                     AppSt.textRenderer.RenderText(AppSt.lockedText, (doorPos[0]+64-15-scrX, doorPos[1]-32-scrY))
 
-            for gem in self.stages[self.curStageIdx].gems.iterkeys():
-                gemTile = self.stages[self.curStageIdx].gems[gem]
+            for gem in self.stages[self.curStageIdx].gameGems.iterkeys():
+                gemTile = self.stages[self.curStageIdx].gameGems[gem]
                 glBindTexture(GL_TEXTURE_2D, AppSt._2d_gem_tiles[gemTile])
                 DrawQuadTex(gem[0]-scrX,gem[1]-scrY, 64,64)
 
@@ -2699,7 +2740,7 @@ class DeadEnemy:
 class Beam:
     LEFT=0
     RIGHT=1
-    def __init__(self,x,y,dir_, owner):
+    def __init__(self,x,y,dir_, power, owner):
         self.owner = owner
         self.orgX = x
         self.orgY = y
@@ -2711,7 +2752,7 @@ class Beam:
         self.delay = 25
         self.speed = 30
         self.deleted = False
-        self.power = 30
+        self.power = power
 
     def Delete(self):
         try:
@@ -2742,7 +2783,7 @@ class Beam:
                         ww = 128
                         hh = 64
                         if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
-                            enemy.hp -= self.power
+                            enemy.hp -= AppSt.player.args["atk"]
                             GUISt.sounds["Hurt"].play()
                             self.Delete()
                 else:
@@ -2800,7 +2841,7 @@ class Player:
     def OnActKey(self,t,m,k):
         if k.pressedKey == self.keyBinds["ACT"]:
             self.args["mana"] -= 30
-            self.args["hp"] += 250
+            self.args["hp"] += self.args["heal"]
             if self.args["hp"] > self.args["maxhp"]:
                 self.args["hp"] = self.args["maxhp"]
     def OnUPKey(self,t,m,k):
@@ -2930,7 +2971,7 @@ class Player:
                         else:
                             beamX = self.pos[0]+32
                         GUISt.sounds["Beam"].play()
-                        self.beams += [Beam(beamX,beamY,self.facing, self)]
+                        self.beams += [Beam(beamX,beamY,self.facing, self.args["atk"], self)]
 
             if t-self.jumpStart > self.jumpMax:
                 self.jumping = False
@@ -3750,7 +3791,7 @@ void main(void)
         #self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         #self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
-        self.player = Player(hp=500, maxhp=500,atk=30, mana=500,maxmana=500, heal=30)
+        self.player = Player(hp=500, maxhp=500,atk=30, mana=500,maxmana=500, heal=250)
 
         doors = self.gui.stages[1].doors.keys()
         doors.sort()
