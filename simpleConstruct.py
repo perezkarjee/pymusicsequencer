@@ -445,6 +445,11 @@ class ConstructorGUI(object):
         self.button4 = Button(self.textRenderer, u"이전", self.PrevStage, 5, SH-128+5+32)
         self.button5 = Button(self.textRenderer, u"다음", self.NextStage, 5+32+32, SH-128+5+32)
         self.button6 = Button(self.textRenderer, u"추가", self.AddStage, 5+32+32+32, SH-128+5+32)
+        self.hpText = self.textRenderer.NewTextObject(u"체력", (255,255,255), True, (50,50,50))
+        self.mpText = self.textRenderer.NewTextObject(u"마력", (255,255,255), True, (50,50,50))
+        self.atkText = self.textRenderer.NewTextObject(u"공격력", (255,255,255), True, (50,50,50))
+        self.healText = self.textRenderer.NewTextObject(u"힐", (255,255,255), True, (50,50,50))
+        self.slashText = self.textRenderer.NewTextObject(u"/", (255,255,255), True, (50,50,50))
 
         self.buttonGame1 = ButtonGame(self.textRenderer, u"에딧모드", self.EditMode, 5, SH-128+5)
         self.buttonGame1.enabled = False
@@ -768,6 +773,22 @@ class ConstructorGUI(object):
             for door in self.stages[self.curStageIdx].doors.iterkeys():
                 num = self.stages[self.curStageIdx].doors[door]
                 AppSt.RenderNumber(num, door[0]+64-scrX, door[1]+64-scrY)
+        else:
+            y = 32+SH-128
+            self.textRenderer.RenderText(self.hpText, (5, y))
+            AppSt.RenderNumber(AppSt.player.args["hp"], 40, y)
+            self.textRenderer.RenderText(self.slashText, (90, y))
+            AppSt.RenderNumber(AppSt.player.args["maxhp"], 100, y)
+            self.textRenderer.RenderText(self.atkText, (5+200, y))
+            AppSt.RenderNumber(AppSt.player.args["atk"], 40+200, y)
+
+            y += 32
+            self.textRenderer.RenderText(self.mpText, (5, y))
+            AppSt.RenderNumber(AppSt.player.args["mana"], 40, y)
+            self.textRenderer.RenderText(self.slashText, (90, y))
+            AppSt.RenderNumber(AppSt.player.args["maxmana"], 100, y)
+            self.textRenderer.RenderText(self.healText, (5+200, y))
+            AppSt.RenderNumber(AppSt.player.args["heal"], 40+200, y)
 
 
 
@@ -2735,7 +2756,7 @@ class Beam:
                     ww = 128
                     hh = 64
                     if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
-                        AppSt.player.hp -= self.power
+                        AppSt.player.args["hp"] -= self.power
                         GUISt.sounds["Hurt"].play()
                         self.Delete()
                 if abs(self.x-self.orgX) > 1000:
@@ -2744,8 +2765,9 @@ class Beam:
 class Player:
     LEFT = 0
     RIGHT = 1
-    def __init__(self):
+    def __init__(self, **args):
         self.hp = 1000
+        self.args = args
 
         self.pos = [1100, SH-128-64]
         self.fallSpeed = 15
@@ -2774,6 +2796,13 @@ class Player:
         self.beams = []
 
         EMgrSt.BindKeyDown(self.OnUPKey)
+        EMgrSt.BindKeyDown(self.OnActKey)
+    def OnActKey(self,t,m,k):
+        if k.pressedKey == self.keyBinds["ACT"]:
+            self.args["mana"] -= 30
+            self.args["hp"] += 250
+            if self.args["hp"] > self.args["maxhp"]:
+                self.args["hp"] = self.args["maxhp"]
     def OnUPKey(self,t,m,k):
         if k.pressedKey == self.keyBinds["UP"]:
             for door in GUISt.stages[GUISt.curStageIdx].doors.iterkeys():
@@ -3721,12 +3750,12 @@ void main(void)
         #self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         #self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
-        self.player = Player()
+        self.player = Player(hp=500, maxhp=500,atk=30, mana=500,maxmana=500, heal=30)
 
         doors = self.gui.stages[1].doors.keys()
         doors.sort()
-        #pos = doors[0]
-        #self.player.pos = [pos[0]+64, pos[1]+128]
+        pos = doors[0]
+        self.player.pos = [pos[0]+64, pos[1]+128]
 
         emgr.BindTick(self.gui.Tick)
         #self.Test()
