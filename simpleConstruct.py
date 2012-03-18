@@ -3793,10 +3793,7 @@ void main(void)
         #self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         #self.map = chunkhandler.Map()
         self.gui = ConstructorGUI()
-        self.player = Player(hp=500, maxhp=500,atk=30, mana=500,maxmana=500, heal=250)
-
-        doors = self.gui.stages[1].doors.keys()
-        doors.sort()
+        self.player = Player(hp=500, maxhp=500,atk=50, mana=500,maxmana=500, heal=125)
         self.player.pos = [64+32, SH-128]
 
         emgr.BindTick(self.gui.Tick)
