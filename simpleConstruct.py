@@ -2840,10 +2840,11 @@ class Player:
         EMgrSt.BindKeyDown(self.OnActKey)
     def OnActKey(self,t,m,k):
         if k.pressedKey == self.keyBinds["ACT"]:
-            self.args["mana"] -= 30
-            self.args["hp"] += self.args["heal"]
-            if self.args["hp"] > self.args["maxhp"]:
-                self.args["hp"] = self.args["maxhp"]
+            if self.args["mana"] >= 30:
+                self.args["mana"] -= 30
+                self.args["hp"] += self.args["heal"]
+                if self.args["hp"] > self.args["maxhp"]:
+                    self.args["hp"] = self.args["maxhp"]
     def OnUPKey(self,t,m,k):
         if k.pressedKey == self.keyBinds["UP"]:
             for door in GUISt.stages[GUISt.curStageIdx].doors.iterkeys():
@@ -2855,6 +2856,7 @@ class Player:
                         if a == num:
                             stage, pos = GUISt.GetStageAndPos(b)
                             self.pos = [pos[0]+64, pos[1]+128]
+                            GUISt.stages[GUISt.curStageIdx].EndGame()
                             GUISt.curStageIdx = stage
                             GUISt.stages[GUISt.curStageIdx].StartGame()
                             if (b,a) not in GUISt.connects:
@@ -3795,8 +3797,7 @@ void main(void)
 
         doors = self.gui.stages[1].doors.keys()
         doors.sort()
-        pos = doors[0]
-        self.player.pos = [pos[0]+64, pos[1]+128]
+        self.player.pos = [64+32, SH-128]
 
         emgr.BindTick(self.gui.Tick)
         #self.Test()
