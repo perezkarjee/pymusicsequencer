@@ -138,18 +138,18 @@ badd +1 pysynth.py
 badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +3 simpleMud.py
-badd +7421 digdig.py
-badd +101 chunkhandler.pyx
+badd +706 digdig.py
+badd +585 chunkhandler.pyx
 badd +3912 simpleConstruct.py
 badd +47 cpart.c
 badd +18 cpart.h
 badd +111 chunk.pyx
 badd +1 glut.py
-badd +3067 simple3DGame.py
+badd +3062 simple3DGame.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
-edit simple3DGame.py
+edit chunkhandler.pyx
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -181,8 +181,8 @@ setlocal nodiff
 setlocal equalprg=
 setlocal errorformat=
 setlocal expandtab
-if &filetype != 'python'
-setlocal filetype=python
+if &filetype != 'pyrex'
+setlocal filetype=pyrex
 endif
 setlocal foldcolumn=0
 setlocal foldenable
@@ -239,8 +239,8 @@ setlocal statusline=
 setlocal suffixesadd=.py
 setlocal swapfile
 setlocal synmaxcol=3000
-if &syntax != 'python'
-setlocal syntax=python
+if &syntax != 'pyrex'
+setlocal syntax=pyrex
 endif
 setlocal tabstop=8
 setlocal tags=
@@ -251,12 +251,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 3059 - ((16 * winheight(0) + 24) / 49)
+let s:l = 611 - ((22 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-3059
-normal! 0102l
+611
+normal! 061l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

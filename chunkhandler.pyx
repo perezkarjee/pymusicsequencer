@@ -98,7 +98,7 @@ cdef void FreeChunk(Chunk* chunk):
     free(chunk)
 
 NUMCHUNKS = 1
-SIZE_CHUNK = 64
+SIZE_CHUNK = 32
 import random
 
 SW = 1024
@@ -330,8 +330,8 @@ cdef class Map:
         RIGHTBOT = 3
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
         self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
-        self.Regen(*self.buffers.buffers[self.idx].tex.tex)
-    def Regen(self, *textures):
+        self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
+    def Regen(self, textures, regen=True):
         self.buffers.buffers[self.idx].tex.tex = textures
         cdef char *topquads
         cdef char *quads
@@ -513,13 +513,13 @@ cdef class Map:
                 self.eles2[i][j] = self.buffers.buffers[self.idx].ele.ele2[i][j]
 
         if self.buffers.buffers[self.idx].vbos.vbos:
-            self.buffers.buffers[self.idx].vbos.vbos[0].reload = True
-            self.buffers.buffers[self.idx].vbos.vbos[1].reload = True
-            self.buffers.buffers[self.idx].vbos.vbos[2].reload = True
+            self.buffers.buffers[self.idx].vbos.vbos[0].reload = regen
+            self.buffers.buffers[self.idx].vbos.vbos[1].reload = regen
+            self.buffers.buffers[self.idx].vbos.vbos[2].reload = regen
             for vbo in self.buffers.buffers[self.idx].vbos.vbos[3]:
-                vbo.reload = True
+                vbo.reload = regen
             for vbo in self.buffers.buffers[self.idx].vbos.vbos[4]:
-                vbo.reload = True
+                vbo.reload = regen
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
@@ -607,6 +607,9 @@ cdef class Map:
 
 
 cdef class Model:
+    """
+    이거 element array 쓰게 고치고 idx넣어야 한다.
+    """
     cdef char *verts
     cdef char *texcs
     cdef char *normals
@@ -615,6 +618,7 @@ cdef class Model:
     cdef int indNum
     cdef int lX,lY,lZ,hX,hY,hZ
     vbo = VBOs()
+    
     def __cinit__(self, fileName):
         cdef char *lentypenameChar
         cdef char *versionChar

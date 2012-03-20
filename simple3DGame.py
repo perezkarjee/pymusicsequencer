@@ -2634,7 +2634,7 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
             for map in self.maps:
-                map.Regen(*self.texTiles)
+                map.Regen(self.texTiles)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -2854,7 +2854,7 @@ void main(void)
                 pos = LEFTBOT
             elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
                 pos = RIGHTBOT
-            if 0.0 < x < 0.0+8.0 and -8.0 < z < 0.0:
+            if 0.0 < x < 0.0+32.0 and -32.0 < z < 0.0:
                 map.ClickTile(self.tileMode, pos, (x,y,z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
@@ -2874,13 +2874,15 @@ void main(void)
         for map in self.maps:
             x,z = map.GetXZ()
             mat = ViewingMatrix()
+            map.Render()
+            self.HandleMapTiling(t,m,k, map)
+            """
             if mat is not None:
                 frustum = NormalizeFrustum(GetFrustum(mat))
                 if chunkhandler.CubeInFrustum(x,-8.0,z-8.0,8.0, frustum):
                     glTranslatef(x,0.0,z)
-                    map.Render()
-                    self.HandleMapTiling(t,m,k, map)
                     glTranslatef(-x,0.0,-z)
+            """
         glUseProgram(self.program2)
         """
         for j in range(-4,1):
