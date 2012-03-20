@@ -200,22 +200,35 @@ cdef struct Walls:
 """
 울온처럼 평평한 땅에만 지을 수 있다.
 평평한 땅을 만들면 거기에 타일의 높낮이 조절 불가능하게 해야함
+걍 map인스턴스를 여러개를 만들어서 렌더링을 한다. 아 안되넹 vbos가 공유가 되버려서';;;;;
+걍 Map클래스 내부에서 잘 처리되도록 한다.
 """
+class Buffer:
+    def __init__(self):
+        self.vbos = VBOs()
+        self.tex = Tex()
+        self.ele = Element()
+        self.coord = (0,0)
+class Buffers:
+    def __init__(self):
+        self.buffers = {}
 cdef class Map:
     cdef Chunk **chunks
     cdef float *quads
     cdef float *topquads
     cdef float *texcs
     cdef Walls **wallChunks
-    vbos = VBOs()
-    tex = Tex()
-    ele = Element()
     cdef int **eles
     cdef int **eles2
     cdef int tileData
     cdef int prevX
+    buffers = Buffers()
     cdef int prevZ
-    def __cinit__(self):
+    cdef int idx
+    def __cinit__(self, idx, coord):
+        self.idx = idx
+        self.buffers.buffers[idx] = Buffer()
+        self.buffers.buffers[idx].coord = coord
         self.wallChunks = <Walls**>malloc(sizeof(Walls*)*NUMCHUNKS)
         memset(self.wallChunks, 0, sizeof(Walls*)*NUMCHUNKS)
         self.wallChunks[0] = <Walls*>malloc(sizeof(Walls))
@@ -269,9 +282,9 @@ cdef class Map:
         RIGHTBOT = 3
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
         self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
-        self.Regen(*self.tex.tex)
+        self.Regen(*self.buffers.buffers[self.idx].tex.tex)
     def Regen(self, *textures):
-        self.tex.tex = textures
+        self.buffers.buffers[self.idx].tex.tex = textures
         cdef char *topquads
         cdef char *quads
         cdef char *texcs
@@ -306,14 +319,14 @@ cdef class Map:
                 self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData = random.randint(0,1)
                 #self.chunks[0].tiles[y*SIZE_CHUNK+x].height = random.randint(0,1)
         """
-        self.ele.ele = [[] for i in range(len(textures))]
+        self.buffers.buffers[self.idx].ele.ele = [[] for i in range(len(textures))]
         ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
                 for kkk in range(len(textures)):
                     if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
-                        self.ele.ele[kkk] += [ii,ii+1,ii+2,ii+3]
+                        self.buffers.buffers[self.idx].ele.ele[kkk] += [ii,ii+1,ii+2,ii+3]
                         # 여기에 엘레멘트버퍼를 추가
                 ii += 4
                 i=0
@@ -350,11 +363,11 @@ cdef class Map:
             xx = 0.0
         self.eles = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
-            self.eles[i] = <int*>malloc(sizeof(int)*len(self.ele.ele[i])+1)
-            for j in range(len(self.ele.ele[i])):
-                self.eles[i][j] = self.ele.ele[i][j]
+            self.eles[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele[i])+1)
+            for j in range(len(self.buffers.buffers[self.idx].ele.ele[i])):
+                self.eles[i][j] = self.buffers.buffers[self.idx].ele.ele[i][j]
 
-        self.ele.ele2 = [[] for i in range(len(textures))]
+        self.buffers.buffers[self.idx].ele.ele2 = [[] for i in range(len(textures))]
         xx = 0.0
         yy = 0.0
         zz = 0.0
@@ -366,7 +379,7 @@ cdef class Map:
                 for kkk in range(len(textures)):
                     if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
                         for jjj in range(4*4):
-                            self.ele.ele2[kkk] += [ii+jjj]
+                            self.buffers.buffers[self.idx].ele.ele2[kkk] += [ii+jjj]
                         # 여기에 엘레멘트버퍼를 추가
                 ii += 4*4
                 i=0
@@ -447,24 +460,24 @@ cdef class Map:
             xx = 0.0
         self.eles2 = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
-            self.eles2[i] = <int*>malloc(sizeof(int)*len(self.ele.ele2[i])+1)
-            for j in range(len(self.ele.ele2[i])):
-                self.eles2[i][j] = self.ele.ele2[i][j]
+            self.eles2[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele2[i])+1)
+            for j in range(len(self.buffers.buffers[self.idx].ele.ele2[i])):
+                self.eles2[i][j] = self.buffers.buffers[self.idx].ele.ele2[i][j]
 
-        if self.vbos.vbos:
-            self.vbos.vbos[0].reload = True
-            self.vbos.vbos[1].reload = True
-            self.vbos.vbos[2].reload = True
-            del self.vbos.vbos[0]
-            del self.vbos.vbos[0]
-            del self.vbos.vbos[0]
+        if self.buffers.buffers[self.idx].vbos.vbos:
+            self.buffers.buffers[self.idx].vbos.vbos[0].reload = True
+            self.buffers.buffers[self.idx].vbos.vbos[1].reload = True
+            self.buffers.buffers[self.idx].vbos.vbos[2].reload = True
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
         quads = <char*>self.quads
         topquads = <char*>self.topquads
         texcs = <char*>self.texcs
-        self.vbos.vbos += [0,0,0]
-        self.vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
-        self.vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
-        self.vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0]
+        self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
 
 
     def Render(self):
@@ -474,30 +487,30 @@ cdef class Map:
         #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         GL.glEnableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
-        self.vbos.vbos[0].bind()
+        self.buffers.buffers[self.idx].vbos.vbos[0].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
-        self.vbos.vbos[2].bind()
+        self.buffers.buffers[self.idx].vbos.vbos[2].bind()
         GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
 
-        for i in range(len(self.tex.tex)):
-            if len(self.ele.ele[i]):
-                GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex.tex[i][0])
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+            if len(self.buffers.buffers[self.idx].ele.ele[i]):
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.buffers.buffers[self.idx].tex.tex[i][0])
                 #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
                 #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
                 #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
 
-                glDrawElements(GL.GL_QUADS, len(self.ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.eles[i])
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.eles[i])
                 #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
 
         GL.glDisable(GL.GL_TEXTURE_2D)
-        self.vbos.vbos[1].bind()
+        self.buffers.buffers[self.idx].vbos.vbos[1].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
         #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
-        for i in range(len(self.tex.tex)):
-            if len(self.ele.ele2[i]):
-                GL.glColor4ub(*self.tex.tex[i][1])
-                glDrawElements(GL.GL_QUADS, len(self.ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>self.eles2[i])
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+            if len(self.buffers.buffers[self.idx].ele.ele2[i]):
+                GL.glColor4ub(*self.buffers.buffers[self.idx].tex.tex[i][1])
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>self.eles2[i])
         #glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
         GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
@@ -510,6 +523,21 @@ cdef class Map:
             if self.chunks[i]:
                 FreeChunk(self.chunks[i])
         free(self.chunks)
+        if self.topquads:
+            free(self.topquads)
+        if self.texcs:
+            free(self.texcs)
+        if self.quads:
+            free(self.quads)
+        if self.eles:
+            for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+                free(self.eles[i])
+            free(self.eles)
+        if self.eles2:
+            for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+                free(self.eles2[i])
+            free(self.eles2)
+
 
 cdef class Model:
     cdef char *verts
