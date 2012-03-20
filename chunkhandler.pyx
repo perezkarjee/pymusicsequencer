@@ -4,6 +4,18 @@ from OpenGL.arrays import ArrayDatatype as ADT
 class VBOs(object):
     def __init__(self):
         self.vbos = []
+class ElementBuffer(object):
+    def __init__(self, data):
+        self.reload = False
+        self.buffer = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.buffer)
+        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, ADT.arrayByteCount(data), ADT.voidDataPointer(data), GL.GL_STATIC_DRAW)
+    def __del__(self):
+        if not self.reload:
+            GL.glDeleteBuffers(1, GL.GLuint(self.buffer))
+
+    def bind(self):
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.buffer)
 class VertexBuffer(object):
 
   def __init__(self, data, usage=GL.GL_STATIC_DRAW):
@@ -86,7 +98,7 @@ cdef void FreeChunk(Chunk* chunk):
     free(chunk)
 
 NUMCHUNKS = 1
-SIZE_CHUNK = 8
+SIZE_CHUNK = 64
 import random
 
 SW = 1024
@@ -504,16 +516,33 @@ cdef class Map:
             self.buffers.buffers[self.idx].vbos.vbos[0].reload = True
             self.buffers.buffers[self.idx].vbos.vbos[1].reload = True
             self.buffers.buffers[self.idx].vbos.vbos[2].reload = True
+            for vbo in self.buffers.buffers[self.idx].vbos.vbos[3]:
+                vbo.reload = True
+            for vbo in self.buffers.buffers[self.idx].vbos.vbos[4]:
+                vbo.reload = True
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
         quads = <char*>self.quads
         topquads = <char*>self.topquads
         texcs = <char*>self.texcs
-        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0]
+        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0,0,0]
         self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
         self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
         self.buffers.buffers[self.idx].vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[3] = []
+        self.buffers.buffers[self.idx].vbos.vbos[4] = []
+
+        cdef char *ele1
+        cdef char *ele2
+        for i in range(len(textures)):
+            ele1 = <char*>self.eles[i]
+            self.buffers.buffers[self.idx].vbos.vbos[3] += [ElementBuffer(ele1[:len(self.buffers.buffers[self.idx].ele.ele[i])*sizeof(int)])]
+        for i in range(len(textures)):
+            ele2 = <char*>self.eles2[i]
+            self.buffers.buffers[self.idx].vbos.vbos[4] += [ElementBuffer(ele2[:len(self.buffers.buffers[self.idx].ele.ele2[i])*sizeof(int)])]
 
 
     def Render(self):
@@ -531,11 +560,12 @@ cdef class Map:
         for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
             if len(self.buffers.buffers[self.idx].ele.ele[i]):
                 GL.glBindTexture(GL.GL_TEXTURE_2D, self.buffers.buffers[self.idx].tex.tex[i][0])
+                self.buffers.buffers[self.idx].vbos.vbos[3][i].bind()
                 #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
                 #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
                 #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
 
-                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>self.eles[i])
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>0)
                 #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
 
@@ -545,8 +575,9 @@ cdef class Map:
         #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
         for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
             if len(self.buffers.buffers[self.idx].ele.ele2[i]):
+                self.buffers.buffers[self.idx].vbos.vbos[4][i].bind()
                 GL.glColor4ub(*self.buffers.buffers[self.idx].tex.tex[i][1])
-                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>self.eles2[i])
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>0)
         #glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
         GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
         #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)

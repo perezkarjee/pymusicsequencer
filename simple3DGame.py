@@ -3056,8 +3056,8 @@ void main(void)
         self.model = chunkhandler.Model("./blend/humanoid.jrpg")
         self.maps = []
         idx = 0
-        for y in range(4):
-            for x in range(4):
+        for y in range(1):#이걸 여러번 부르는거보다 하나로 해서 하는게 훨 빠름;;;
+            for x in range(1):
                 self.maps += [chunkhandler.Map(idx, (x,y))]
                 idx += 1
         """
