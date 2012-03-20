@@ -142,16 +142,16 @@ cdef class GUIBGRenderer(object):
         # x,y,z,  x,y,z  x,y,z,  x,y,z * 5
         self.quad[0] = float(x)
         self.quad[1] = -float(y+h)
-        self.quad[2] = 100.0
+        self.quad[2] = 25.0
         self.quad[3] = float(x+w)
         self.quad[4] = -float(y+h)
-        self.quad[5] = 100.0
+        self.quad[5] = 25.0
         self.quad[6] = float(x+w)
         self.quad[7] =  -float(y)
-        self.quad[8] =  100.0
+        self.quad[8] =  25.0
         self.quad[9] = float(x)
         self.quad[10] =  -float(y)
-        self.quad[11] = 100.0
+        self.quad[11] = 25.0
         self.texcs[0] = texupx
         self.texcs[1] = texupy+1.0
         self.texcs[2] = texupx+1.0
@@ -425,11 +425,11 @@ cdef class Map:
                 self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz
 
                 self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx
-                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz
 
                 self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
-                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz
 
                 self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx+1.0
@@ -447,11 +447,11 @@ cdef class Map:
                 self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz-1.0
 
                 self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
-                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
 
                 self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx
-                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz-1.0
                 i += 12
 
@@ -465,11 +465,11 @@ cdef class Map:
                 self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz-1.0
 
                 self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx
-                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
 
                 self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx
-                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+10+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+11+i+x*4*4*3] = zz
                 i += 12
 
@@ -479,11 +479,11 @@ cdef class Map:
                 self.quads[y*SIZE_CHUNK*4*4*3+2+i+x*4*4*3] = zz
 
                 self.quads[y*SIZE_CHUNK*4*4*3+3+i+x*4*4*3] = xx+1.0
-                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+4+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+5+i+x*4*4*3] = zz
 
                 self.quads[y*SIZE_CHUNK*4*4*3+6+i+x*4*4*3] = xx+1.0
-                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -100.0
+                self.quads[y*SIZE_CHUNK*4*4*3+7+i+x*4*4*3] = -25.0
                 self.quads[y*SIZE_CHUNK*4*4*3+8+i+x*4*4*3] = zz-1.0
 
                 self.quads[y*SIZE_CHUNK*4*4*3+9+i+x*4*4*3] = xx+1.0
