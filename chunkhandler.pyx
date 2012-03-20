@@ -98,7 +98,7 @@ cdef void FreeChunk(Chunk* chunk):
     free(chunk)
 
 NUMCHUNKS = 1
-SIZE_CHUNK = 32
+SIZE_CHUNK = 256
 import random
 
 SW = 1024
@@ -863,4 +863,6 @@ class VertexBuffer(object):
 """
 """
 기본적으로 컬링이 필요없을 것 같다. 걍 범위안의 타일을 모조리 렌더링하면 됨
+음 근데 vbo를 1개만 쓰고 한번에 렌더링을 해야하니까 64x64만큼 로드하고 맵을 새로 로드해야하니 음...
+
 """

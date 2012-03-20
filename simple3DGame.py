@@ -18,6 +18,7 @@ from OpenGL.GLU import *
 import pygame
 from pygame.locals import *
 import chunkhandler
+chunkhandler.SIZE_CHUNK = 16
 
 import random
 import math
@@ -2778,7 +2779,7 @@ void main(void)
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(eyeWorld).xyz;
+                light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+0.0)/1.0;
                 vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
@@ -3178,5 +3179,8 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 
 
 VBO를 __del__에다가 glDeleteBuffer해줘야되ㅏㅁ
+----------
+Map청크 4개를 로드해서 한 버퍼에 넣고 할 수 있나?
+glBufferSubData를 이용하면 할 수 있다. 한 버퍼에 넣고 이동시에 다른쪽이 필요한 경우 SubData를 쓴다.
 """
 
