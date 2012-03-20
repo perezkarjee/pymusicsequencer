@@ -91,6 +91,39 @@ import random
 
 SW = 1024
 SH = 768
+def CubeInFrustum(x, y, z, size, frustum):
+    cdef int p
+    cdef int c
+    cdef int c2
+    c2 = 0
+
+    for p in range(6):
+        c = 0
+        if (frustum[p][0] * (x - size) + frustum[p][1] * (y - size) + frustum[p][2] * (z - size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x + size) + frustum[p][1] * (y - size) + frustum[p][2] * (z - size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x - size) + frustum[p][1] * (y + size) + frustum[p][2] * (z - size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x + size) + frustum[p][1] * (y + size) + frustum[p][2] * (z - size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x - size) + frustum[p][1] * (y - size) + frustum[p][2] * (z + size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x + size) + frustum[p][1] * (y - size) + frustum[p][2] * (z + size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x - size) + frustum[p][1] * (y + size) + frustum[p][2] * (z + size) + frustum[p][3]) >= 0 :
+            c += 1
+        if (frustum[p][0] * (x + size) + frustum[p][1] * (y + size) + frustum[p][2] * (z + size) + frustum[p][3]) >= 0 :
+            c += 1
+        if c == 0:
+            return 0
+        if c == 8:
+            c2 += 1
+    if c2 == 6:
+        return 2
+    else:
+        return 1
+
 cdef class GUIBGRenderer(object):
     vbos = VBOs()
     cdef float *quad
@@ -225,6 +258,9 @@ cdef class Map:
     buffers = Buffers()
     cdef int prevZ
     cdef int idx
+    def GetXZ(self):
+        x,z = self.buffers.buffers[self.idx].coord
+        return x*8.0,z*8.0
     def __cinit__(self, idx, coord):
         self.idx = idx
         self.buffers.buffers[idx] = Buffer()
