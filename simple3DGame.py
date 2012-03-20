@@ -2778,7 +2778,7 @@ void main(void)
                 light.x = 1000.0;
                 light.y = 1000.0;
                 light.z = 1000.0;
-                light = normalize(light).xyz;
+                light = normalize(eyeWorld).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+0.0)/1.0;
                 vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
@@ -3055,7 +3055,7 @@ void main(void)
 
 
         self.fps = fps = FPS()
-        self.model = chunkhandler.Model("./blend/humanoid.jrpg")
+        self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
         self.maps = []
         idx = 0
         for y in range(1):#이걸 여러번 부르는거보다 하나로 해서 하는게 훨 빠름;;;

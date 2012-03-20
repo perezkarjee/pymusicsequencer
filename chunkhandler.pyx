@@ -617,9 +617,13 @@ cdef class Model:
     cdef int num
     cdef int indNum
     cdef int lX,lY,lZ,hX,hY,hZ
-    vbo = VBOs()
+    cdef int idx
+    buffers = Buffers()
     
-    def __cinit__(self, fileName):
+    
+    def __cinit__(self, fileName, idx):
+        self.idx = idx
+        self.buffers.buffers[idx] = Buffer()
         cdef char *lentypenameChar
         cdef char *versionChar
         cdef char *numvertsChar
@@ -782,25 +786,30 @@ cdef class Model:
     def GetBounds(self):
         return [(self.lX,self.lY,self.lZ), (self.hX,self.hY,self.hZ)]
     def Regen(self):
-        if self.vbo.vbos:
-            self.vbo.vbos[0].reload = True
-            self.vbo.vbos[1].reload = True
-            del self.vbo.vbos[0]
-            del self.vbo.vbos[0]
-        self.vbo.vbos += [0,0]
-        self.vbo.vbos[0] = VertexBuffer(self.verts[:self.num*4*3])
-        self.vbo.vbos[1] = VertexBuffer(self.normals[:self.num*4*3])
+        if self.buffers.buffers[self.idx].vbos.vbos:
+            self.buffers.buffers[self.idx].vbos.vbos[0].reload = True
+            self.buffers.buffers[self.idx].vbos.vbos[1].reload = True
+            self.buffers.buffers[self.idx].vbos.vbos[2].reload = True
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0]
+        self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(self.verts[:self.num*4*3])
+        self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(self.normals[:self.num*4*3])
+        self.buffers.buffers[self.idx].vbos.vbos[2] = ElementBuffer(self.inds[:self.indNum*4])
     def Draw(self):
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
         GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
-        self.vbo.vbos[0].bind()
+        self.buffers.buffers[self.idx].vbos.vbos[0].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        self.buffers.buffers[self.idx].vbos.vbos[1].bind()
         GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
         #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
         #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
         #glDrawArrays(GL.GL_TRIANGLES, 0, self.num)
-        glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
+        self.buffers.buffers[self.idx].vbos.vbos[2].bind()
+        glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>0)
         GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
         GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
