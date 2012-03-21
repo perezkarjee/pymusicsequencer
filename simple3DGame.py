@@ -2860,8 +2860,13 @@ void main(void)
                 pos = LEFTBOT
             elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
                 pos = RIGHTBOT
-            if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
-                map.ClickTile(self.tileMode, pos, (x,y,z))
+            #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
+            if x < 0.0:
+                x -= 1
+            if z > 0.0:
+                z += 1
+            print x,z, 'aa'
+            map.ClickTile(self.tileMode, pos, (x,y,-z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
         #if LMB in m.pressedButtons.iterkeys():
@@ -3190,5 +3195,11 @@ VBO를 __del__에다가 glDeleteBuffer해줘야되ㅏㅁ
 저장은 16x16크기로 해서 4개의 맵을 로드하도록 한다. 왜냐면 맵이 겹쳐지므로
 이동할 때마다 매번 로드해야하네..... 48x48로 하면 될 듯
 12칸 이동할 때마다 한번씩 로드될 것 같다.
+---------------
+파일 하나에 256x256칸을 넣고
+좌표에 따라 파일을 연다. 파일이 이미 열렸다면 열린 파일을 쓴다.
+리젠할 때 파일을 연다.
+타일 저장은 언로드시에 저장한다.
+Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 """
 

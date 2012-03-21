@@ -1,4 +1,5 @@
 import OpenGL.GL as GL
+import cPickle
 from OpenGL.arrays import ArrayDatatype as ADT
 
 class VBOs(object):
@@ -252,6 +253,9 @@ OFFSETZ = 18
 걍 map인스턴스를 여러개를 만들어서 렌더링을 한다. 아 안되넹 vbos가 공유가 되버려서';;;;;
 걍 Map클래스 내부에서 잘 처리되도록 한다.
 """
+class Files:
+    def __init__(self):
+        self.files = {}
 class Buffer:
     def __init__(self):
         self.vbos = VBOs()
@@ -276,6 +280,7 @@ cdef class Map:
     cdef int idx
     cdef int prevGenX
     cdef int prevGenZ
+    files = Files()
     def GetXZ(self):
         x,z = self.buffers.buffers[self.idx].coord
         return x*8.0,z*8.0
@@ -285,6 +290,7 @@ cdef class Map:
         self.idx = idx
         self.buffers.buffers[idx] = Buffer()
         self.buffers.buffers[idx].coord = coord
+        self.files.files[idx] = {}
         self.wallChunks = <Walls**>malloc(sizeof(Walls*)*NUMCHUNKS)
         memset(self.wallChunks, 0, sizeof(Walls*)*NUMCHUNKS)
         self.wallChunks[0] = <Walls*>malloc(sizeof(Walls))
@@ -318,6 +324,8 @@ cdef class Map:
         self.eles = <int**>0
         self.eles2 = <int**>0
 
+        self.files.files[self.idx] = {}
+
 
     def AddWall(self, x, y, z):
         x = int(x)
@@ -337,16 +345,61 @@ cdef class Map:
         LEFTBOT = 2
         RIGHTBOT = 3
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
-        self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
-        self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
+
+        xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*256+xxx][1] = self.tileData
+        #self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
+        self.Regen(self.buffers.buffers[self.idx].tex.tex, False, True)
 
     def PosUpdate(self, x,y,z):
         if (abs(self.prevGenX-x) >= REGENX) or (abs(self.prevGenZ-z) >= REGENZ):
             self.prevGenX = x
             self.prevGenZ = z
             self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
-    def Regen(self, textures, regen=True):
+
+    def GetLocalCoord(self, x,z):
+        x = x%256
+        z = z%256
+        return x,z
+
+    def GetFileName(self, x,z):
+        x = x-(x%256)
+        z = z-(z%256)
+        fileN = "./maps/%d_%d.map" % (x,z)
+        return fileN
+    def Save(self, fileN, fileContents):
+        cPickle.dump(fileContents, open(fileN, "wb"))
+    def Load(self, fileN):
+        try:
+            return cPickle.load(open(fileN, "rb"))
+        except:
+            return [[0,0] for i in range(256*256)]
+    def Regen(self, textures, regen=True, changeTile=False):
+        if not changeTile:
+            xLeft = self.prevGenX-OFFSETX
+            xOrg = xLeft
+            xRight = xLeft+SIZE_CHUNK
+            zLeft = self.prevGenZ-OFFSETZ
+            zRight = zLeft+SIZE_CHUNK
+            fileNames = []
+            while zLeft <= zRight:
+                while xLeft <= xRight:
+                    fileNames += [self.GetFileName(xLeft,zLeft)]
+                    if self.GetFileName(xLeft,zLeft) not in self.files.files[self.idx].iterkeys():
+                        self.files.files[self.idx][self.GetFileName(xLeft,zLeft)] = self.Load(self.GetFileName(xLeft, zLeft))
+                    xLeft += SIZE_CHUNK
+                zLeft += SIZE_CHUNK
+                xLeft = xOrg
+
+            files = self.files.files[self.idx]
+            fileNames2 = self.files.files[self.idx].keys()
+            for fileN in fileNames2:
+                if fileN not in fileNames:
+                    self.Save(fileN, files[fileN])
+                    del self.files.files[self.idx][fileN]
+
         self.buffers.buffers[self.idx].tex.tex = textures
+
         cdef char *topquads
         cdef char *quads
         cdef char *texcs
@@ -385,9 +438,13 @@ cdef class Map:
         ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
-                height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                xxx,zzz = self.GetLocalCoord(int(xx),int(zz))
+                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][0]
+                #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][1]
                 for kkk in range(len(textures)):
-                    if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                    #if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                    if tileData == kkk:
                         self.buffers.buffers[self.idx].ele.ele[kkk] += [ii,ii+1,ii+2,ii+3]
                         # 여기에 엘레멘트버퍼를 추가
                 ii += 4
@@ -437,10 +494,15 @@ cdef class Map:
         ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
-                height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                xxx,zzz = self.GetLocalCoord(int(xx),int(zz))
+                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][0]
+                #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
+                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][1]
+                #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
 
                 for kkk in range(len(textures)):
-                    if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                    #if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
+                    if tileData == kkk:
                         for jjj in range(4*4):
                             self.buffers.buffers[self.idx].ele.ele2[kkk] += [ii+jjj]
                         # 여기에 엘레멘트버퍼를 추가
@@ -601,6 +663,10 @@ cdef class Map:
         GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_TEXTURE_1D)
     def __dealloc__(self):
+        files = self.files.files[self.idx]
+        for fileN in files.iterkeys():
+            self.Save(fileN, files[fileN])
+
         for i in range(NUMCHUNKS):
             if self.chunks[i]:
                 FreeChunk(self.chunks[i])
