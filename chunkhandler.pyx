@@ -793,6 +793,9 @@ cdef class Map:
         files = self.files.files[self.idx]
         for fileN in files.iterkeys():
             self.Save(fileN, files[fileN])
+        files = self.walls.files[self.idx]
+        for fileN in files.iterkeys():
+            self.Save(fileN, files[fileN])
 
         if self.topquads:
             free(self.topquads)

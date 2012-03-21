@@ -2643,7 +2643,7 @@ class ConstructorApp:
                 map.Regen(self.texTiles, (self.tex,))
                 map.AddWall(0,0,0,0,0,1)
                 map.AddWall(0,0,0,0,0,0)
-                map.AddWall(1,0,1,0,0,0)
+                map.AddWall(1,1,1,0,0,0)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
