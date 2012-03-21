@@ -242,6 +242,10 @@ cdef struct Walls:
     int y
     int z
 
+REGENX = 9
+REGENZ = 9
+OFFSETX = 18
+OFFSETZ = 18
 """
 울온처럼 평평한 땅에만 지을 수 있다.
 평평한 땅을 만들면 거기에 타일의 높낮이 조절 불가능하게 해야함
@@ -270,10 +274,14 @@ cdef class Map:
     buffers = Buffers()
     cdef int prevZ
     cdef int idx
+    cdef int prevGenX
+    cdef int prevGenZ
     def GetXZ(self):
         x,z = self.buffers.buffers[self.idx].coord
         return x*8.0,z*8.0
     def __cinit__(self, idx, coord):
+        self.prevGenX = 0
+        self.prevGenZ = 0
         self.idx = idx
         self.buffers.buffers[idx] = Buffer()
         self.buffers.buffers[idx].coord = coord
@@ -331,6 +339,12 @@ cdef class Map:
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
         self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
         self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
+
+    def PosUpdate(self, x,y,z):
+        if (abs(self.prevGenX-x) >= REGENX) or (abs(self.prevGenZ-z) >= REGENZ):
+            self.prevGenX = x
+            self.prevGenZ = z
+            self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
     def Regen(self, textures, regen=True):
         self.buffers.buffers[self.idx].tex.tex = textures
         cdef char *topquads
@@ -355,9 +369,9 @@ cdef class Map:
         self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
         # x,y,z,  x,y,z  x,y,z,  x,y,z * 5
 
-        xx = 0.0
+        xx = self.prevGenX-OFFSETX
         yy = 0.0
-        zz = 0.0
+        zz = self.prevGenZ+OFFSETZ
         # 텍스쳐별로 vbo를 만들던지 아니면 한 vbo로 하되 오프셋을 다르게 하여 텍스쳐를 다르게 적용시킨다?
         # 아 엘레멘트버퍼를 만들어서 그걸루 나누자.
 
@@ -408,7 +422,8 @@ cdef class Map:
 
                 xx += 1.0
             zz -= 1.0
-            xx = 0.0
+            xx = self.prevGenX-OFFSETX
+
         self.eles = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
             self.eles[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele[i])+1)
@@ -416,9 +431,9 @@ cdef class Map:
                 self.eles[i][j] = self.buffers.buffers[self.idx].ele.ele[i][j]
 
         self.buffers.buffers[self.idx].ele.ele2 = [[] for i in range(len(textures))]
-        xx = 0.0
+        xx = self.prevGenX-OFFSETX
         yy = 0.0
-        zz = 0.0
+        zz = self.prevGenZ+OFFSETZ
         ii = 0
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
@@ -505,7 +520,7 @@ cdef class Map:
 
                 xx += 1.0
             zz -= 1.0
-            xx = 0.0
+            xx = self.prevGenX-OFFSETX
         self.eles2 = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
             self.eles2[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele2[i])+1)

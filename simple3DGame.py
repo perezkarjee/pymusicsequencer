@@ -18,7 +18,12 @@ from OpenGL.GLU import *
 import pygame
 from pygame.locals import *
 import chunkhandler
-chunkhandler.SIZE_CHUNK = 16
+chunkhandler.SIZE_CHUNK = 36
+chunkhandler.REGENX = 9
+chunkhandler.REGENZ = 9
+chunkhandler.OFFSETX = 18
+chunkhandler.OFFSETZ = 18
+
 
 import random
 import math
@@ -2855,7 +2860,7 @@ void main(void)
                 pos = LEFTBOT
             elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
                 pos = RIGHTBOT
-            if 0.0 < x < 0.0+32.0 and -32.0 < z < 0.0:
+            if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
                 map.ClickTile(self.tileMode, pos, (x,y,z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
@@ -2873,6 +2878,7 @@ void main(void)
         self.cam1.ApplyCamera()
         glUseProgram(0)
         for map in self.maps:
+            map.PosUpdate(self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
@@ -3180,7 +3186,9 @@ heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더�
 
 VBO를 __del__에다가 glDeleteBuffer해줘야되ㅏㅁ
 ----------
-Map청크 4개를 로드해서 한 버퍼에 넣고 할 수 있나?
-glBufferSubData를 이용하면 할 수 있다. 한 버퍼에 넣고 이동시에 다른쪽이 필요한 경우 SubData를 쓴다.
+그냥 위치에 따라 파일에서 로드해서 32x32맵을 로드한다.
+저장은 16x16크기로 해서 4개의 맵을 로드하도록 한다. 왜냐면 맵이 겹쳐지므로
+이동할 때마다 매번 로드해야하네..... 48x48로 하면 될 듯
+12칸 이동할 때마다 한번씩 로드될 것 같다.
 """
 
