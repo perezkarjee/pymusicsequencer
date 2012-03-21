@@ -2641,9 +2641,10 @@ class ConstructorApp:
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
             for map in self.maps:
                 map.Regen(self.texTiles, (self.tex,))
-                map.AddWall(0,0,0,0,0,1)
-                map.AddWall(0,0,0,0,0,0)
-                map.AddWall(1,1,1,0,0,0)
+                map.AddWall(0,0,0,0,1)
+                map.AddWall(0,0,0,0,0)
+                map.AddWall(1,0,0,0,1)
+                map.AddWall(0,0,-1,0,0)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 

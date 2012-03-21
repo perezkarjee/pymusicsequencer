@@ -295,7 +295,16 @@ cdef class Map:
         # 맵이 작으니까 괜찮다. 맵 커봤자 타일구존데 뭐....
 
 
-    def AddWall(self, x, y, z, part, tile, facing):
+    def DelWall(self,x,y,z, tile, facing):
+        x=int(x)
+        z=-int(z)
+        if (x,z) in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))].iterkeys():
+            try:
+                self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,z)].remove([facing,tile])
+                self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
+            except:
+                pass
+    def AddWall(self, x, y, z, tile, facing):
         x = int(x)
         z = -int(z)
         LEFTTOP = 0
@@ -304,10 +313,10 @@ cdef class Map:
         RIGHTBOT = 3
 
         xxx,zzz = self.GetLocalCoord(int(x),int(z))
-        if (x,y,z) not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]:
-            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)] = []
-        if [facing,tile] not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)]:
-            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)] += [[facing,tile]]
+        if (x,z) not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]:
+            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,z)] = []
+        if [facing,tile] not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,z)]:
+            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,z)] += [[facing,tile]]
             self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
     def SetTile(self, tile):
         self.tileData = tile
@@ -447,8 +456,11 @@ cdef class Map:
         for fileN in walls.iterkeys():
             for coord in walls[fileN].iterkeys():
 
-                x,y,z = coord
+                x,z = coord
                 for wall in walls[fileN][coord]:
+                    xxx,zzz = self.GetLocalCoord(int(x),int(z))
+                    height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][0]
+                    height *=0.25
                     facing, tile = wall
                     for kkk in range(len(textures2)):
                         if tile == kkk:
@@ -458,36 +470,36 @@ cdef class Map:
 
                     if facing == 0:
                         self.wallquads[wallIdx*4*3+0] = x
-                        self.wallquads[wallIdx*4*3+1] = y+2.0
+                        self.wallquads[wallIdx*4*3+1] = height+2.0
                         self.wallquads[wallIdx*4*3+2] = z
 
                         self.wallquads[wallIdx*4*3+3] = x+1.0
-                        self.wallquads[wallIdx*4*3+4] = y+2.0
+                        self.wallquads[wallIdx*4*3+4] = height+2.0
                         self.wallquads[wallIdx*4*3+5] = z
 
                         self.wallquads[wallIdx*4*3+6] = x+1.0
-                        self.wallquads[wallIdx*4*3+7] = y
+                        self.wallquads[wallIdx*4*3+7] = height
                         self.wallquads[wallIdx*4*3+8] = z
 
                         self.wallquads[wallIdx*4*3+9] = x
-                        self.wallquads[wallIdx*4*3+10] = y
+                        self.wallquads[wallIdx*4*3+10] = height
                         self.wallquads[wallIdx*4*3+11] = z
 
                     if facing == 1:
                         self.wallquads[wallIdx*4*3+0] = x
-                        self.wallquads[wallIdx*4*3+1] = y+2.0
+                        self.wallquads[wallIdx*4*3+1] = height+2.0
                         self.wallquads[wallIdx*4*3+2] = z
 
                         self.wallquads[wallIdx*4*3+3] = x
-                        self.wallquads[wallIdx*4*3+4] = y+2.0
+                        self.wallquads[wallIdx*4*3+4] = height+2.0
                         self.wallquads[wallIdx*4*3+5] = z+1.0
 
                         self.wallquads[wallIdx*4*3+6] = x
-                        self.wallquads[wallIdx*4*3+7] = y
+                        self.wallquads[wallIdx*4*3+7] = height
                         self.wallquads[wallIdx*4*3+8] = z+1.0
 
                         self.wallquads[wallIdx*4*3+9] = x
-                        self.wallquads[wallIdx*4*3+10] = y
+                        self.wallquads[wallIdx*4*3+10] = height
                         self.wallquads[wallIdx*4*3+11] = z
 
                     self.walltexs[wallIdx*4*2+0] = 0.0
