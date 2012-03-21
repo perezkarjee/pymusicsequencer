@@ -1980,7 +1980,6 @@ def DrawQuad(x,y,w,h, color1, color2):
 
 
 def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
-    glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, texture)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -2024,7 +2023,6 @@ def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른
         glTexCoord2f(1.0, 1.0)
         glVertex( v[v4] )            
         glEnd()
-    glDisable(GL_TEXTURE_2D)
 
 
 class Physics(object):
@@ -2398,6 +2396,9 @@ class ConstructorApp:
         self.aniBeamX = 0
         self.ani = [0,1,2,1]
 
+        self.tilingDelay = 50
+        self.tilingWait = pygame.time.get_ticks()
+
 
 
     def MultMat4x4(self, mat, vec):
@@ -2641,10 +2642,6 @@ class ConstructorApp:
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
             for map in self.maps:
                 map.Regen(self.texTiles, (self.tex,))
-                map.AddWall(0,0,0,0,1)
-                map.AddWall(0,0,0,0,0)
-                map.AddWall(1,0,0,0,1)
-                map.AddWall(0,0,-1,0,0)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -2833,6 +2830,48 @@ void main(void)
         return (x,y,z)
 
 
+    def HandleMapWalling(self,t,m,k,map):
+        LEFTTOP = 0
+        RIGHTTOP = 1
+        LEFTBOT = 2
+        RIGHTBOT = 3
+
+        x,y,z = self.GetWorldMouse(m.x, m.y)
+        if x > 0.0:
+            xTilePos1 = x-(x-math.floor(x))
+            xTilePos2 = math.ceil(x)
+        else:
+            xTilePos1 = math.floor(x)
+            xTilePos2 = x-(x-math.ceil(x))
+        if z > 0.0:
+            zTilePos1 = z-(z-math.floor(z))
+            zTilePos2 = math.ceil(z)
+        else:
+            zTilePos1 = math.floor(z)
+            zTilePos2 = z-(z-math.ceil(z))
+
+        pos = LEFTTOP
+        if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = LEFTTOP
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = RIGHTTOP
+        elif xTilePos1 <= x < xTilePos1+0.5 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = LEFTBOT
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = RIGHTBOT
+        #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
+        if x < 0.0:
+            x -= 1
+        if z > 0.0:
+            z += 1
+        x = int(x)
+        z = int(z)
+        DrawCube((float(x),0,float(z)-1.0),(0.25,0.25,0.25), (255,255,255,255), 0) # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+            if t-self.tilingWait > self.tilingDelay:
+                self.tilingWait = t
+                self.maps[0].AddWall(x,0,-(z-1),0,0)
+
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
@@ -2890,7 +2929,8 @@ void main(void)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
-            self.HandleMapTiling(t,m,k, map)
+            #self.HandleMapTiling(t,m,k, map)
+            self.HandleMapWalling(t,m,k, map)
             """
             if mat is not None:
                 frustum = NormalizeFrustum(GetFrustum(mat))
@@ -3206,5 +3246,6 @@ VBO를 __del__에다가 glDeleteBuffer해줘야되ㅏㅁ
 Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 ---------
 심즈처럼 경계선 사이에서 클릭해서 벽만들게 한다.
+2층 3층 4층까지 가능한데 각 층의 높이는 무조건 +2.0이다.
 """
 
