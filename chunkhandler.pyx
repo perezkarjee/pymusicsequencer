@@ -81,25 +81,14 @@ cdef extern from "gl/gl.h":
     cdef void glDrawArrays(	GLenum  	mode,            GLint  	first,            GLsizei  	count)
 
 cdef extern from "cpart.h":
-    struct tTile:
-        float height
-        int tileData
-    struct tChunk:
-        tTile *tiles
-        int x,y,z
-    ctypedef tChunk Chunk
-    ctypedef tTile Tile
     cdef int ReadInt(char *str)
     cdef char HitBoundingBox(float minB[3],float maxB[3], float origin[3], float dir[3],float coord[3])
 
 
 
-cdef void FreeChunk(Chunk* chunk):
-    free(chunk.tiles)
-    free(chunk)
 
 NUMCHUNKS = 1
-SIZE_CHUNK = 256
+SIZE_CHUNK = 128
 import random
 
 SW = 1024
@@ -216,11 +205,13 @@ cdef class GUIBGRenderer(object):
 class Tex:
     def __init__(self):
         self.tex = []
+        self.tex2 = []
 
 class Element:
     def __init__(self):
         self.ele = None
         self.ele2 = None
+        self.ele3 = None
 
 FACE_X = 0
 FACE_Z = 1
@@ -236,12 +227,6 @@ cdef struct WallTile:
 # 음................................................
 # 걍 귀찮으니 타일구조로 하고 벽이 있는지 없는지만 표현
 
-cdef struct Walls:
-    WallTile *wallsX
-    WallTile *wallsZ
-    int x
-    int y
-    int z
 
 REGENX = 9
 REGENZ = 9
@@ -266,13 +251,15 @@ class Buffers:
     def __init__(self):
         self.buffers = {}
 cdef class Map:
-    cdef Chunk **chunks
     cdef float *quads
+    cdef float *wallquads
+    cdef float *walltexs
     cdef float *topquads
     cdef float *texcs
-    cdef Walls **wallChunks
     cdef int **eles
     cdef int **eles2
+    cdef int **eles3
+    cdef int **weles
     cdef int tileData
     cdef int prevX
     buffers = Buffers()
@@ -281,6 +268,7 @@ cdef class Map:
     cdef int prevGenX
     cdef int prevGenZ
     files = Files()
+    walls = Files()
     def GetXZ(self):
         x,z = self.buffers.buffers[self.idx].coord
         return x*8.0,z*8.0
@@ -291,52 +279,44 @@ cdef class Map:
         self.buffers.buffers[idx] = Buffer()
         self.buffers.buffers[idx].coord = coord
         self.files.files[idx] = {}
-        self.wallChunks = <Walls**>malloc(sizeof(Walls*)*NUMCHUNKS)
-        memset(self.wallChunks, 0, sizeof(Walls*)*NUMCHUNKS)
-        self.wallChunks[0] = <Walls*>malloc(sizeof(Walls))
-        self.wallChunks[0].wallsX = <WallTile*>malloc(sizeof(WallTile)*SIZE_CHUNK*SIZE_CHUNK)
-        self.wallChunks[0].wallsZ = <WallTile*>malloc(sizeof(WallTile)*SIZE_CHUNK*SIZE_CHUNK)
-        self.wallChunks[0].x = 0
-        self.wallChunks[0].y = 0
-        self.wallChunks[0].z = 0
-        for i in range(SIZE_CHUNK*SIZE_CHUNK):
-            self.wallChunks[0].wallsX[i].facing = NOWALL
-            self.wallChunks[0].wallsX[i].frontTile = 0
-            self.wallChunks[0].wallsX[i].backTile = 0
-            self.wallChunks[0].wallsZ[i].facing = NOWALL
-            self.wallChunks[0].wallsZ[i].frontTile = 0
-            self.wallChunks[0].wallsZ[i].backTile = 0
-
-        self.chunks = <Chunk**>malloc(sizeof(Chunk*)*NUMCHUNKS)
-        memset(self.chunks, 0, sizeof(Chunk*)*NUMCHUNKS)
-        self.chunks[0] = <Chunk*>malloc(sizeof(Chunk))
-        self.chunks[0].tiles = <Tile*>malloc(sizeof(Tile)*SIZE_CHUNK*SIZE_CHUNK)
-        self.chunks[0].x = 0
-        self.chunks[0].y = 0
-        self.chunks[0].z = 0
-        for i in range(SIZE_CHUNK*SIZE_CHUNK):
-            self.chunks[0].tiles[i].height = 0.0#+float(random.randint(0,10))
-            self.chunks[0].tiles[i].tileData = 0#+float(random.randint(0,10))
 
         self.quads = <float*>0
         self.topquads = <float*>0
         self.texcs = <float*>0
         self.eles = <int**>0
         self.eles2 = <int**>0
+        self.wallquads = <float*>0
+        self.walltexs = <float*>0
 
         self.files.files[self.idx] = {}
+        self.walls.files[self.idx] = {}
+        # 벽은 8x8맵의 범위안에 있다.
+        # 음 파일의 수가 엄청 많아지면 좀 곤란한데?
+        # 맵이 작으니까 괜찮다. 맵 커봤자 타일구존데 뭐....
 
 
-    def AddWall(self, x, y, z):
+    def AddWall(self, x, y, z, part, tile, facing):
         x = int(x)
         z = -int(z)
+        LEFTTOP = 0
+        RIGHTTOP = 1
+        LEFTBOT = 2
+        RIGHTBOT = 3
+
+        xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        if (x,y,z) not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]:
+            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)] = []
+        if [facing,tile] not in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)]:
+            self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))][(x,y,z)] += [[facing,tile]]
+            self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
     def SetTile(self, tile):
         self.tileData = tile
     def ClickTile(self, mode, part, position):
         x,y,z = position
         x = int(x)
         z = -int(z)
-        if self.prevX == x and self.prevZ == z and self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData == self.tileData:
+        xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        if self.prevX == x and self.prevZ == z and self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][1] == self.tileData:
             return
         self.prevX = x
         self.prevZ = z
@@ -346,49 +326,63 @@ cdef class Map:
         RIGHTBOT = 3
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].height += 1
 
-        xxx,zzz = self.GetLocalCoord(int(x),int(z))
-        self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*256+xxx][1] = self.tileData
+        self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][1] = self.tileData
         #self.chunks[0].tiles[z*SIZE_CHUNK+x].tileData = self.tileData
-        self.Regen(self.buffers.buffers[self.idx].tex.tex, False, True)
+        self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
 
     def PosUpdate(self, x,y,z):
         if (abs(self.prevGenX-x) >= REGENX) or (abs(self.prevGenZ-z) >= REGENZ):
             self.prevGenX = x
             self.prevGenZ = z
-            self.Regen(self.buffers.buffers[self.idx].tex.tex, False)
+            self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False)
 
-    def GetLocalCoord(self, x,z):
-        x = x%256
-        z = z%256
+    cdef GetLocalCoord(self, int x,int z):
+        x = x%8
+        z = z%8
         return x,z
 
-    def GetFileName(self, x,z):
-        x = x-(x%256)
-        z = z-(z%256)
+    cdef GetFileName(self, int x,int z):
+        x = x-(x%8)
+        z = z-(z%8)
         fileN = "./maps/%d_%d.map" % (x,z)
+        return fileN
+    cdef GetWallFileName(self, int x, int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.wall" % (x,z)
         return fileN
     def Save(self, fileN, fileContents):
         cPickle.dump(fileContents, open(fileN, "wb"))
+    def LoadWall(self, fileN):
+        try:
+            return cPickle.load(open(fileN, "rb"))
+        except:
+            return {}
     def Load(self, fileN):
         try:
             return cPickle.load(open(fileN, "rb"))
         except:
-            return [[0,0] for i in range(256*256)]
-    def Regen(self, textures, regen=True, changeTile=False):
+            return [[0,0] for i in range(8*8)]
+    def Regen(self, textures, textures2, regen=True, changeTile=False):
         if not changeTile:
             xLeft = self.prevGenX-OFFSETX
             xOrg = xLeft
-            xRight = xLeft+SIZE_CHUNK
+            xRight = xLeft+OFFSETX*2+8
             zLeft = self.prevGenZ-OFFSETZ
-            zRight = zLeft+SIZE_CHUNK
+            zRight = zLeft+OFFSETZ*2+8
+            print xLeft, xRight
             fileNames = []
+            fileNames3 = []
             while zLeft <= zRight:
                 while xLeft <= xRight:
                     fileNames += [self.GetFileName(xLeft,zLeft)]
                     if self.GetFileName(xLeft,zLeft) not in self.files.files[self.idx].iterkeys():
                         self.files.files[self.idx][self.GetFileName(xLeft,zLeft)] = self.Load(self.GetFileName(xLeft, zLeft))
-                    xLeft += SIZE_CHUNK
-                zLeft += SIZE_CHUNK
+                    fileNames3 += [self.GetWallFileName(xLeft,zLeft)]
+                    if self.GetWallFileName(xLeft,zLeft) not in self.walls.files[self.idx].iterkeys():
+                        self.walls.files[self.idx][self.GetWallFileName(xLeft,zLeft)] = self.LoadWall(self.GetWallFileName(xLeft, zLeft))
+                    xLeft += 8
+                zLeft += 8
                 xLeft = xOrg
 
             files = self.files.files[self.idx]
@@ -398,11 +392,26 @@ cdef class Map:
                     self.Save(fileN, files[fileN])
                     del self.files.files[self.idx][fileN]
 
+            files2 = self.walls.files[self.idx]
+            fileNames4 = self.walls.files[self.idx].keys()
+            for fileN in fileNames4:
+                if fileN not in fileNames3:
+                    self.Save(fileN, files2[fileN])
+                    del self.walls.files[self.idx][fileN]
+
+
         self.buffers.buffers[self.idx].tex.tex = textures
+        self.buffers.buffers[self.idx].tex.tex2 = textures2
 
         cdef char *topquads
+        cdef char *wallquads
+        cdef char *walltexs
         cdef char *quads
         cdef char *texcs
+        if self.wallquads:
+            free(self.wallquads)
+        if self.walltexs:
+            free(self.walltexs)
         if self.topquads:
             free(self.topquads)
         if self.texcs:
@@ -413,6 +422,10 @@ cdef class Map:
             for i in range(len(textures)):
                 free(self.eles[i])
             free(self.eles)
+        if self.eles3:
+            for i in range(len(textures2)):
+                free(self.eles3[i])
+            free(self.eles3)
         if self.eles2:
             for i in range(len(textures)):
                 free(self.eles2[i])
@@ -420,7 +433,85 @@ cdef class Map:
         self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
         self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
         self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
+        walls = self.walls.files[self.idx]
+        numwalls = 0
+        for fileN in walls.iterkeys():
+            for coord in walls[fileN].iterkeys():
+                for wall in walls[fileN][coord]:
+                    numwalls += 1
+        self.wallquads = <float*>malloc(sizeof(float)*3*numwalls*4) # xyz, width, height, verts*4=quad, quads
+        self.walltexs = <float*>malloc(sizeof(float)*2*numwalls*4) # xyz, width, height, verts*4=quad, quads
         # x,y,z,  x,y,z  x,y,z,  x,y,z * 5
+        wallIdx = 0
+        self.buffers.buffers[self.idx].ele.ele3 = [[] for i in range(len(textures2))]
+        for fileN in walls.iterkeys():
+            for coord in walls[fileN].iterkeys():
+
+                x,y,z = coord
+                for wall in walls[fileN][coord]:
+                    facing, tile = wall
+                    for kkk in range(len(textures2)):
+                        if tile == kkk:
+                            ii = wallIdx*4
+                            self.buffers.buffers[self.idx].ele.ele3[kkk] += [ii,ii+1,ii+2,ii+3]
+                            # 여기에 엘레멘트버퍼를 추가
+
+                    if facing == 0:
+                        self.wallquads[wallIdx*4*3+0] = x
+                        self.wallquads[wallIdx*4*3+1] = y+2.0
+                        self.wallquads[wallIdx*4*3+2] = z
+
+                        self.wallquads[wallIdx*4*3+3] = x+1.0
+                        self.wallquads[wallIdx*4*3+4] = y+2.0
+                        self.wallquads[wallIdx*4*3+5] = z
+
+                        self.wallquads[wallIdx*4*3+6] = x+1.0
+                        self.wallquads[wallIdx*4*3+7] = y
+                        self.wallquads[wallIdx*4*3+8] = z
+
+                        self.wallquads[wallIdx*4*3+9] = x
+                        self.wallquads[wallIdx*4*3+10] = y
+                        self.wallquads[wallIdx*4*3+11] = z
+
+                    if facing == 1:
+                        self.wallquads[wallIdx*4*3+0] = x
+                        self.wallquads[wallIdx*4*3+1] = y+2.0
+                        self.wallquads[wallIdx*4*3+2] = z
+
+                        self.wallquads[wallIdx*4*3+3] = x
+                        self.wallquads[wallIdx*4*3+4] = y+2.0
+                        self.wallquads[wallIdx*4*3+5] = z+1.0
+
+                        self.wallquads[wallIdx*4*3+6] = x
+                        self.wallquads[wallIdx*4*3+7] = y
+                        self.wallquads[wallIdx*4*3+8] = z+1.0
+
+                        self.wallquads[wallIdx*4*3+9] = x
+                        self.wallquads[wallIdx*4*3+10] = y
+                        self.wallquads[wallIdx*4*3+11] = z
+
+                    self.walltexs[wallIdx*4*2+0] = 0.0
+                    self.walltexs[wallIdx*4*2+1] = 1.0
+
+                    self.walltexs[wallIdx*4*2+2] = 1.0
+                    self.walltexs[wallIdx*4*2+3] = 1.0
+
+                    self.walltexs[wallIdx*4*2+4] = 1.0
+                    self.walltexs[wallIdx*4*2+5] = 0.0
+
+                    self.walltexs[wallIdx*4*2+6] = 0.0
+                    self.walltexs[wallIdx*4*2+7] = 0.0
+
+
+
+                    wallIdx += 1
+
+        self.eles3 = <int**>malloc(sizeof(int*)*len(textures2))
+        for i in range(len(textures2)):
+            self.eles3[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele3[i])+1)
+            for j in range(len(self.buffers.buffers[self.idx].ele.ele3[i])):
+                self.eles3[i][j] = self.buffers.buffers[self.idx].ele.ele3[i][j]
+
 
         xx = self.prevGenX-OFFSETX
         yy = 0.0
@@ -439,9 +530,9 @@ cdef class Map:
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 xxx,zzz = self.GetLocalCoord(int(xx),int(zz))
-                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][0]
+                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*8+xxx][0]
                 #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
-                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][1]
+                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*8+xxx][1]
                 for kkk in range(len(textures)):
                     #if self.chunks[0].tiles[y*SIZE_CHUNK+x].tileData == kkk:
                     if tileData == kkk:
@@ -495,9 +586,9 @@ cdef class Map:
         for y in range(SIZE_CHUNK):
             for x in range(SIZE_CHUNK):
                 xxx,zzz = self.GetLocalCoord(int(xx),int(zz))
-                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][0]
+                height = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*8+xxx][0]
                 #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
-                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*256+xxx][1]
+                tileData = self.files.files[self.idx][self.GetFileName(int(xx),int(zz))][zzz*8+xxx][1]
                 #height = self.chunks[0].tiles[y*SIZE_CHUNK+x].height
 
                 for kkk in range(len(textures)):
@@ -597,6 +688,13 @@ cdef class Map:
                 vbo.reload = regen
             for vbo in self.buffers.buffers[self.idx].vbos.vbos[4]:
                 vbo.reload = regen
+            self.buffers.buffers[self.idx].vbos.vbos[5].reload = regen
+            self.buffers.buffers[self.idx].vbos.vbos[7].reload = regen
+            for vbo in self.buffers.buffers[self.idx].vbos.vbos[6]:
+                vbo.reload = regen
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
+            del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
@@ -605,21 +703,30 @@ cdef class Map:
         quads = <char*>self.quads
         topquads = <char*>self.topquads
         texcs = <char*>self.texcs
-        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0,0,0]
+        wallquads = <char*>self.wallquads
+        walltexs = <char*>self.walltexs
+        self.buffers.buffers[self.idx].vbos.vbos += [0,0,0,0,0,0,0,0]
         self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
         self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
         self.buffers.buffers[self.idx].vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
         self.buffers.buffers[self.idx].vbos.vbos[3] = []
         self.buffers.buffers[self.idx].vbos.vbos[4] = []
+        self.buffers.buffers[self.idx].vbos.vbos[5] = VertexBuffer(wallquads[:4*3*numwalls*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[6] = []
+        self.buffers.buffers[self.idx].vbos.vbos[7] = VertexBuffer(walltexs[:4*2*numwalls*sizeof(float)])
 
         cdef char *ele1
         cdef char *ele2
+        cdef char *ele3
         for i in range(len(textures)):
             ele1 = <char*>self.eles[i]
             self.buffers.buffers[self.idx].vbos.vbos[3] += [ElementBuffer(ele1[:len(self.buffers.buffers[self.idx].ele.ele[i])*sizeof(int)])]
         for i in range(len(textures)):
             ele2 = <char*>self.eles2[i]
             self.buffers.buffers[self.idx].vbos.vbos[4] += [ElementBuffer(ele2[:len(self.buffers.buffers[self.idx].ele.ele2[i])*sizeof(int)])]
+        for i in range(len(textures2)):
+            ele3 = <char*>self.eles3[i]
+            self.buffers.buffers[self.idx].vbos.vbos[6] += [ElementBuffer(ele3[:len(self.buffers.buffers[self.idx].ele.ele3[i])*sizeof(int)])]
 
 
     def Render(self):
@@ -644,7 +751,27 @@ cdef class Map:
 
                 glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>0)
                 #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+
+        GL.glDisable(GL.GL_CULL_FACE)
+        self.buffers.buffers[self.idx].vbos.vbos[5].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        self.buffers.buffers[self.idx].vbos.vbos[7].bind()
+        GL.glTexCoordPointer( 2, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex2)):
+            if len(self.buffers.buffers[self.idx].ele.ele3[i]):
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.buffers.buffers[self.idx].tex.tex2[i])
+                self.buffers.buffers[self.idx].vbos.vbos[6][i].bind()
+                #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+                #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+                #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele3[i]), GL.GL_UNSIGNED_INT, <void*>0)
+                #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+
         GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        GL.glEnable(GL.GL_CULL_FACE)
+
 
         GL.glDisable(GL.GL_TEXTURE_2D)
         self.buffers.buffers[self.idx].vbos.vbos[1].bind()
@@ -667,10 +794,6 @@ cdef class Map:
         for fileN in files.iterkeys():
             self.Save(fileN, files[fileN])
 
-        for i in range(NUMCHUNKS):
-            if self.chunks[i]:
-                FreeChunk(self.chunks[i])
-        free(self.chunks)
         if self.topquads:
             free(self.topquads)
         if self.texcs:
@@ -895,53 +1018,6 @@ cdef class Model:
         GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
-
-"""
-from OpenGL.GL import *
-from OpenGL.raw import GL
-
-
-from OpenGL.arrays import ArrayDatatype as ADT
-class VertexBuffer(object):
-
-  def __init__(self, data, usage):
-    self.buffer = GL.GLuint(0)
-    glGenBuffers(1, self.buffer)
-    self.buffer = self.buffer.value
-    glBindBuffer(GL_ARRAY_BUFFER, self.buffer)
-    glBufferData(GL_ARRAY_BUFFER, ADT.arrayByteCount(data), ADT.voidDataPointer(data), usage)
-
-  def __del__(self):
-    glDeleteBuffers(1, GL.GLuint(self.buffer))
-
-  def bind(self):
-    glBindBuffer(GL_ARRAY_BUFFER, self.buffer)
-
-  def bind_colors(self, size, type, stride=0):
-    self.bind()
-    glColorPointer(size, type, stride, None)
-
-  def bind_edgeflags(self, stride=0):
-    self.bind()
-    glEdgeFlagPointer(stride, None)
-
-  def bind_indexes(self, type, stride=0):
-    self.bind()
-    glIndexPointer(type, stride, None)
-
-  def bind_normals(self, type, stride=0):
-    self.bind()
-    glNormalPointer(type, stride, None)
-
-  def bind_texcoords(self, size, type, stride=0):
-    self.bind()
-    glTexCoordPointer(size, type, stride, None)
-
-  def bind_vertexes(self, size, type, stride=0):
-    self.bind()
-    glVertexPointer(size, type, stride, None)
-
-"""
 """
 기본적으로 컬링이 필요없을 것 같다. 걍 범위안의 타일을 모조리 렌더링하면 됨
 음 근데 vbo를 1개만 쓰고 한번에 렌더링을 해야하니까 64x64만큼 로드하고 맵을 새로 로드해야하니 음...

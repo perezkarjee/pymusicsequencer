@@ -19,8 +19,8 @@ import pygame
 from pygame.locals import *
 import chunkhandler
 chunkhandler.SIZE_CHUNK = 36
-chunkhandler.REGENX = 9
-chunkhandler.REGENZ = 9
+chunkhandler.REGENX = 5
+chunkhandler.REGENZ = 5
 chunkhandler.OFFSETX = 18
 chunkhandler.OFFSETZ = 18
 
@@ -2640,7 +2640,10 @@ class ConstructorApp:
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
             for map in self.maps:
-                map.Regen(self.texTiles)
+                map.Regen(self.texTiles, (self.tex,))
+                map.AddWall(0,0,0,0,0,1)
+                map.AddWall(0,0,0,0,0,0)
+                map.AddWall(1,0,1,0,0,0)
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -2865,7 +2868,6 @@ void main(void)
                 x -= 1
             if z > 0.0:
                 z += 1
-            print x,z, 'aa'
             map.ClickTile(self.tileMode, pos, (x,y,-z))
 
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
