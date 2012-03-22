@@ -134,9 +134,9 @@ cdef class GUIBGRenderer(object):
         texupx = 0
         texupy = 0
         x = 0
-        y = SH-256
+        y = SH-128
         w = SW
-        h = 256
+        h = 128
 
 
         self.quad = <float*>malloc(sizeof(float)*4*3)

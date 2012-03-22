@@ -123,7 +123,7 @@ class Button(object):
                 self.func()
     def Render(self):
         w,h = self.ren.GetDimension(self.txtID)
-        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,255),(164,164,164,255))
+        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,200),(164,164,164,200))
         self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 
 class EnemyDef:
@@ -165,7 +165,7 @@ class ConstructorGUI(object):
     def Tick(self,t,m,k):
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400+5
-            y = SH-256
+            y = SH-128
             y += 5
             i = 0
             for tile in AppSt.texTiles:
@@ -191,10 +191,10 @@ class ConstructorGUI(object):
         self.guiRenderer.Render()
 
         
-        DrawQuad(400,SH-256,SW-400,256,(128,128,128,128),(128,128,128,128))
+        DrawQuad(400,SH-128,SW-400,128,(128,128,128,128),(128,128,128,128))
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400+5
-            y = SH-256
+            y = SH-128
             y += 5
             for tile in AppSt.texTiles:
                 glBindTexture(GL_TEXTURE_2D, tile[0])
@@ -2788,7 +2788,7 @@ void main(void)
                 light.z = 1000.0;
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+2.0)/3.0;
+                float fac = (dot(light, norm)+1.0)/2.0;
                 vec3 color = texture1D(colorLookup2, curCol).rgb;
                 //gl_FragColor.rgb = color*fac;
                 gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)*fac/3.0;
@@ -2868,20 +2868,20 @@ void main(void)
         x = int(x)
         z = int(z)
         DrawCube((float(x),0,float(z)-1.0),(0.25,0.25,0.25), (255,255,255,255), 0) # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256 and k.pressedKey == K_q:
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-256 and k.pressedKey == K_q:
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,1)
 
-        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,1)
@@ -2917,12 +2917,16 @@ void main(void)
         elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
             pos = RIGHTBOT
         #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
+        if x < 0.0:
+            x -= 1
+        if z > 0.0:
+            z += 1
         print int(x),int(y),int(z)
 
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
             LEFTTOP = 0
             RIGHTTOP = 1
             LEFTBOT = 2
@@ -2997,13 +3001,7 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        glTranslatef(5.5, 0.35, -4.5)
-        glRotatef(270, 1.0, 0.0, 0.0)
-        glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
-        glScalef(0.4, 0.4, 0.4)
-        self.tr += 0.001
-        if self.tr >= 3.0:
-            self.tr = -3.0
+
 
         if t-self.prevAniTime > self.prevAniDelay:
             self.aniOffset += (t-self.prevAniTime)/500.0
@@ -3041,8 +3039,30 @@ void main(void)
         glActiveTexture(GL_TEXTURE0 + 0)
 
 
-        #self.model.Draw()
+        glPushMatrix()
+        x,z = self.cam1.pos.x,self.cam1.pos.z
+        glTranslatef(x, 1.0, -z)
+        glRotatef(270, 1.0, 0.0, 0.0)
+        #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
+        glScalef(0.2, 0.2, 0.2)
+        self.tr += 0.001
+        if self.tr >= 3.0:
+            self.tr = -3.0
+        self.model.Draw()
+        glPopMatrix()
+
+
+        glPushMatrix()
+        glTranslatef(5.5, 0.35, -4.5)
+        glRotatef(270, 1.0, 0.0, 0.0)
+        #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
+        glScalef(0.4, 0.4, 0.4)
+        self.tr += 0.001
+        if self.tr >= 3.0:
+            self.tr = -3.0
         self.model2.Draw()
+        glPopMatrix()
+
 
         glUseProgram(0)
 
@@ -3061,10 +3081,12 @@ void main(void)
     def CamMoveMode(self, t,m,k):
         self.camMoveMode = True
     def DoCam(self, t, m, k):
+        """
         if not self.guiMode:
             pressedButtons = m.GetPressedButtons()
             if MMB in pressedButtons.iterkeys():
                 self.cam1.RotateByXY(m.relX, m.relY)
+        """
 
     def DoMove(self, t, m, k):
         if not self.guiMode:
@@ -3154,6 +3176,8 @@ void main(void)
 
 
         self.cam1 = Camera()
+        self.cam1.pitchDegrees = 85.9999
+        self.cam1.headingDegrees = 45.0
         emgr = EventManager()
         emgr.BindTick(self.Render)
         emgr.BindMotion(self.DoCam)
@@ -3197,9 +3221,9 @@ void main(void)
         self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
 
         self.buttons = []
-        self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-256+5)
+        self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-128+5)
         self.buttons += [self.button1]
-        self.button2 = Button(AppSt.textRendererSmall, u"벽모드", self.WallMode, 5+65, SH-256+5)
+        self.button2 = Button(AppSt.textRendererSmall, u"벽모드", self.WallMode, 5+65, SH-128+5)
         self.buttons += [self.button2]
         # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
         while not done:
@@ -3317,5 +3341,7 @@ Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 ---------------------
 맵상의 오브젝트 클릭시 반응 어떻게 하나?
 이미 오브젝트가 떨어진 곳에는 못 떨어뜨리므로 걍 맵을 클릭하면 아이템이 집어진다.
+---------------------
+JRPG식 인터페이스를 만들고 JRPG를 만든다.
 """
 
