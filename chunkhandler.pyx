@@ -259,6 +259,11 @@ cdef class Map:
     cdef int **eles
     cdef int **eles2
     cdef int **eles3
+    cdef int **eleFloor2
+    cdef int **eleFloor3
+    cdef int **eleFloor4
+    cdef int **eleWall2
+    cdef int **eleWall3
     cdef int **weles
     cdef int tileData
     cdef int prevX
@@ -269,6 +274,11 @@ cdef class Map:
     cdef int prevGenZ
     files = Files()
     walls = Files()
+    walls2 = Files()
+    walls3 = Files()
+    floor2 = Files()
+    floor3 = Files()
+    floor4 = Files()
     def GetXZ(self):
         x,z = self.buffers.buffers[self.idx].coord
         return x*8.0,z*8.0
@@ -295,7 +305,7 @@ cdef class Map:
         # 맵이 작으니까 괜찮다. 맵 커봤자 타일구존데 뭐....
 
 
-    def DelWall(self,x,y,z, tile, facing):
+    def DelWall(self,x,y,z, tile, facing, floor=1):
         x=int(x)
         z=-int(z)
         if (x,z) in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))].iterkeys():
@@ -304,7 +314,7 @@ cdef class Map:
                 self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
             except:
                 pass
-    def AddWall(self, x, y, z, tile, facing):
+    def AddWall(self, x, y, z, tile, facing, floor=1):
         x = int(x)
         z = -int(z)
         LEFTTOP = 0
@@ -324,7 +334,7 @@ cdef class Map:
         xxx,zzz = self.GetLocalCoord(int(x),int(z))
         height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][0]
         return height
-    def ClickTile(self, mode, part, position):
+    def ClickTile(self, mode, part, position, floor=1):
         x,y,z = position
         x = int(x)
         z = -int(z)
@@ -354,6 +364,21 @@ cdef class Map:
         z = z%8
         return x,z
 
+    cdef GetFloor2Name(self, int x,int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.floor2" % (x,z)
+        return fileN
+    cdef GetFloor3Name(self, int x,int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.floor3" % (x,z)
+        return fileN
+    cdef GetFloor4Name(self, int x,int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.floor4" % (x,z)
+        return fileN
     cdef GetFileName(self, int x,int z):
         x = x-(x%8)
         z = z-(z%8)
@@ -363,6 +388,16 @@ cdef class Map:
         x = x-(x%8)
         z = z-(z%8)
         fileN = "./maps/%d_%d.wall" % (x,z)
+        return fileN
+    cdef GetWall2FileName(self, int x, int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.wall2" % (x,z)
+        return fileN
+    cdef GetWall3FileName(self, int x, int z):
+        x = x-(x%8)
+        z = z-(z%8)
+        fileN = "./maps/%d_%d.wall3" % (x,z)
         return fileN
     def Save(self, fileN, fileContents):
         cPickle.dump(fileContents, open(fileN, "wb"))
@@ -383,9 +418,11 @@ cdef class Map:
             xRight = xLeft+OFFSETX*2+8
             zLeft = self.prevGenZ-OFFSETZ
             zRight = zLeft+OFFSETZ*2+8
-            print xLeft, xRight
             fileNames = []
             fileNames3 = []
+            fileNamesFloor2 = []
+            fileNamesFloor3 = []
+            fileNamesFloor4 = []
             while zLeft <= zRight:
                 while xLeft <= xRight:
                     fileNames += [self.GetFileName(xLeft,zLeft)]
@@ -394,6 +431,21 @@ cdef class Map:
                     fileNames3 += [self.GetWallFileName(xLeft,zLeft)]
                     if self.GetWallFileName(xLeft,zLeft) not in self.walls.files[self.idx].iterkeys():
                         self.walls.files[self.idx][self.GetWallFileName(xLeft,zLeft)] = self.LoadWall(self.GetWallFileName(xLeft, zLeft))
+
+                    """
+                    fileNamesFloor2 += [self.GetFloor2Name(xLeft,zLeft)]
+                    if self.GetFloor2Name(xLeft,zLeft) not in self.floor2.files[self.idx].iterkeys():
+                        self.floor2.files[self.idx][self.GetFloor2Name(xLeft,zLeft)] = self.LoadWall(self.GetFloor2Name(xLeft, zLeft))
+
+                    fileNamesFloor3 += [self.GetFloor3Name(xLeft,zLeft)]
+                    if self.GetFloor3Name(xLeft,zLeft) not in self.floor3.files[self.idx].iterkeys():
+                        self.floor3.files[self.idx][self.GetFloor3Name(xLeft,zLeft)] = self.LoadWall(self.GetFloor3Name(xLeft, zLeft))
+
+                    fileNamesFloor4 += [self.GetFloor4Name(xLeft,zLeft)]
+                    if self.GetFloor4Name(xLeft,zLeft) not in self.floor4.files[self.idx].iterkeys():
+                        self.floor4.files[self.idx][self.GetFloor4Name(xLeft,zLeft)] = self.LoadWall(self.GetFloor4Name(xLeft, zLeft))
+                    """
+
                     xLeft += 8
                 zLeft += 8
                 xLeft = xOrg
@@ -411,6 +463,29 @@ cdef class Map:
                 if fileN not in fileNames3:
                     self.Save(fileN, files2[fileN])
                     del self.walls.files[self.idx][fileN]
+
+            """
+            files2 = self.floor2.files[self.idx]
+            fileNames4 = self.floor2.files[self.idx].keys()
+            for fileN in fileNames4:
+                if fileN not in fileNamesFloor2:
+                    self.Save(fileN, files2[fileN])
+                    del self.floor2.files[self.idx][fileN]
+
+            files2 = self.floor3.files[self.idx]
+            fileNames4 = self.floor3.files[self.idx].keys()
+            for fileN in fileNames4:
+                if fileN not in fileNamesFloor3:
+                    self.Save(fileN, files2[fileN])
+                    del self.floor3.files[self.idx][fileN]
+
+            files2 = self.floor4.files[self.idx]
+            fileNames4 = self.floor4.files[self.idx].keys()
+            for fileN in fileNames4:
+                if fileN not in fileNamesFloor4:
+                    self.Save(fileN, files2[fileN])
+                    del self.floor4.files[self.idx][fileN]
+            """
 
 
         self.buffers.buffers[self.idx].tex.tex = textures
@@ -805,13 +880,16 @@ cdef class Map:
         #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
         GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_TEXTURE_1D)
-    def __dealloc__(self):
+    def SaveFiles(self):
         files = self.files.files[self.idx]
         for fileN in files.iterkeys():
             self.Save(fileN, files[fileN])
         files = self.walls.files[self.idx]
         for fileN in files.iterkeys():
             self.Save(fileN, files[fileN])
+
+    def __dealloc__(self):
+        self.SaveFiles()
 
         if self.topquads:
             free(self.topquads)

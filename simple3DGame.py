@@ -19,8 +19,8 @@ import pygame
 from pygame.locals import *
 import chunkhandler
 chunkhandler.SIZE_CHUNK = 36
-chunkhandler.REGENX = 5
-chunkhandler.REGENZ = 5
+chunkhandler.REGENX = 3
+chunkhandler.REGENZ = 3
 chunkhandler.OFFSETX = 18
 chunkhandler.OFFSETZ = 18
 
@@ -2560,6 +2560,7 @@ class ConstructorApp:
         
             self.reload = False
             self.model.Regen()
+            self.model2.Regen()
             self.gui.Regen()
             self.textRenderer.RegenTex()
             self.textRendererSmall.RegenTex()
@@ -2787,10 +2788,10 @@ void main(void)
                 light.z = 1000.0;
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = (dot(light, norm)+0.0)/1.0;
-                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                float fac = (dot(light, norm)+2.0)/3.0;
+                vec3 color = texture1D(colorLookup2, curCol).rgb;
                 //gl_FragColor.rgb = color*fac;
-                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)/3.0;
+                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)*fac/3.0;
             }
             ''')
 
@@ -2867,10 +2868,23 @@ void main(void)
         x = int(x)
         z = int(z)
         DrawCube((float(x),0,float(z)-1.0),(0.25,0.25,0.25), (255,255,255,255), 0) # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-256 and k.pressedKey == K_q:
+            if t-self.tilingWait > self.tilingDelay:
+                self.tilingWait = t
+                self.maps[0].DelWall(x,0,-(z-1),0,0)
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-256 and k.pressedKey == K_q:
+            if t-self.tilingWait > self.tilingDelay:
+                self.tilingWait = t
+                self.maps[0].DelWall(x,0,-(z-1),0,1)
+
+        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-256:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,0)
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-256:
+            if t-self.tilingWait > self.tilingDelay:
+                self.tilingWait = t
+                self.maps[0].AddWall(x,0,-(z-1),0,1)
 
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
@@ -2929,8 +2943,10 @@ void main(void)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
-            #self.HandleMapTiling(t,m,k, map)
-            self.HandleMapWalling(t,m,k, map)
+            if self.tileMode == self.TILECHANGE1:
+                self.HandleMapTiling(t,m,k, map)
+            if self.tileMode == self.WALLCHANGE1:
+                self.HandleMapWalling(t,m,k, map)
             """
             if mat is not None:
                 frustum = NormalizeFrustum(GetFrustum(mat))
@@ -2950,7 +2966,7 @@ void main(void)
         glTranslatef(5.0, 1.0, -5.0)
         glRotatef(270, 1.0, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
-        glScalef(0.2, 0.2, 0.2)
+        glScalef(0.4, 0.4, 0.4)
         self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
@@ -2991,7 +3007,8 @@ void main(void)
         glActiveTexture(GL_TEXTURE0 + 0)
 
 
-        self.model.Draw()
+        #self.model.Draw()
+        self.model2.Draw()
 
         glUseProgram(0)
 
@@ -3000,6 +3017,8 @@ void main(void)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.gui.Render()
         self.RenderNumber(int(self.fps.GetFPS()), 0,0)
+        for button in self.buttons:
+            button.Render()
         glDisable(GL_BLEND)
         pygame.display.flip()
 
@@ -3083,6 +3102,10 @@ void main(void)
 
     def BindRenderGUI(self, func):
         self.renderGUIs += [func]
+    def TileMode(self):
+        self.tileMode = self.TILECHANGE1
+    def WallMode(self):
+        self.tileMode = self.WALLCHANGE1
     def Run(self):
         pygame.init()
         pygame.display.set_caption("쓰리디 알피쥐 게임")
@@ -3104,6 +3127,7 @@ void main(void)
         emgr.BindMUp(self.UnCamMoveMode)
         emgr.BindWUp(self.CloserCam)
         emgr.BindWDn(self.FartherCam)
+
         #phy = Physics()
         #emgr.BindTick(phy.Tick)
 
@@ -3111,6 +3135,8 @@ void main(void)
 
         self.fps = fps = FPS()
         self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
+        self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
+        self.model3 = chunkhandler.Model("./blend/item.jrpg", 1)
         self.maps = []
         idx = 0
         for y in range(1):#이걸 여러번 부르는거보다 하나로 해서 하는게 훨 빠름;;;
@@ -3136,6 +3162,11 @@ void main(void)
         self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
         self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
 
+        self.buttons = []
+        self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-256+5)
+        self.buttons += [self.button1]
+        self.button2 = Button(AppSt.textRendererSmall, u"벽모드", self.WallMode, 5+65, SH-256+5)
+        self.buttons += [self.button2]
         # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
         while not done:
             fps.Start()
@@ -3159,6 +3190,8 @@ void main(void)
 
 
             fps.End()
+
+        self.maps[0].SaveFiles()
 
 
 if __name__ == '__main__':
@@ -3247,5 +3280,8 @@ Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 ---------
 심즈처럼 경계선 사이에서 클릭해서 벽만들게 한다.
 2층 3층 4층까지 가능한데 각 층의 높이는 무조건 +2.0이다.
+---------------------
+맵상의 오브젝트 클릭시 반응 어떻게 하나?
+이미 오브젝트가 떨어진 곳에는 못 떨어뜨리므로 걍 맵을 클릭하면 아이템이 집어진다.
 """
 
