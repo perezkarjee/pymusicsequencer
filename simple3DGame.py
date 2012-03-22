@@ -2886,6 +2886,39 @@ void main(void)
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,1)
 
+    def HandleItemClicking(self, t,m,k, map):
+        # 타일체인지 모드에선 이렇게 하고
+        # 높낮이 조절에서는 OnLDown써야됨
+        LEFTTOP = 0
+        RIGHTTOP = 1
+        LEFTBOT = 2
+        RIGHTBOT = 3
+        x,y,z = self.GetWorldMouse(m.x, m.y)
+        if x > 0.0:
+            xTilePos1 = x-(x-math.floor(x))
+            xTilePos2 = math.ceil(x)
+        else:
+            xTilePos1 = math.floor(x)
+            xTilePos2 = x-(x-math.ceil(x))
+        if z > 0.0:
+            zTilePos1 = z-(z-math.floor(z))
+            zTilePos2 = math.ceil(z)
+        else:
+            zTilePos1 = math.floor(z)
+            zTilePos2 = z-(z-math.ceil(z))
+
+        pos = LEFTTOP
+        if xTilePos1 <= x < xTilePos1+0.5 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = LEFTTOP
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1 <= z < zTilePos1+0.5:
+            pos = RIGHTTOP
+        elif xTilePos1 <= x < xTilePos1+0.5 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = LEFTBOT
+        elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
+            pos = RIGHTBOT
+        #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
+        print int(x),int(y),int(z)
+
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
@@ -2943,6 +2976,7 @@ void main(void)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
+            self.HandleItemClicking(t,m,k, map)
             if self.tileMode == self.TILECHANGE1:
                 self.HandleMapTiling(t,m,k, map)
             if self.tileMode == self.WALLCHANGE1:
@@ -2963,7 +2997,7 @@ void main(void)
             for i in range(-4,1):
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
-        glTranslatef(5.0, 1.0, -5.0)
+        glTranslatef(5.5, 0.35, -4.5)
         glRotatef(270, 1.0, 0.0, 0.0)
         glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
         glScalef(0.4, 0.4, 0.4)
