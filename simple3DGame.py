@@ -2975,16 +2975,20 @@ void main(void)
         GameDrawMode()
         self.cam1.ApplyCamera()
         glUseProgram(0)
+        # 이제 마우스로 이동을 구현한다.
         for map in self.maps:
             map.PosUpdate(self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
+            """
             self.HandleItemClicking(t,m,k, map)
             if self.tileMode == self.TILECHANGE1:
                 self.HandleMapTiling(t,m,k, map)
             if self.tileMode == self.WALLCHANGE1:
                 self.HandleMapWalling(t,m,k, map)
+            """
+
             """
             if mat is not None:
                 frustum = NormalizeFrustum(GetFrustum(mat))
