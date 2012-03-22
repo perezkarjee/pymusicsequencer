@@ -198,7 +198,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
+setlocal iminsert=2
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -251,12 +251,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 23 - ((22 * winheight(0) + 24) / 49)
+let s:l = 3345 - ((45 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-23
-normal! 022l
+3345
+normal! 0
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
