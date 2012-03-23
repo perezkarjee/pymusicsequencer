@@ -12,6 +12,7 @@ from OpenGL.GL.EXT.texture_filter_anisotropic import *
 import math
 gl = platform.OpenGL
 import copy
+import cPickle
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -157,7 +158,6 @@ class ConstructorGUI(object):
         self.inv.AddItem(Item(name=u"테스트아이템2"))
         self.inv.AddItem(Item(name=u"테스트아이템3"))
         self.inv.AddItem(Item(name=u"테스트아이템4"))
-        self.worldItems = {} # By 8x8 Coord
 
 
         self.inventoryOn = False
@@ -2278,6 +2278,7 @@ class ConstructorApp:
 
         self.blocked = [0]
 
+
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
         y = mat[4] *vec[0]+mat[5] *vec[1]+ mat[6]*vec[2]+ mat[7]*vec[3]
@@ -2687,6 +2688,102 @@ void main(void)
             }
             ''')
 
+            self.programItem = compile_program('''
+#version 150 compatibility
+            // Vertex program
+            varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
+            varying vec3 vNorm;
+            uniform vec4 eye;
+            varying vec4 eyeWorld;
+            uniform vec2 updown;
+            uniform vec2 leftright;
+            uniform vec2 frontback;
+            varying vec4 min_;
+            varying vec4 max_;
+            void main() {
+                min_.x = leftright.x;
+                min_.y = updown.x;
+                min_.z = frontback.x;
+                min_.w = 1.0;
+                max_.x = leftright.y;
+                max_.y = updown.y;
+                max_.z = frontback.y;
+                max_.w = 1.0;
+                pos = gl_Vertex.xyz;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                eyeWorld = eye;
+                vNorm = gl_NormalMatrix  * gl_Normal;
+            }
+            ''', '''
+#version 150 compatibility
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+            // Fragment program
+            uniform sampler1D colorLookup;
+            uniform sampler1D colorLookup2;
+            uniform sampler1D colorLookup3;
+            uniform float offset;
+            uniform float offset2;
+            uniform float offset3;
+            varying vec4 min_;
+            varying vec4 max_;
+            varying vec3 pos;
+            varying vec3 vNorm;
+            varying vec4 eyeWorld;
+            void main() {
+                float base = min_.y;
+                float high = max_.y;
+                base *= 1.10;
+                high *= 1.10;
+                float cur = pos.z-base;
+                float curCol = cur/(high-base);
+                curCol += offset;
+                if(curCol > 1.0)
+                    curCol -= 1.0;
+
+                base = min_.x;
+                high = max_.x;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.x-base;
+                float curCol2 = cur/(high-base);
+                curCol2 += offset2;
+                if(curCol2 > 1.0)
+                    curCol2 -= 1.0;
+
+                base = min_.z;
+                high = max_.z;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.y-base;
+                float curCol3 = cur/(high-base);
+                curCol3 += offset3;
+                if(curCol3 > 1.0)
+                    curCol3 -= 1.0;
+
+                vec3 light;
+                light.x = 1.0;
+                light.y = 1.0;
+                light.z = 1.0;
+                light = normalize(light).xyz;
+                vec3 norm = normalize(vNorm);
+                float fac = (dot(light, norm)+1.0)/2.0;
+                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                vec3 color222;
+                color222.r = 1.0;
+                color222.g = 0.0;
+                color222.b = 0.0;
+                //gl_FragColor.rgb = color;
+                gl_FragColor.rgb = ((color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/4.0
+                    + color222.rgb)/2;
+            }
+            ''')
+
             self.program2 = compile_program('''
 #version 150 compatibility
             // Vertex program
@@ -3029,6 +3126,20 @@ void main(void)
             self.cam1.pos.x += x
             self.cam1.pos.z += y
 
+    def GetCharCoord(self):
+        x = (self.cam1.pos.x)
+        z = -(self.cam1.pos.z)
+        if x < 0.0:
+            x -= 1
+        if z < 0.0:
+            z -= 1
+        return int(x), int(z)
+    def SetCharCoord(self, x,z,floor=1):
+        x += 0.5
+        z += 0.5
+        self.cam1.pos.x = x
+        self.cam1.pos.z = -z
+
     def GetDegree(self):
         return self.degree
     def Render(self, t, m, k):
@@ -3097,7 +3208,6 @@ void main(void)
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
 
-        """
         if t-self.prevAniTime > self.prevAniDelay:
 
             self.aniOffset += (t-self.prevAniTime)/500.0
@@ -3110,7 +3220,6 @@ void main(void)
                 self.aniOffset2 = 0.0
             if self.aniOffset3 > 1.0:
                 self.aniOffset3 = 0.0
-        """
         glUseProgram(self.program)
 
         bounds = self.model.GetBounds()
@@ -3186,6 +3295,7 @@ void main(void)
 
 
         bounds = self.models[0].GetBounds()
+        glUseProgram(self.programItem)
 
         glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
         glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
@@ -3206,8 +3316,9 @@ void main(void)
         glBindTexture(GL_TEXTURE_1D, self.sat3)
         glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
         glActiveTexture(GL_TEXTURE0 + 0)
+        self.RenderItems()
 
-
+        """
         glPushMatrix()
         glTranslatef(5.5, 0.35, -5.5)
         glRotatef(270, 1.0, 0.0, 0.0)
@@ -3218,6 +3329,7 @@ void main(void)
             self.tr = -3.0
         self.models[0].Draw()
         glPopMatrix()
+        """
 
 
 
@@ -3339,6 +3451,75 @@ void main(void)
             self.cam1.pitchDegrees = self.pitch
         for button in self.buttons:
             button.enabled = self.editMode
+    def PosUpdate(self, x,y,z):
+        RANGE = 24
+        x = x-x%8
+        z = z-z%8
+
+        xx = x-RANGE/2
+        zz = z-RANGE/2
+        xx2 = x+RANGE/2
+        zz2 = z+RANGE/2
+
+        yesCoords = []
+        while zz <= zz2:
+            while xx <= xx2:
+                xxx = xx-xx%8
+                zzz = zz-zz%8
+                yesCoords += [(xxx,zzz)]
+                if (xxx,zzz) not in self.worldItems:
+                    self.worldItems[(xxx,zzz)] = self.LoadItem(xxx,zzz)
+                xx += 8
+            zz += 8
+            xx = x-RANGE/2
+
+        keys = self.worldItems.keys()
+        for coord in keys:
+            if coord not in yesCoords:
+                self.Save(self.worldItems[coord], self.GetWorldItemFileName(*coord))
+                del self.worldItems[coord]
+    def AddWorldItem(self,item):
+        x,nonono,y = item.a["coord"]
+        x = x-x%8
+        y = y-y%8
+        self.worldItems[(x,y)] += [item]
+    def RenderItems(self):
+        for coord in self.worldItems:
+            items = self.worldItems[coord]
+            for item in items:
+                x,y,z = item.a["coord"]
+                glPushMatrix()
+                glTranslatef(x+0.5,y+0.35,z+0.5)
+                glRotatef(270, 1.0, 0.0, 0.0)
+                glScale(0.2,0.2,0.2)
+                self.models[0].Draw()
+                glPopMatrix()
+    def LoadItem(self, x, y):
+        try:
+            x = x-x%8
+            y = y-y%8
+            f = open(self.GetWorldItemFileName(x,y), "rb")
+            items = pickle.load(f)
+            f.close()
+            return items
+        except:
+            return []
+    def Save(self, item, fileName):
+        f = open(fileName, "wb")
+        pickle.dump(item, f)
+        f.close()
+    def SaveItems(self):
+        for coord in self.worldItems:
+            f = open(self.GetWorldItemFileName(*coord), "wb")
+            item = self.worldItems[coord]
+            pickle.dump(item, f)
+            f.close()
+
+    def GetWorldItemFileName(self, x,y):
+        x = x-x%8
+        y = y-y%8
+        return "./items/%d_%d.item" % (x,y)
+
     def Run(self):
         pygame.init()
         pygame.display.set_caption("Jake's Adventure")
@@ -3351,6 +3532,7 @@ void main(void)
         init()
 
 
+        self.worldItems = {} # By 8x8 Coord
 
         self.cam1 = Camera()
         self.camPos = copy.copy(self.cam1.pos)
@@ -3415,7 +3597,12 @@ void main(void)
         self.buttons += [self.button2]
         for button in self.buttons:
             button.enabled = False
-
+        self.PosUpdate(0,0,0)
+        item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
+        #self.AddWorldItem(item)
+        self.SetCharCoord(-1,-1)
+        #item = Item(name=u"테스트월드아이템", coord=(1,0,0))
+        #self.AddWorldItem(item)
 
         self.editModeButton = Button(AppSt.textRendererSmall, u"에딧모드토글", self.ToggleEditMode, 105, 5)
         # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
@@ -3443,6 +3630,7 @@ void main(void)
             fps.End()
 
         self.maps[0].SaveFiles()
+        self.SaveItems()
 
 
 if __name__ == '__main__':
