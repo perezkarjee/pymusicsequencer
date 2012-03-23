@@ -2981,6 +2981,16 @@ void main(void)
     def MoveWithMouse(self, way):
         x = 0
         y = 0
+
+        wallFound = False
+        xx, zz = self.cam1.pos.x, self.cam1.pos.z
+        if xx < 0:
+            xx -= 1
+        if zz > 0:
+            zz += 1
+        xx = int(xx)
+        zz = int(zz)
+
         if way == 'n':
             x += 1
             y += 1
@@ -3003,9 +3013,91 @@ void main(void)
             x -= 1
             y += 1
 
-        self.cam1.prevPos = copy.copy(self.cam1.pos)
-        self.cam1.pos.x += x
-        self.cam1.pos.z += y
+
+        def GetWallFound(xx,zz,facing_):
+            wallFound_ = False
+            walls = self.maps[0].GetWall(xx,-(zz))
+            for wall in walls:
+                xxx,zzz,facing,tile = wall
+                if facing == facing_:
+                    wallFound_ = True
+                    break
+            return wallFound_
+
+        if x == 0 and y == -1:
+            wallFound = GetWallFound(xx,zz-1,0)
+        elif x == 0 and y == 1:
+            wallFound = GetWallFound(xx,zz,0)
+        elif x == 1 and y == 0:
+            wallFound = GetWallFound(xx+1,zz,1)
+        elif x == -1 and y == 0:
+            wallFound = GetWallFound(xx,zz,1)
+        elif x == 1 and y == 1:
+            # 위쪽
+            if GetWallFound(xx+1,zz,1) or GetWallFound(xx,zz,0) or GetWallFound(xx+1,zz,0) or GetWallFound(xx+1,zz+1,1):
+                wallFound = True
+
+            if wallFound and GetWallFound(xx+1,zz,1): # 포텐셜 z+1이동
+                if not GetWallFound(xx,zz,0):
+                    wallFound = False
+                    x = 0
+                    y = 1
+            elif wallFound and GetWallFound(xx,zz,0): # 포텐셜 x+1이동
+                if not GetWallFound(xx+1,zz,1):
+                    wallFound = False
+                    x = 1
+                    y = 0
+        elif x == -1 and y == -1:
+            # 아래쪽
+            if GetWallFound(xx,zz,1) or GetWallFound(xx,zz-1,0) or GetWallFound(xx-1,zz-1,0) or GetWallFound(xx,zz-1,1):
+                wallFound = True
+
+            if wallFound and GetWallFound(xx,zz,1): # 포텐셜 z-1이동
+                if not GetWallFound(xx,zz-1,0):
+                    wallFound = False
+                    x = 0
+                    y = -1
+            elif wallFound and GetWallFound(xx,zz-1,0): # 포텐션 x-1이동
+                if not GetWallFound(xx,zz,1):
+                    wallFound = False
+                    x = -1
+                    y = 0
+        elif x == -1 and y == 1:
+            # 왼쪽
+            if GetWallFound(xx,zz,0)  or GetWallFound(xx,zz,1) or GetWallFound(xx-1,zz,0) or GetWallFound(xx,zz+1,1):
+                wallFound = True
+
+            if wallFound and GetWallFound(xx,zz,0): # 포텐셜 x-1이동
+                if not GetWallFound(xx,zz,1):
+                    wallFound = False
+                    x = -1
+                    y = 0
+            elif wallFound and GetWallFound(xx,zz,1): # 포텐셜 y+1이동
+                if not GetWallFound(xx,zz,0):
+                    wallFound = False
+                    x = 0
+                    y = 1
+        elif x == 1 and y == -1:
+            # 오른쪽
+            if GetWallFound(xx,zz-1,0) or GetWallFound(xx+1,zz,1) or GetWallFound(xx+1,zz-1,0) or GetWallFound(xx+1,zz-1,1):
+                wallFound = True
+
+
+            if wallFound and GetWallFound(xx,zz-1,0): # x+1
+                if not GetWallFound(xx+1,zz,1):
+                    wallFound = False
+                    x = 1
+                    y = 0
+            elif wallFound and GetWallFound(xx+1,zz,1): # y-1
+                if not GetWallFound(xx,zz-1,0):
+                    wallFound = False
+                    x = 0
+                    y = -1
+
+        if not wallFound:
+            self.cam1.prevPos = copy.copy(self.cam1.pos)
+            self.cam1.pos.x += x
+            self.cam1.pos.z += y
     def GetDegree(self):
         return self.degree
     def Render(self, t, m, k):

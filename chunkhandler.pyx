@@ -320,6 +320,16 @@ cdef class Map:
                 self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
             except:
                 pass
+    def GetWall(self, x,z, floor=1):
+        result = []
+        if (x,z) in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]:
+            walls = self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]
+            for wall in walls[(x,z)]:
+                facing,tile = wall
+                result += [(x,z,facing,tile)]
+            return result
+        else:
+            return []
     def AddWall(self, x, y, z, tile, facing, floor=1):
         x = int(x)
         z = -int(z)
