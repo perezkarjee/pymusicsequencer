@@ -221,7 +221,13 @@ class ConstructorGUI(object):
         DrawQuad(0,0,SW,62,(128,200,140,255), (64,128,74,255))
         DrawQuad(0,62,SW,2,(32,32,32,255), (32,32,32,255))
         if self.inventoryOn:
-            y = 64 + self.inv.lineH*len(self.inv.items)
+            lenItem = len(self.inv.items)
+            startPos = self.inv.page*25
+            offset = lenItem-startPos
+            if offset >= 25:
+                offset = 25
+
+            y = 64 + self.inv.lineH*offset
             DrawQuad(SW/2+128,y,SW/2-128,SH-96-y,(128,128,128,200), (128,128,128,200))
             DrawQuad(SW/2+128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
             DrawQuad(SW/2+128,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
@@ -422,7 +428,7 @@ class TextArea(object):
     def Update(self, renderer):
         y = 0
         for text in self.lines:
-            renderer.NewTextObject(text, self.color, (self.rect[0], self.rect[1]+y), border=True, borderColor = (128,128,128))
+            renderer.NewTextObject(text, self.color, (self.rect[0], self.rect[1]+y), border=False, borderColor = (128,128,128))
             y += self.lineH
             if y > self.rect[3]:
                 return
@@ -557,8 +563,8 @@ class ItemView:
         self.y = y
         self.item = item
         self.lineH = 20
-        self.text = self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32))
-        self.texts = [self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32)) for i in range(4)]
+        self.text = self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32))
+        self.texts = [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32)) for i in range(4)]
 
     def Render(self):
         x = self.x
@@ -579,7 +585,7 @@ class ItemView:
 
 class Inventory:
     def __init__(self):
-        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 12)
+        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.tr = DynamicTextRenderer(self.font3)
         self.tr2 = DynamicTextRenderer(self.font3)
         self.items = []
@@ -591,51 +597,105 @@ class Inventory:
         EMgrSt.BindMotion(self.Motion)
         self.selected = -1
         self.itemView = None
+        self.scrollW = 24
+        self.page = 0
 
     def Motion(self,t,m,k):
-        y = 0
-        i = 0
-        if self.itemView:
-            self.tr2.Clear()
-            del self.itemView
-            self.itemView = None
-        for line in self.lines:
-            if InRect(self.x,self.y+y, SW/2-128, self.lineH,m.x,m.y):
-                self.itemView = ItemView(SW/4-200, SH/2-200, self.items[i], self.tr2)
-                break
-            y += self.lineH
-            i += 1
+        if GUISt.inventoryOn:
+            y = 0
+            if self.itemView:
+                self.tr2.Clear()
+                del self.itemView
+                self.itemView = None
+
+            lenItem = len(self.items)
+            startPos = self.page*25
+            offset = lenItem-startPos
+            if offset >= 25:
+                offset = 25
+
+            for i in range(startPos, startPos+offset):
+                if InRect(self.x,self.y+y, SW/2-128-self.scrollW, self.lineH,m.x,m.y):
+                    self.itemView = ItemView(SW/4-200, SH/2-200, self.items[i], self.tr2)
+                    break
+                y += self.lineH
+
     def LDown(self,t,m,k):
-        y = 0
-        i = 0
-        for line in self.lines:
-            if InRect(self.x,self.y+y, SW/2-128, self.lineH,m.x,m.y):
-                self.selected = i
-                break
-            y += self.lineH
-            i += 1
+        if GUISt.inventoryOn:
+            self.selected = -1
+            y = 0
+            i = 0
+
+            lenItem = len(self.items)
+            startPos = self.page*25
+            offset = lenItem-startPos
+            if offset >= 25:
+                offset = 25
+
+            for i in range(startPos, startPos+offset):
+                if InRect(self.x,self.y+y, SW/2-128-self.scrollW, self.lineH,m.x,m.y):
+                    self.selected = i
+                    return
+                y += self.lineH
+
+            w = self.scrollW
+            h = self.scrollW
+            x = self.x+SW/2-128-w
+            y1 = 64
+            y2 = SH-96-h
+
+            if InRect(x,y1,w,h,m.x,m.y):
+                self.page -= 1
+                if self.page < 0:
+                    self.page = 0
+                self.selected = -1
+            if InRect(x,y2,w,h,m.x,m.y):
+                self.page += 1
+                maxPage = len(self.items)/25
+                if self.page >= maxPage:
+                    self.page = maxPage
+                self.selected = -1
 
 
     def AddItem(self, item):
+        if len(self.items) > 25*4:
+            return False
         self.items += [item]
-        self.lines += [self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32))]
+        self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32))]
+        return True
     def Render(self):
         x = self.x
         y = self.y
         i = 0
-        for line in self.lines:
+
+        lenItem = len(self.items)
+        startPos = self.page*25
+        offset = lenItem-startPos
+        if offset >= 25:
+            offset = 25
+
+        for i in range(startPos, startPos+offset):
+            line = self.lines[i]
             if self.selected == i:
-                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(19,66,192,200),(19,66,192,230))
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(19,66,192,200),(19,66,192,230))
             elif i%2:
-                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(164,164,164,200),(164,164,164,230))
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(164,164,164,200),(164,164,164,230))
             else:
-                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(120,120,120,200),(120,120,120,230))
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(120,120,120,200),(120,120,120,230))
             self.tr.RenderOne(line, (x+5,y+2))
             y += self.lineH
-            i += 1
 
         if self.itemView:
             self.itemView.Render()
+
+        w = self.scrollW
+        h = self.scrollW
+        x = self.x+SW/2-128-w
+        y1 = 64
+        y2 = SH-96-h
+        DrawQuad(x,y1,w,SH-96-64,(32,32,32,200),(32,32,32,230))
+        DrawQuad(x,y1,w,h,(0,0,0,200),(0,0,0,230))
+        DrawQuad(x,y2,w,h,(0,0,0,200),(0,0,0,230))
 
     def Regen(self):
         self.tr.RegenTex()
@@ -676,7 +736,7 @@ class MsgBox(object):
 
         
         for text in self.lines[lenn:]:
-            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=True, borderColor = text[2]), text[1], text[2])]
+            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=False, borderColor = text[2]), text[1], text[2])]
 
     def Clear(self):
         self.lines = []
@@ -688,7 +748,7 @@ class MsgBox(object):
             idx  = 0
             for text in self.lines[-toDrawLines:]:
                 old, color, bcolor = self.renderedLines[idx]
-                self.renderedLines[idx] = [self.textRendererArea.NewTextObject(text, color, (0, 0), border=True, borderColor = bcolor)]
+                self.renderedLines[idx] = [self.textRendererArea.NewTextObject(text, color, (0, 0), border=False, borderColor = bcolor)]
                 idx += 1
             self.lines = self.lines[-toDrawLines:]
 
@@ -2920,8 +2980,8 @@ void main(void)
                         charPos = Vector2(*self.GetCharCoord())
                         itemPos = Vector2(xxx,zzz)
                         if (itemPos-charPos).length() <= 3:
-                            items.remove(item)
-                            GUISt.inv.AddItem(item)
+                            if GUISt.inv.AddItem(item):
+                                items.remove(item)
                             break
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
@@ -3612,7 +3672,8 @@ void main(void)
             button.enabled = False
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
-        self.AddWorldItem(item)
+        #for i in range(125):
+        #    self.AddWorldItem(item)
         self.SetCharCoord(-1,-1)
         #item = Item(name=u"테스트월드아이템", coord=(1,0,0))
         #self.AddWorldItem(item)
