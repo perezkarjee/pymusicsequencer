@@ -2411,6 +2411,8 @@ class ConstructorApp:
         self.tilingWait = pygame.time.get_ticks()
 
 
+        self.degree = 0
+
 
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
@@ -3004,7 +3006,12 @@ void main(void)
         self.cam1.prevPos = copy.copy(self.cam1.pos)
         self.cam1.pos.x += x
         self.cam1.pos.z += y
+    def GetDegree(self):
+        return self.degree
     def Render(self, t, m, k):
+        if RMB in m.pressedButtons:
+            degree = (m.GetScreenVectorDegree()-90-45/2.0)
+            self.degree = degree = degree-(degree%45)
         self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
@@ -3097,6 +3104,8 @@ void main(void)
         glPushMatrix()
         x,z = self.cam1.GetXZ(t)
         glTranslatef(x, 1.0, -z)
+        
+        glRotatef(self.GetDegree(), 0.0, 1.0, 0.0)
         glRotatef(270, 1.0, 0.0, 0.0)
         #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
         glScalef(0.2, 0.2, 0.2)
@@ -3400,6 +3409,8 @@ Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 맵상의 오브젝트 클릭시 반응 어떻게 하나?
 이미 오브젝트가 떨어진 곳에는 못 떨어뜨리므로 걍 맵을 클릭하면 아이템이 집어진다.
 ---------------------
-벽 주면에 2층짜리 사각형을 2개 투명하게 그리고 거기 클릭해서 타일을 그린다.
+XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투명하게 그리고 거기 클릭해서 타일을 그린다.
+---------------
+이제 벽으로 막기를 구현
 """
 
