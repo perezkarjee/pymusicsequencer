@@ -346,6 +346,10 @@ cdef class Map:
             self.Regen(self.buffers.buffers[self.idx].tex.tex, self.buffers.buffers[self.idx].tex.tex2, False, True)
     def SetTile(self, tile):
         self.tileData = tile
+    def GetTile(self, x,z):
+        xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][1]
+        return height
     def GetHeight(self, x,z):
         xxx,zzz = self.GetLocalCoord(int(x),int(z))
         height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][0]

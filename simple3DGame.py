@@ -2139,6 +2139,7 @@ class ConstructorApp:
 
         self.degree = 0
 
+        self.blocked = [0]
 
     def MultMat4x4(self, mat, vec):
         x = mat[0] *vec[0]+mat[1] *vec[1]+ mat[2]*vec[2]+ mat[3]*vec[3]
@@ -2620,20 +2621,20 @@ void main(void)
         x = int(x)
         z = int(z)
         DrawCube((float(x),0,float(z)-1.0),(0.25,0.25,0.25), (255,255,255,255), 0) # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-96 and k.pressedKey == K_q:
+        if LMB in m.pressedButtons.iterkeys() and 64 < m.y < SH-96 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-96 and k.pressedKey == K_q:
+        elif RMB in m.pressedButtons.iterkeys() and 64< m.y < SH-96 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,1)
 
-        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-96:
+        elif LMB in m.pressedButtons.iterkeys() and 64< m.y < SH-96:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-96:
+        elif RMB in m.pressedButtons.iterkeys() and 64< m.y < SH-96:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,1)
@@ -2678,7 +2679,7 @@ void main(void)
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-96:
+        if LMB in m.pressedButtons.iterkeys() and 64< m.y < SH-96:
             LEFTTOP = 0
             RIGHTTOP = 1
             LEFTBOT = 2
@@ -2832,10 +2833,61 @@ void main(void)
                     x = 0
                     y = -1
 
+        blocked = self.blocked
         if not wallFound:
+            if self.maps[0].GetTile(xx+x,-(zz-1+y)) not in blocked:
+                pass
+            else:
+                
+                if x == 1 and y == 1:
+                    if self.maps[0].GetTile(xx+1,-(zz-1)) not in blocked:
+                        x = 1
+                        y = 0
+                    elif self.maps[0].GetTile(xx,-(zz-1+1)) not in blocked:
+                        x = 0
+                        y = 1
+                    else:
+                        x=0
+                        y=0
+                elif x == -1 and y == -1:
+                    # 아래쪽
+                    if self.maps[0].GetTile(xx,-(zz-1-1)) not in blocked:
+                        x = 0
+                        y = -1
+                    elif self.maps[0].GetTile(xx-1,-(zz-1)) not in blocked:
+                        x = -1
+                        y = 0
+                    else:
+                        x=0
+                        y=0
+                elif x == -1 and y == 1:
+                    if self.maps[0].GetTile(xx-1,-(zz-1)) not in blocked:
+                        x = -1
+                        y = 0
+                    elif self.maps[0].GetTile(xx,-(zz-1+1)) not in blocked:
+                        x = 0
+                        y = 1
+                    else:
+                        x=0
+                        y=0
+                    # 왼쪽
+                elif x == 1 and y == -1:
+                    if self.maps[0].GetTile(xx+1,-(zz-1)) not in blocked:
+                        x = 1
+                        y = 0
+                    elif self.maps[0].GetTile(xx,-(zz-1-1)) not in blocked:
+                        x = 0
+                        y = -1
+                    else:
+                        x=0
+                        y=0
+                else:
+                    x=0
+                    y=0
             self.cam1.prevPos = copy.copy(self.cam1.pos)
             self.cam1.pos.x += x
             self.cam1.pos.z += y
+
     def GetDegree(self):
         return self.degree
     def Render(self, t, m, k):
@@ -2992,64 +3044,70 @@ void main(void)
         self.RenderNumber(int(self.fps.GetFPS()), 0,0)
         for button in self.buttons:
             button.Render()
+        self.editModeButton.Render()
         glDisable(GL_BLEND)
         pygame.display.flip()
 
     def UnCamMoveMode(self, t,m,k):
-        self.camMoveMode = False
+        if self.buttons[0].enabled:
+            self.camMoveMode = False
     def CamMoveMode(self, t,m,k):
-        self.camMoveMode = True
+        if self.buttons[0].enabled:
+            self.camMoveMode = True
     def DoCam(self, t, m, k):
-        if not self.guiMode:
-            pressedButtons = m.GetPressedButtons()
-            if MMB in pressedButtons.iterkeys():
-                self.cam1.RotateByXY(m.relX, m.relY)
+        if self.buttons[0].enabled:
+            if not self.guiMode:
+                pressedButtons = m.GetPressedButtons()
+                if MMB in pressedButtons.iterkeys():
+                    self.cam1.RotateByXY(m.relX, m.relY)
 
     def DoMove(self, t, m, k):
-        return # XXX 
-        if not self.guiMode:
-            pressed = pygame.key.get_pressed()
-            oldPos = self.cam1.pos
-            x,y,z = oldPos.x,oldPos.y,oldPos.z
-            if pressed[self.keyBinds["LEFT"]]:
-                self.cam1.Move(-1.0,0,0, t-self.prevTime)
-            if pressed[self.keyBinds["RIGHT"]]:
-                self.cam1.Move(1.0,0,0, t-self.prevTime)
-            if pressed[self.keyBinds["UP"]]:
-                self.cam1.Move(0,0,1.0, t-self.prevTime)
-            if pressed[self.keyBinds["DOWN"]]:
-                self.cam1.Move(0,0,-1.0, t-self.prevTime)
+        if self.buttons[0].enabled:
+            if not self.guiMode:
+                pressed = pygame.key.get_pressed()
+                oldPos = self.cam1.pos
+                x,y,z = oldPos.x,oldPos.y,oldPos.z
+                if pressed[self.keyBinds["LEFT"]]:
+                    self.cam1.Move(-1.0,0,0, t-self.prevTime)
+                if pressed[self.keyBinds["RIGHT"]]:
+                    self.cam1.Move(1.0,0,0, t-self.prevTime)
+                if pressed[self.keyBinds["UP"]]:
+                    self.cam1.Move(0,0,1.0, t-self.prevTime)
+                if pressed[self.keyBinds["DOWN"]]:
+                    self.cam1.Move(0,0,-1.0, t-self.prevTime)
 
-            """
-            if pressed[self.keyBinds["JUMP"]]:
-                if self.canJump and not self.jumping:
-                    self.StartJump(t)
-            """
-            """
-            #if t - self.prevTime > self.delay:
-            xyz2 = self.cam1.pos#Vector(x,y,z)+((self.cam1.pos - Vector(x,y,z)).Normalized())
-            x2,y2,z2 = xyz2.x, xyz2.y, xyz2.z
+                """
+                if pressed[self.keyBinds["JUMP"]]:
+                    if self.canJump and not self.jumping:
+                        self.StartJump(t)
+                """
+                """
+                #if t - self.prevTime > self.delay:
+                xyz2 = self.cam1.pos#Vector(x,y,z)+((self.cam1.pos - Vector(x,y,z)).Normalized())
+                x2,y2,z2 = xyz2.x, xyz2.y, xyz2.z
 
-            #x3,y3,z3 = self.chunks.FixPos(Vector(x,y,-z), Vector(x2,y2,-z2), self.bound)
-            x3,y3,z3 = x2,y2,z2
-            self.cam1.pos = Vector(x3,y3,-z3)
-            """
+                #x3,y3,z3 = self.chunks.FixPos(Vector(x,y,-z), Vector(x2,y2,-z2), self.bound)
+                x3,y3,z3 = x2,y2,z2
+                self.cam1.pos = Vector(x3,y3,-z3)
+                """
 
-        self.prevTime = t
-        #self.CheckJump(self.cam1.pos.y)
+            self.prevTime = t
+            #self.CheckJump(self.cam1.pos.y)
 
 
     def SetReload(self):
         self.reload = True
         pass
     def FartherCam(self,t,m,k):
-        self.camZoom += 0.5
-        if self.camZoom > 15.0:
-            self.camZoom = 15.0
+        if self.buttons[0].enabled:
+            self.camZoom += 0.5
+            if self.camZoom > 15.0:
+                self.camZoom = 15.0
     def CloserCam(self,t,m,k):
-        self.camZoom -= 0.5
-        if self.camZoom < 0.5:
-            self.camZoom = 0.5
+        if self.buttons[0].enabled:
+            self.camZoom -= 0.5
+            if self.camZoom < 0.5:
+                self.camZoom = 0.5
 
     def RenderNumberS(self, num, x, y):
         count = str(num)
@@ -3080,9 +3138,23 @@ void main(void)
         self.tileMode = self.TILECHANGE1
     def WallMode(self):
         self.tileMode = self.WALLCHANGE1
+    def ToggleEditMode(self):
+        self.editMode = not self.editMode
+        if self.editMode:
+            self.camPos = copy.copy(self.cam1.pos)
+            self.camPrevPos = copy.copy(self.cam1.prevPos)
+            self.heading = copy.copy(self.cam1.headingDegrees)
+            self.pitch = copy.copy(self.cam1.pitchDegrees)
+        else:
+            self.cam1.pos = copy.copy(self.camPos)
+            self.cam1.prevPos = copy.copy(self.camPrevPos)
+            self.cam1.headingDegrees = self.heading
+            self.cam1.pitchDegrees = self.pitch
+        for button in self.buttons:
+            button.enabled = self.editMode
     def Run(self):
         pygame.init()
-        pygame.display.set_caption("쓰리디 알피쥐 게임")
+        pygame.display.set_caption("Jake's Adventure")
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=2048)
         isFullScreen = 0#FULLSCREEN#0
 
@@ -3094,6 +3166,11 @@ void main(void)
 
 
         self.cam1 = Camera()
+        self.camPos = copy.copy(self.cam1.pos)
+        self.camPrevPos = copy.copy(self.cam1.prevPos)
+        self.heading = copy.copy(self.cam1.headingDegrees)
+        self.pitch = copy.copy(self.cam1.pitchDegrees)
+
         self.moveWait = pygame.time.get_ticks()
         self.moveDelay = 150
         self.cam1.pos.x += 0.5
@@ -3103,11 +3180,12 @@ void main(void)
         self.cam1.headingDegrees = 45.0
         emgr = EventManager()
         emgr.BindTick(self.Render)
-        #emgr.BindMotion(self.DoCam)
-        #emgr.BindMDown(self.CamMoveMode)
-        #emgr.BindMUp(self.UnCamMoveMode)
-        #emgr.BindWUp(self.CloserCam)
-        #emgr.BindWDn(self.FartherCam)
+
+        emgr.BindMotion(self.DoCam)
+        emgr.BindMDown(self.CamMoveMode)
+        emgr.BindMUp(self.UnCamMoveMode)
+        emgr.BindWUp(self.CloserCam)
+        emgr.BindWDn(self.FartherCam)
 
         #phy = Physics()
         #emgr.BindTick(phy.Tick)
@@ -3141,6 +3219,7 @@ void main(void)
         self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
         self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
 
+        self.editMode = False
         self.buttons = []
         self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-96+5)
         self.buttons += [self.button1]
@@ -3148,6 +3227,9 @@ void main(void)
         self.buttons += [self.button2]
         for button in self.buttons:
             button.enabled = False
+
+
+        self.editModeButton = Button(AppSt.textRendererSmall, u"에딧모드토글", self.ToggleEditMode, 105, 5)
         # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
         while not done:
             fps.Start()
