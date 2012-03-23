@@ -2797,9 +2797,9 @@ void main(void)
                     curCol3 -= 1.0;
 
                 vec3 light;
-                light.x = 1000.0;
-                light.y = 1000.0;
-                light.z = 1000.0;
+                light.x = 0;
+                light.y = 1.0;
+                light.z = 1.0;
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+1.0)/2.0;
