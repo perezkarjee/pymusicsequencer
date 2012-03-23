@@ -92,7 +92,7 @@ SIZE_CHUNK = 128
 import random
 
 SW = 1024
-SH = 768
+SH = 670
 def CubeInFrustum(x, y, z, size, frustum):
     cdef int p
     cdef int c
@@ -134,7 +134,7 @@ cdef class GUIBGRenderer(object):
         texupx = 0
         texupy = 0
         x = 0
-        y = SH-128
+        y = SH-96
         w = SW
         h = 128
 
@@ -944,14 +944,12 @@ cdef class Model:
     cdef char *inds
     cdef int num
     cdef int indNum
-    cdef int lX,lY,lZ,hX,hY,hZ
+    cdef float lX,lY,lZ,hX,hY,hZ
     cdef int idx
     buffers = Buffers()
     
     
     def __cinit__(self, fileName, idx):
-        self.idx = idx
-        self.buffers.buffers[idx] = Buffer()
         cdef char *lentypenameChar
         cdef char *versionChar
         cdef char *numvertsChar
@@ -964,6 +962,18 @@ cdef class Model:
         cdef char *n
         cdef char *i
         cdef float *vbound
+        cdef float lowestX
+        cdef float lowestY
+        cdef float lowestZ
+        cdef float highestX
+        cdef float highestY 
+        cdef float highestZ 
+        cdef float curX
+        cdef float curY
+        cdef float curZ
+        self.idx = idx
+        self.buffers.buffers[idx] = Buffer()
+
 
         f = open(fileName, "rb")
 

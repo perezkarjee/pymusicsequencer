@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 os.environ['SDL_VIDEO_CENTERED'] = '1'
-SW,SH = 1024,768
+SW,SH = 1024,670
 BGCOLOR = (0, 0, 0)
 
 import sys
@@ -19,11 +19,14 @@ from OpenGL.GLU import *
 import pygame
 from pygame.locals import *
 import chunkhandler
+import legume
 chunkhandler.SIZE_CHUNK = 24
 chunkhandler.REGENX = 1
 chunkhandler.REGENZ = 1
 chunkhandler.OFFSETX = chunkhandler.SIZE_CHUNK/2
 chunkhandler.OFFSETZ = chunkhandler.SIZE_CHUNK/2
+chunkhandler.SW = SW
+chunkhandler.SH = SH
 
 
 import random
@@ -123,9 +126,10 @@ class Button(object):
             if InRect(self.rect[0],self.rect[1],w+10,h+10,m.x,m.y):
                 self.func()
     def Render(self):
-        w,h = self.ren.GetDimension(self.txtID)
-        DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,200),(164,164,164,200))
-        self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
+        if self.enabled:
+            w,h = self.ren.GetDimension(self.txtID)
+            DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,200),(164,164,164,200))
+            self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 
 class EnemyDef:
     def __init__(self, tileIdx, name, x, y, args):
@@ -147,6 +151,8 @@ class ConstructorGUI(object):
         self.tex = -1
         self.botimg = pygame.image.load("./img/guibottombg.png")
         self.guiRenderer = chunkhandler.GUIBGRenderer()
+        self.msgBox = MsgBox()
+        self.msgBox.AddText(u"안녕", (255,255,255), (64,64,64))
     def DragStart(self,t,m,k):
         self.dragging = True
         self.dragStartPos = (m.x,m.y)
@@ -157,6 +163,7 @@ class ConstructorGUI(object):
         self.dragging = False
 
     def Regen(self):
+        self.msgBox.Regen()
         self.tex = texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texture)
         teximg = pygame.image.tostring(self.botimg, "RGBA", 0) 
@@ -166,7 +173,7 @@ class ConstructorGUI(object):
     def Tick(self,t,m,k):
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400+5
-            y = SH-128
+            y = SH-96
             y += 5
             i = 0
             for tile in AppSt.texTiles:
@@ -192,20 +199,22 @@ class ConstructorGUI(object):
         self.guiRenderer.Render()
 
         
-        DrawQuad(400,SH-128,SW-400,128,(128,128,128,128),(128,128,128,128))
         DrawQuad(0,0,SW,56,(128,200,140,255), (64,128,74,255))
         DrawQuad(0,56,SW,2,(32,32,32,255), (32,32,32,255))
-        if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
-            x = 400+5
-            y = SH-128
-            y += 5
-            for tile in AppSt.texTiles:
-                glBindTexture(GL_TEXTURE_2D, tile[0])
-                DrawQuadTex(x,y,32,32)
-                x += 32 + 5
-                if x+32+5 > SW:
-                    x = 400+5
-                    y += 32+5
+        if AppSt.buttons[0].enabled:
+            DrawQuad(400,SH-96,SW-400,128,(128,128,128,128),(128,128,128,128))
+            if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
+                x = 400+5
+                y = SH-96
+                y += 5
+                for tile in AppSt.texTiles:
+                    glBindTexture(GL_TEXTURE_2D, tile[0])
+                    DrawQuadTex(x,y,32,32)
+                    x += 32 + 5
+                    if x+32+5 > SW:
+                        x = 400+5
+                        y += 32+5
+        self.msgBox.Render()
 
 
 
@@ -508,15 +517,20 @@ class TalkBox(object):
         # 라인수가 일정 이상을 넘어서면 플러시
 class MsgBox(object):
     def __init__(self):
-        self.font3 = pygame.font.Font("./fonts/GoudyBookletter1911.ttf", 15)
+        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 14)
         self.textRendererArea = DynamicTextRenderer(self.font3)
         self.lines = []
-        self.rect = 0,SH-170,SW,100
+        self.rect = 0,SH-96-96,SW,96
         self.letterW = 9
-        self.lineH = 15
+        self.lineH = 12
         self.color = (255,255,255)
         self.lineCut = True
         self.renderedLines = []
+    def Regen(self):
+        self.textRendererArea = DynamicTextRenderer(self.font3)
+        self.renderedLines = []
+        for text in self.lines:
+            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=True, borderColor = text[2]), text[1], text[2])]
     def AddText(self, text, color, bcolor):
         lenn = len(self.lines)
         if self.lineCut:
@@ -525,14 +539,15 @@ class MsgBox(object):
                 leng = 0
                 while leng < len(textt):
                     newtext = textt[leng:leng+offset]
-                    self.lines += [newtext]
+                    self.lines += [(newtext, color, bcolor)]
                     leng += offset
         else:
-            self.lines += text.split("\n")
+            for text in text.split("\n"):
+                self.lines += [(text,color,bcolor)]
 
         
         for text in self.lines[lenn:]:
-            self.renderedLines += [(self.textRendererArea.NewTextObject(text, color, (0, 0), border=True, borderColor = bcolor), color, bcolor)]
+            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=True, borderColor = text[2]), text[1], text[2])]
 
     def Clear(self):
         self.lines = []
@@ -2036,38 +2051,6 @@ def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른
         glEnd()
 
 
-class Physics(object):
-    def __init__(self):
-# Create a world object
-        world = ode.World()
-        world.setGravity( (0,-9.81,0) )
-
-# Create a body inside the world
-        body = ode.Body(world)
-        M = ode.Mass()
-        M.setSphere(2500.0, 0.05)
-        M.mass = 1.0
-        body.setMass(M)
-
-        body.setPosition( (0,2,0) )
-        body.addForce( (0,200,0) )
-
-# Do the simulation...
-        total_time = 0.0
-        dt = 0.04
-
-    def Tick(self, t,m,k):
-        x,y,z = body.getPosition()
-        u,v,w = body.getLinearVel()
-        print "%1.2fsec: pos=(%6.3f, %6.3f, %6.3f)  vel=(%6.3f, %6.3f, %6.3f)" % \
-            (total_time, x, y, z, u,v,w)
-        world.step(dt)
-        total_time+=dt
-
-
-class MenuScreen:
-    def __init__(self):
-        pass
 
 def RectRectCollide2(rect1,rect2):
     x,y,w,h = rect1
@@ -2105,264 +2088,7 @@ def RectRectCollide(rect1,rect2):
 
 
     return False
-class DeadEnemy:
-    def __init__(self,x,y):
-        EMgrSt.BindTick(self.Tick)
-        self.wait = pygame.time.get_ticks()
-        self.delay = 500
-        self.pos = x,y
-    def Tick(self,t,m,k):
-        if t-self.wait > self.delay:
-            try:
-                GUISt.deads.remove(self)
-                EMgrSt.bindTick.remove(self.Tick)
-            except:
-                pass
-class Beam:
-    LEFT=0
-    RIGHT=1
-    def __init__(self,x,y,dir_, power, owner):
-        self.owner = owner
-        self.orgX = x
-        self.orgY = y
-        self.x = x
-        self.y = y
-        self.dir = dir_
-        EMgrSt.BindTick(self.Tick)
-        self.waitPrev = pygame.time.get_ticks()
-        self.delay = 25
-        self.speed = 30
-        self.deleted = False
-        self.power = power
-
-    def Delete(self):
-        try:
-            self.owner.beams.remove(self)
-            EMgrSt.bindTick.remove(self.Tick)
-        except:
-            pass
-        self.deleted = True
-
-    def Tick(self,t,m,k):
-        if not self.deleted:
-            if t-self.waitPrev > self.delay:
-                self.waitPrev = t
-                if self.dir == self.LEFT:
-                    self.x -= self.speed
-                if self.dir == self.RIGHT:
-                    self.x += self.speed
-
-                if self.owner == AppSt.player:
-                    for enemy in GUISt.stages[GUISt.curStageIdx].enemies:
-                        x,y = enemy.pos
-                        x -= 32
-                        y -= 128
-                        w=64
-                        h=128
-                        xx = self.x
-                        yy = self.y
-                        ww = 128
-                        hh = 64
-                        if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
-                            enemy.hp -= AppSt.player.args["atk"]
-                            GUISt.sounds["Hurt"].play()
-                            self.Delete()
-                else:
-                    x,y = AppSt.player.pos
-                    x -= 32
-                    y -= 128
-                    w=64
-                    h=128
-                    xx = self.x
-                    yy = self.y
-                    ww = 128
-                    hh = 64
-                    if RectRectCollide((x,y,w,h), (xx,yy,ww,hh)):
-                        AppSt.player.args["hp"] -= self.power
-                        GUISt.sounds["Hurt"].play()
-                        self.Delete()
-                if abs(self.x-self.orgX) > 1000:
-                    self.Delete()
             
-class Player:
-    LEFT = 0
-    RIGHT = 1
-    def __init__(self, **args):
-        self.hp = 1000
-        self.args = args
-
-        self.pos = [1100, SH-128-64]
-        self.fallSpeed = 15
-        self.fallWait = pygame.time.get_ticks()
-        self.fallDelay = 25
-        self.facing = self.RIGHT
-        self.jumping = False
-        self.jumpStart = 0
-        self.jumpMax = 400
-        self.jumpMin = 250
-        self.grounded = False
-        self.moving = False
-        EMgrSt.BindTick(self.Tick)
-        self.keyBinds = {
-                "UP": K_w,
-                "LEFT": K_a,
-                "DOWN": K_s,
-                "RIGHT": K_d,
-                "ATK": K_j,
-                "JUMP": K_k,
-                "ACT": K_u,
-                "ACT2": K_i,
-                }
-        self.beamDelay = 125
-        self.prevBeam = pygame.time.get_ticks()
-        self.beams = []
-
-        EMgrSt.BindKeyDown(self.OnUPKey)
-        EMgrSt.BindKeyDown(self.OnActKey)
-    def OnActKey(self,t,m,k):
-        if k.pressedKey == self.keyBinds["ACT"]:
-            if self.args["mana"] >= 30:
-                self.args["mana"] -= 30
-                self.args["hp"] += self.args["heal"]
-                if self.args["hp"] > self.args["maxhp"]:
-                    self.args["hp"] = self.args["maxhp"]
-    def OnUPKey(self,t,m,k):
-        if k.pressedKey == self.keyBinds["UP"]:
-            for door in GUISt.stages[GUISt.curStageIdx].doors.iterkeys():
-                if RectRectCollide((self.pos[0]-64, self.pos[1]-128,128,128), (door[0],door[1],128,128)):
-                    num = GUISt.stages[GUISt.curStageIdx].doors[door]
-                    con = GUISt.GetConnectivity(num)
-                    try:
-                        a,b = con
-                        if a == num:
-                            stage, pos = GUISt.GetStageAndPos(b)
-                            self.pos = [pos[0]+64, pos[1]+128]
-                            GUISt.stages[GUISt.curStageIdx].EndGame()
-                            GUISt.curStageIdx = stage
-                            GUISt.stages[GUISt.curStageIdx].StartGame()
-                            if (b,a) not in GUISt.connects:
-                                GUISt.connects += [(b,a)]
-                            break
-                    except:
-                        pass
-    def Tick(self,t,m,k):
-        if GUISt.emode == GUISt.GAME_MODE:
-            if t-self.fallWait > self.fallDelay:
-                self.fallWait = t
-                tiles = GUISt.stages[GUISt.curStageIdx].GetTiles()
-                self.moving = False
-
-                if not self.jumping:
-                    collide = False
-                    collideY = 0
-                    for tile in tiles:
-                        x,y,tile_ = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32
-                        yy = py-128+self.fallSpeed
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideY = y
-                    if not collide:
-                        self.pos[1] += self.fallSpeed
-                    else:
-                        self.grounded = True
-                        self.pos[1] = collideY
-                else:
-                    collide = False
-                    collideY = 0
-                    for tile in tiles:
-                        x,y,t_ = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32
-                        yy = py-128-self.fallSpeed
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideY = y+h+128
-                    if not collide:
-                        self.pos[1] -= self.fallSpeed
-                    else:
-                        self.pos[1] = collideY
-
-                if pygame.key.get_pressed()[self.keyBinds["LEFT"]]:
-                    self.moving = True
-                    self.facing = self.LEFT
-                    collide = False
-                    collideX = 0
-                    for tile in tiles:
-                        x,y,t_ = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32-self.fallSpeed
-                        yy = py-128
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideX = x+w+32
-                    if not collide:
-                        self.pos[0] -= self.fallSpeed
-                    else:
-                        self.pos[0] = collideX
-
-                if pygame.key.get_pressed()[self.keyBinds["RIGHT"]]:
-                    self.moving = True
-                    self.facing = self.RIGHT
-                    collide = False
-                    collideX = 0
-                    for tile in tiles:
-                        x,y,t_ = tile
-                        w = 64
-                        h = 64
-                        px,py = self.pos
-                        xx = px-32+self.fallSpeed
-                        yy = py-128
-                        ww = 64
-                        hh = 128
-                        if RectRectCollide((x+1,y+1,w-1,h-1),(xx+1,yy+1,ww-1,hh-1)):
-                            collide = True
-                            collideX = x-32
-                    if not collide:
-                        self.pos[0] += self.fallSpeed
-                    else:
-                        self.pos[0] = collideX
-                if pygame.key.get_pressed()[self.keyBinds["JUMP"]]:
-                    if not self.jumping and self.grounded:
-                        GUISt.sounds["Jump"].play()
-                        self.jumping = True
-                        self.jumpStart = t
-                        self.grounded = False
-                else:
-                    if self.jumping and t-self.jumpStart > self.jumpMin:
-                        self.jumping = False
-
-                if pygame.key.get_pressed()[self.keyBinds["ATK"]]:
-                    if t-self.prevBeam > self.beamDelay:
-                        self.prevBeam = t
-                        beamY = self.pos[1]-128
-                        if self.facing == self.LEFT:
-                            beamX = self.pos[0]-128-32
-                        else:
-                            beamX = self.pos[0]+32
-                        GUISt.sounds["Beam"].play()
-                        self.beams += [Beam(beamX,beamY,self.facing, self.args["atk"], self)]
-
-            if t-self.jumpStart > self.jumpMax:
-                self.jumping = False
-
-
-    def Render(self):
-        pass
-
 
 class ConstructorApp:
     TILECHANGE1 = 0
@@ -2737,7 +2463,20 @@ void main(void)
             varying vec3 vNorm;
             uniform vec4 eye;
             varying vec4 eyeWorld;
+            uniform vec2 updown;
+            uniform vec2 leftright;
+            uniform vec2 frontback;
+            varying vec4 min_;
+            varying vec4 max_;
             void main() {
+                min_.x = leftright.x;
+                min_.y = updown.x;
+                min_.z = frontback.x;
+                min_.w = 1.0;
+                max_.x = leftright.y;
+                max_.y = updown.y;
+                max_.z = frontback.y;
+                max_.w = 1.0;
                 pos = gl_Vertex.xyz;
                 gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
                 eyeWorld = eye;
@@ -2759,37 +2498,36 @@ void main(void)
             uniform float offset;
             uniform float offset2;
             uniform float offset3;
-            uniform vec2 updown;
-            uniform vec2 leftright;
-            uniform vec2 frontback;
+            varying vec4 min_;
+            varying vec4 max_;
             varying vec3 pos;
             varying vec3 vNorm;
             varying vec4 eyeWorld;
             void main() {
-                float base = updown.x;
-                float high = updown.y;
-                base *=1.4;
-                high *=1.4;
+                float base = min_.y;
+                float high = max_.y;
+                base *= 1.10;
+                high *= 1.10;
                 float cur = pos.z-base;
                 float curCol = cur/(high-base);
                 curCol += offset;
                 if(curCol > 1.0)
                     curCol -= 1.0;
 
-                base = leftright.x;
-                high = leftright.y;
-                base *=1.4;
-                high *=1.4;
+                base = min_.x;
+                high = max_.x;
+                base *= 1.10;
+                high *= 1.10;
                 cur = pos.x-base;
                 float curCol2 = cur/(high-base);
                 curCol2 += offset2;
                 if(curCol2 > 1.0)
                     curCol2 -= 1.0;
 
-                base = frontback.x;
-                high = frontback.y;
-                base *=1.4;
-                high *=1.4;
+                base = min_.z;
+                high = max_.z;
+                base *= 1.10;
+                high *= 1.10;
                 cur = pos.y-base;
                 float curCol3 = cur/(high-base);
                 curCol3 += offset3;
@@ -2797,15 +2535,15 @@ void main(void)
                     curCol3 -= 1.0;
 
                 vec3 light;
-                light.x = 0;
+                light.x = 1.0;
                 light.y = 1.0;
                 light.z = 1.0;
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+1.0)/2.0;
-                vec3 color = texture1D(colorLookup2, curCol).rgb;
-                //gl_FragColor.rgb = color*fac;
-                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3).rgb + texture1D(colorLookup, curCol2).rgb)*fac/3.0;
+                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                //gl_FragColor.rgb = color;
+                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/3.0;
             }
             ''')
 
@@ -2882,20 +2620,20 @@ void main(void)
         x = int(x)
         z = int(z)
         DrawCube((float(x),0,float(z)-1.0),(0.25,0.25,0.25), (255,255,255,255), 0) # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128 and k.pressedKey == K_q:
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-96 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128 and k.pressedKey == K_q:
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-96 and k.pressedKey == K_q:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].DelWall(x,0,-(z-1),0,1)
 
-        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+        elif LMB in m.pressedButtons.iterkeys() and m.y < SH-96:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,0)
-        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+        elif RMB in m.pressedButtons.iterkeys() and m.y < SH-96:
             if t-self.tilingWait > self.tilingDelay:
                 self.tilingWait = t
                 self.maps[0].AddWall(x,0,-(z-1),0,1)
@@ -2935,12 +2673,12 @@ void main(void)
             x -= 1
         if z > 0.0:
             z += 1
-        print int(x),int(y),int(z)
+        #print int(x),int(y),int(z)
 
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
-        if LMB in m.pressedButtons.iterkeys() and m.y < SH-128:
+        if LMB in m.pressedButtons.iterkeys() and m.y < SH-96:
             LEFTTOP = 0
             RIGHTTOP = 1
             LEFTBOT = 2
@@ -3133,11 +2871,12 @@ void main(void)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
-            #self.HandleItemClicking(t,m,k, map)
-            if self.tileMode == self.TILECHANGE1:
-                self.HandleMapTiling(t,m,k, map)
-            if self.tileMode == self.WALLCHANGE1:
-                self.HandleMapWalling(t,m,k, map)
+            self.HandleItemClicking(t,m,k, map)
+            if self.buttons[0].enabled:
+                if self.tileMode == self.TILECHANGE1:
+                    self.HandleMapTiling(t,m,k, map)
+                if self.tileMode == self.WALLCHANGE1:
+                    self.HandleMapWalling(t,m,k, map)
 
             """
             if mat is not None:
@@ -3156,8 +2895,9 @@ void main(void)
                 DrawCube((float(i),1.0,float(j)),(1.0,1.0,1.0),(255,255,255,255), self.tex2)
         """
 
-
+        """
         if t-self.prevAniTime > self.prevAniDelay:
+
             self.aniOffset += (t-self.prevAniTime)/500.0
             self.aniOffset2 += (t-self.prevAniTime)/1000.0
             self.aniOffset3 += (t-self.prevAniTime)/1500.0
@@ -3168,6 +2908,7 @@ void main(void)
                 self.aniOffset2 = 0.0
             if self.aniOffset3 > 1.0:
                 self.aniOffset3 = 0.0
+        """
         glUseProgram(self.program)
 
         bounds = self.model.GetBounds()
@@ -3207,6 +2948,28 @@ void main(void)
         self.model.Draw()
         glPopMatrix()
 
+        bounds = self.model2.GetBounds()
+
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
+
+        glEnable(GL_TEXTURE_1D)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glBindTexture(GL_TEXTURE_1D, self.tex3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
+        glActiveTexture(GL_TEXTURE0 + 1)
+        glBindTexture(GL_TEXTURE_1D, self.sat)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
+        glActiveTexture(GL_TEXTURE0 + 2)
+        glBindTexture(GL_TEXTURE_1D, self.sat3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
+        glActiveTexture(GL_TEXTURE0 + 0)
+
 
         glPushMatrix()
         glTranslatef(5.5, 0.35, -4.5)
@@ -3237,14 +3000,13 @@ void main(void)
     def CamMoveMode(self, t,m,k):
         self.camMoveMode = True
     def DoCam(self, t, m, k):
-        """
         if not self.guiMode:
             pressedButtons = m.GetPressedButtons()
             if MMB in pressedButtons.iterkeys():
                 self.cam1.RotateByXY(m.relX, m.relY)
-        """
 
     def DoMove(self, t, m, k):
+        return # XXX 
         if not self.guiMode:
             pressed = pygame.key.get_pressed()
             oldPos = self.cam1.pos
@@ -3341,9 +3103,9 @@ void main(void)
         self.cam1.headingDegrees = 45.0
         emgr = EventManager()
         emgr.BindTick(self.Render)
-        emgr.BindMotion(self.DoCam)
-        emgr.BindMDown(self.CamMoveMode)
-        emgr.BindMUp(self.UnCamMoveMode)
+        #emgr.BindMotion(self.DoCam)
+        #emgr.BindMDown(self.CamMoveMode)
+        #emgr.BindMUp(self.UnCamMoveMode)
         #emgr.BindWUp(self.CloserCam)
         #emgr.BindWDn(self.FartherCam)
 
@@ -3355,7 +3117,7 @@ void main(void)
         self.fps = fps = FPS()
         self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
-        self.model3 = chunkhandler.Model("./blend/item.jrpg", 1)
+        self.model3 = chunkhandler.Model("./blend/item.jrpg", 2)
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
@@ -3380,10 +3142,12 @@ void main(void)
         self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
 
         self.buttons = []
-        self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-128+5)
+        self.button1 = Button(AppSt.textRendererSmall, u"타일모드", self.TileMode, 5, SH-96+5)
         self.buttons += [self.button1]
-        self.button2 = Button(AppSt.textRendererSmall, u"벽모드", self.WallMode, 5+65, SH-128+5)
+        self.button2 = Button(AppSt.textRendererSmall, u"벽모드", self.WallMode, 5+65, SH-96+5)
         self.buttons += [self.button2]
+        for button in self.buttons:
+            button.enabled = False
         # self.font3 = pygame.font.Font("./fonts/Fanwood.ttf", 15)
         while not done:
             fps.Start()
@@ -3504,5 +3268,7 @@ Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
 XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투명하게 그리고 거기 클릭해서 타일을 그린다.
 ---------------
 이제 벽으로 막기를 구현
+--------------
+이제 인벤토리, 캐릭터창등을 구현
 """
 
