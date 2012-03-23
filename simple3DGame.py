@@ -143,6 +143,8 @@ class EnemyDef:
 
 
 GUISt = None
+
+
 class ConstructorGUI(object):
     def __init__(self):
         global GUISt
@@ -153,6 +155,16 @@ class ConstructorGUI(object):
         self.guiRenderer = chunkhandler.GUIBGRenderer()
         self.msgBox = MsgBox()
         self.msgBox.AddText(u"안녕", (255,255,255), (64,64,64))
+
+        self.inventoryOn = False
+        self.charOn = False
+        EMgrSt.BindKeyDown(self.OnKeyDown)
+    def OnKeyDown(self, t,m,k):
+        if k.pressedKey == K_i:
+            self.inventoryOn = not self.inventoryOn
+        elif k.pressedKey == K_ESCAPE:
+            self.inventoryOn = False
+            self.charOn = False
     def DragStart(self,t,m,k):
         self.dragging = True
         self.dragStartPos = (m.x,m.y)
@@ -199,8 +211,13 @@ class ConstructorGUI(object):
         self.guiRenderer.Render()
 
         
-        DrawQuad(0,0,SW,56,(128,200,140,255), (64,128,74,255))
-        DrawQuad(0,56,SW,2,(32,32,32,255), (32,32,32,255))
+        DrawQuad(0,0,SW,62,(128,200,140,255), (64,128,74,255))
+        DrawQuad(0,62,SW,2,(32,32,32,255), (32,32,32,255))
+        if self.inventoryOn:
+            DrawQuad(SW/2+2,64,SW/2,SH-64-96,(128,128,128,255), (128,128,128,255))
+            DrawQuad(SW/2,64,2,SH-64-96,(32,32,32,255), (32,32,32,255))
+            DrawQuad(SW/2,SH-98,SW/2,2,(32,32,32,255), (32,32,32,255))
+
         if AppSt.buttons[0].enabled:
             DrawQuad(400,SH-96,SW-400,128,(128,128,128,128),(128,128,128,128))
             if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
