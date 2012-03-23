@@ -139,13 +139,13 @@ badd +58 exportmy.py
 badd +412 simpleAdv.py
 badd +3 simpleMud.py
 badd +8071 digdig.py
-badd +159 chunkhandler.pyx
+badd +827 chunkhandler.pyx
 badd +505 simpleConstruct.py
 badd +47 cpart.c
 badd +18 cpart.h
 badd +111 chunk.pyx
 badd +1 glut.py
-badd +162 simple3DGame.py
+badd +24 simple3DGame.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
@@ -251,12 +251,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 2978 - ((26 * winheight(0) + 24) / 49)
+let s:l = 3235 - ((24 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-2978
-normal! 013l
+3235
+normal! 026l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

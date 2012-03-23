@@ -11,6 +11,7 @@ from OpenGL import platform
 from OpenGL.GL.EXT.texture_filter_anisotropic import *
 import math
 gl = platform.OpenGL
+import copy
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -18,11 +19,11 @@ from OpenGL.GLU import *
 import pygame
 from pygame.locals import *
 import chunkhandler
-chunkhandler.SIZE_CHUNK = 36
-chunkhandler.REGENX = 3
-chunkhandler.REGENZ = 3
-chunkhandler.OFFSETX = 18
-chunkhandler.OFFSETZ = 18
+chunkhandler.SIZE_CHUNK = 24
+chunkhandler.REGENX = 1
+chunkhandler.REGENZ = 1
+chunkhandler.OFFSETX = chunkhandler.SIZE_CHUNK/2
+chunkhandler.OFFSETZ = chunkhandler.SIZE_CHUNK/2
 
 
 import random
@@ -192,6 +193,8 @@ class ConstructorGUI(object):
 
         
         DrawQuad(400,SH-128,SW-400,128,(128,128,128,128),(128,128,128,128))
+        DrawQuad(0,0,SW,56,(128,200,140,255), (64,128,74,255))
+        DrawQuad(0,56,SW,2,(32,32,32,255), (32,32,32,255))
         if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
             x = 400+5
             y = SH-128
@@ -939,8 +942,10 @@ class Camera:
         self.directionVector = Vector()
         self.forwardVelocity = 1.0
         self.pos = Vector(0.0, 0.0, 0.0)
+        self.prevPos = copy.copy(self.pos)
         self.xsens = 0.2
         self.ysens = 0.2
+        self.curPos = self.pos
 
     def RotateVert(self, vert, angle, axis):
         axis = axis.Normalized()
@@ -991,7 +996,12 @@ class Camera:
             self.pitchDegrees = 10.0#-89.9
         self.headingDegrees += float(xmoved)*self.xsens
 
-    def ApplyCamera(self):
+    def GetXYZ(self, t):
+        return self.curPos.x, self.curPos.y, self.curPos.z
+    def GetXZ(self, t):
+        x,y,z = self.GetXYZ(t)
+        return x,z
+    def ApplyCamera(self, t):
 	self.qPitch.CreateFromAxisAngle(1.0, 0.0, 0.0, self.pitchDegrees)
 	self.qHeading.CreateFromAxisAngle(0.0, 1.0, 0.0, self.headingDegrees)
 
@@ -1023,7 +1033,8 @@ class Camera:
 	#self.pos.z += self.directionVector.z
 
 	# Translate to our new position.
-	glTranslatef(-self.pos.x, -(self.pos.y), self.pos.z) # 아 이게 왜 방향이 다 엉망인 이유였구만.... -z를 써야되는데-_-
+        x,y,z = self.GetXYZ(t)
+	glTranslatef(-x, -y, z) # 아 이게 왜 방향이 다 엉망인 이유였구만.... -z를 써야되는데-_-
 
         #glTranslatef(self.posx, self.posy, self.posz)
         #pos = Vector(self.posx, self.posy, self.posz).Normalized()
@@ -2378,7 +2389,7 @@ class ConstructorApp:
         self.camMoveMode = False
         self.reload = True
         self.tr = -3.0
-        self.camZoom = 8.0
+        self.camZoom = 7.0
         self.prevAniTime = pygame.time.get_ticks()
         self.prevAniDelay = 50
         self.aniOffset = 0.0
@@ -2641,8 +2652,9 @@ class ConstructorApp:
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
             glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
             #self.tiles = (self.water, (10,144,216,255)), (self.tex2, (13,92,7,255))
-            for map in self.maps:
-                map.Regen(self.texTiles, (self.tex,))
+
+            idx = 0
+            self.maps[0].Regen(self.texTiles, (self.tex,))
 
             image = pygame.image.load("./img/bgbg.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -2964,16 +2976,57 @@ void main(void)
         # 드래그드롭을 구현해서 여기에 잘 맵으로 전달하면 된다.
         #if LMB in m.pressedButtons.iterkeys():
         #    self.map.
+    def MoveWithMouse(self, way):
+        x = 0
+        y = 0
+        if way == 'n':
+            x += 1
+            y += 1
+        if way == 'ne':
+            x += 1
 
+        if way == 'nw':
+            y += 1
+        if way == 's':
+            x -= 1
+            y -= 1
+        if way == 'se':
+            y -= 1
+        if way == 'sw':
+            x -= 1
+        if way == 'e':
+            x += 1
+            y -= 1
+        if way == 'w':
+            x -= 1
+            y += 1
+
+        self.cam1.prevPos = copy.copy(self.cam1.pos)
+        self.cam1.pos.x += x
+        self.cam1.pos.z += y
     def Render(self, t, m, k):
         self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.DoMove(t,m,k)
+        # 부드러운 이동을 구현하는데 전처럼 하지 말고 좀 정확도를 높이자. 125밀리세컨드동안 부드럽게 움직이는건데 이전->다음벡터를 125로 나누고
+        # 틱마다 지난시간만큼을 이동하면 되는데 틱이 일정하지가 않다. t-self.moveWait이 125를 넘을 경우 그냥 125에서 클립하면 될 듯.
+        offset = t-AppSt.moveWait
+        if offset >= self.moveDelay/4.0:
+            offset = self.moveDelay/4.0
+            self.cam1.prevPos = copy.copy(self.cam1.pos)
+        factor = float(offset)/float(self.moveDelay/4.0)
+        posOffset = self.cam1.pos - self.cam1.prevPos
+        curPos = self.cam1.prevPos + (posOffset.MultScalar(factor))
+        self.cam1.curPos = curPos
 
+        if RMB in m.pressedButtons:
+            if t-self.moveWait > self.moveDelay:
+                self.moveWait = t
+                self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
         GameDrawMode()
-        self.cam1.ApplyCamera()
+        self.cam1.ApplyCamera(t)
         glUseProgram(0)
         # 이제 마우스로 이동을 구현한다.
         for map in self.maps:
@@ -2981,13 +3034,11 @@ void main(void)
             x,z = map.GetXZ()
             mat = ViewingMatrix()
             map.Render()
-            """
-            self.HandleItemClicking(t,m,k, map)
+            #self.HandleItemClicking(t,m,k, map)
             if self.tileMode == self.TILECHANGE1:
                 self.HandleMapTiling(t,m,k, map)
             if self.tileMode == self.WALLCHANGE1:
                 self.HandleMapWalling(t,m,k, map)
-            """
 
             """
             if mat is not None:
@@ -3044,7 +3095,7 @@ void main(void)
 
 
         glPushMatrix()
-        x,z = self.cam1.pos.x,self.cam1.pos.z
+        x,z = self.cam1.GetXZ(t)
         glTranslatef(x, 1.0, -z)
         glRotatef(270, 1.0, 0.0, 0.0)
         #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
@@ -3180,6 +3231,11 @@ void main(void)
 
 
         self.cam1 = Camera()
+        self.moveWait = pygame.time.get_ticks()
+        self.moveDelay = 150
+        self.cam1.pos.x += 0.5
+        self.cam1.pos.z += 0.5
+        self.cam1.prevPos = copy.copy(self.cam1.pos)
         self.cam1.pitchDegrees = 85.9999
         self.cam1.headingDegrees = 45.0
         emgr = EventManager()
@@ -3187,8 +3243,8 @@ void main(void)
         emgr.BindMotion(self.DoCam)
         emgr.BindMDown(self.CamMoveMode)
         emgr.BindMUp(self.UnCamMoveMode)
-        emgr.BindWUp(self.CloserCam)
-        emgr.BindWDn(self.FartherCam)
+        #emgr.BindWUp(self.CloserCam)
+        #emgr.BindWDn(self.FartherCam)
 
         #phy = Physics()
         #emgr.BindTick(phy.Tick)
@@ -3200,11 +3256,9 @@ void main(void)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.model3 = chunkhandler.Model("./blend/item.jrpg", 1)
         self.maps = []
+        self.maps = [chunkhandler.Map(0)]
+
         idx = 0
-        for y in range(1):#이걸 여러번 부르는거보다 하나로 해서 하는게 훨 빠름;;;
-            for x in range(1):
-                self.maps += [chunkhandler.Map(idx, (x,y))]
-                idx += 1
         """
         self.map = chunkhandler.Map(0, (0,0))
         self.map2 = chunkhandler.Map(1, (0,1))

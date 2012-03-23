@@ -282,12 +282,11 @@ cdef class Map:
     def GetXZ(self):
         x,z = self.buffers.buffers[self.idx].coord
         return x*8.0,z*8.0
-    def __cinit__(self, idx, coord):
+    def __cinit__(self, idx):
         self.prevGenX = 0
         self.prevGenZ = 0
         self.idx = idx
         self.buffers.buffers[idx] = Buffer()
-        self.buffers.buffers[idx].coord = coord
         self.files.files[idx] = {}
 
         self.quads = <float*>0
@@ -295,6 +294,7 @@ cdef class Map:
         self.texcs = <float*>0
         self.eles = <int**>0
         self.eles2 = <int**>0
+        self.eles3 = <int**>0
         self.wallquads = <float*>0
         self.walltexs = <float*>0
 
@@ -303,6 +303,12 @@ cdef class Map:
         # 벽은 8x8맵의 범위안에 있다.
         # 음 파일의 수가 엄청 많아지면 좀 곤란한데?
         # 맵이 작으니까 괜찮다. 맵 커봤자 타일구존데 뭐....
+
+        self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
+        self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
+        self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
+
+
 
 
     def DelWall(self,x,y,z, tile, facing, floor=1):
@@ -500,27 +506,6 @@ cdef class Map:
             free(self.wallquads)
         if self.walltexs:
             free(self.walltexs)
-        if self.topquads:
-            free(self.topquads)
-        if self.texcs:
-            free(self.texcs)
-        if self.quads:
-            free(self.quads)
-        if self.eles:
-            for i in range(len(textures)):
-                free(self.eles[i])
-            free(self.eles)
-        if self.eles3:
-            for i in range(len(textures2)):
-                free(self.eles3[i])
-            free(self.eles3)
-        if self.eles2:
-            for i in range(len(textures)):
-                free(self.eles2[i])
-            free(self.eles2)
-        self.quads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4*4) # xyz, width, height, verts*4=quad, quads
-        self.topquads = <float*>malloc(sizeof(float)*3*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
-        self.texcs = <float*>malloc(sizeof(float)*2*SIZE_CHUNK*SIZE_CHUNK*4) # xyz, width, height, verts*4=quad, quads
         walls = self.walls.files[self.idx]
         numwalls = 0
         for fileN in walls.iterkeys():
@@ -597,9 +582,16 @@ cdef class Map:
 
                     wallIdx += 1
 
+        if self.eles3:
+            for i in range(len(textures2)):
+                free(self.eles3[i])
+            free(self.eles3)
+
         self.eles3 = <int**>malloc(sizeof(int*)*len(textures2))
         for i in range(len(textures2)):
             self.eles3[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele3[i])+1)
+
+        for i in range(len(textures2)):
             for j in range(len(self.buffers.buffers[self.idx].ele.ele3[i])):
                 self.eles3[i][j] = self.buffers.buffers[self.idx].ele.ele3[i][j]
 
@@ -663,9 +655,15 @@ cdef class Map:
             zz -= 1.0
             xx = self.prevGenX-OFFSETX
 
+        if self.eles:
+            for i in range(len(textures)):
+                free(self.eles[i])
+            free(self.eles)
         self.eles = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
             self.eles[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele[i])+1)
+
+        for i in range(len(textures)):
             for j in range(len(self.buffers.buffers[self.idx].ele.ele[i])):
                 self.eles[i][j] = self.buffers.buffers[self.idx].ele.ele[i][j]
 
@@ -765,9 +763,19 @@ cdef class Map:
                 xx += 1.0
             zz -= 1.0
             xx = self.prevGenX-OFFSETX
+
+
+
+        if self.eles2:
+            for i in range(len(textures)):
+                free(self.eles2[i])
+            free(self.eles2)
+
         self.eles2 = <int**>malloc(sizeof(int*)*len(textures))
         for i in range(len(textures)):
             self.eles2[i] = <int*>malloc(sizeof(int)*len(self.buffers.buffers[self.idx].ele.ele2[i])+1)
+
+        for i in range(len(textures)):
             for j in range(len(self.buffers.buffers[self.idx].ele.ele2[i])):
                 self.eles2[i][j] = self.buffers.buffers[self.idx].ele.ele2[i][j]
 
@@ -780,9 +788,9 @@ cdef class Map:
             for vbo in self.buffers.buffers[self.idx].vbos.vbos[4]:
                 vbo.reload = regen
             self.buffers.buffers[self.idx].vbos.vbos[5].reload = regen
-            self.buffers.buffers[self.idx].vbos.vbos[7].reload = regen
             for vbo in self.buffers.buffers[self.idx].vbos.vbos[6]:
                 vbo.reload = regen
+            self.buffers.buffers[self.idx].vbos.vbos[7].reload = regen
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
             del self.buffers.buffers[self.idx].vbos.vbos[0]
@@ -798,13 +806,18 @@ cdef class Map:
         walltexs = <char*>self.walltexs
         self.buffers.buffers[self.idx].vbos.vbos += [0,0,0,0,0,0,0,0]
         self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(topquads[:SIZE_CHUNK*SIZE_CHUNK*4*3*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[0].bind_vertexes(3, GL.GL_FLOAT)
         self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(quads[:SIZE_CHUNK*SIZE_CHUNK*4*4*3*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[1].bind_vertexes(3, GL.GL_FLOAT)
         self.buffers.buffers[self.idx].vbos.vbos[2] = VertexBuffer(texcs[:SIZE_CHUNK*SIZE_CHUNK*4*2*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[2].bind_texcoords(2, GL.GL_FLOAT)
         self.buffers.buffers[self.idx].vbos.vbos[3] = []
         self.buffers.buffers[self.idx].vbos.vbos[4] = []
         self.buffers.buffers[self.idx].vbos.vbos[5] = VertexBuffer(wallquads[:4*3*numwalls*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[5].bind_vertexes(3, GL.GL_FLOAT)
         self.buffers.buffers[self.idx].vbos.vbos[6] = []
         self.buffers.buffers[self.idx].vbos.vbos[7] = VertexBuffer(walltexs[:4*2*numwalls*sizeof(float)])
+        self.buffers.buffers[self.idx].vbos.vbos[7].bind_texcoords(2, GL.GL_FLOAT)
 
         cdef char *ele1
         cdef char *ele2
@@ -905,6 +918,10 @@ cdef class Map:
             for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
                 free(self.eles2[i])
             free(self.eles2)
+        if self.eles3:
+            for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+                free(self.eles3[i])
+            free(self.eles3)
 
 
 cdef class Model:
