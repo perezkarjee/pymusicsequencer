@@ -157,6 +157,7 @@ class ConstructorGUI(object):
         self.inv.AddItem(Item(name=u"테스트아이템2"))
         self.inv.AddItem(Item(name=u"테스트아이템3"))
         self.inv.AddItem(Item(name=u"테스트아이템4"))
+        self.worldItems = {} # By 8x8 Coord
 
 
         self.inventoryOn = False
@@ -2813,6 +2814,8 @@ void main(void)
         if z > 0.0:
             z += 1
         #print int(x),int(y),int(z)
+        # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
+        # 3타일 안에 있어야함
 
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
@@ -3209,7 +3212,7 @@ void main(void)
         glTranslatef(5.5, 0.35, -5.5)
         glRotatef(270, 1.0, 0.0, 0.0)
         #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
-        glScalef(0.4, 0.4, 0.4)
+        glScalef(0.2, 0.2, 0.2)
         self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
