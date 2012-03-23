@@ -556,7 +556,9 @@ class ItemView:
         self.x = x
         self.y = y
         self.item = item
+        self.lineH = 20
         self.text = self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32))
+        self.texts = [self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32)) for i in range(4)]
 
     def Render(self):
         x = self.x
@@ -569,6 +571,10 @@ class ItemView:
         DrawQuad(x,y,2,h,(32,32,32,255),(32,32,32,255))
         DrawQuad(x+w-2,y,2,h,(32,32,32,255),(32,32,32,255))
         self.tr.RenderOne(self.text, (x+5,y+5))
+        y += self.lineH*2
+        for text in self.texts:
+            self.tr.RenderOne(text, (x+5,y+5))
+            y += self.lineH
 
 
 class Inventory:
@@ -2431,6 +2437,8 @@ class ConstructorApp:
             self.reload = False
             self.model.Regen()
             self.model2.Regen()
+            for model in self.models:
+                model.Regen()
             self.gui.Regen()
             self.textRenderer.RegenTex()
             self.textRendererSmall.RegenTex()
@@ -3174,6 +3182,43 @@ void main(void)
         glPopMatrix()
 
 
+        bounds = self.models[0].GetBounds()
+
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
+
+        glEnable(GL_TEXTURE_1D)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glBindTexture(GL_TEXTURE_1D, self.tex3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
+        glActiveTexture(GL_TEXTURE0 + 1)
+        glBindTexture(GL_TEXTURE_1D, self.sat)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
+        glActiveTexture(GL_TEXTURE0 + 2)
+        glBindTexture(GL_TEXTURE_1D, self.sat3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
+        glActiveTexture(GL_TEXTURE0 + 0)
+
+
+        glPushMatrix()
+        glTranslatef(5.5, 0.35, -5.5)
+        glRotatef(270, 1.0, 0.0, 0.0)
+        #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
+        glScalef(0.4, 0.4, 0.4)
+        self.tr += 0.001
+        if self.tr >= 3.0:
+            self.tr = -3.0
+        self.models[0].Draw()
+        glPopMatrix()
+
+
+
+
         glUseProgram(0)
 
         GUIDrawMode()
@@ -3334,7 +3379,7 @@ void main(void)
         self.fps = fps = FPS()
         self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
-        self.model3 = chunkhandler.Model("./blend/item.jrpg", 2)
+        self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
