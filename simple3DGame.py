@@ -33,7 +33,6 @@ chunkhandler.SH = SH
 import random
 import math
 import numpy
-import pickle
 import os
 
 LMB = 1
@@ -2908,12 +2907,26 @@ void main(void)
         #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
         if x < 0.0:
             x -= 1
-        if z > 0.0:
-            z += 1
-        #print int(x),int(y),int(z)
+        if z < 0.0:
+            z -= 1
+        x,z=int(x),int(z)
+        if LMB in m.pressedButtons:
+            xx,zz = self.GetLocalItemCoord(x,z)
+            if (xx,zz) in self.worldItems:
+                items = self.worldItems[(xx,zz)]
+                for item in items[:]:
+                    xxx,nonono,zzz = item.a["coord"]
+                    if x == xxx and z == zzz:
+                        charPos = Vector2(*self.GetCharCoord())
+                        itemPos = Vector2(xxx,zzz)
+                        if (itemPos-charPos).length() <= 3:
+                            items.remove(item)
+                            GUISt.inv.AddItem(item)
+                            break
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
-
+    def GetLocalItemCoord(self, x,z):
+        return x-x%8,z-z%8
     def HandleMapTiling(self, t,m,k, map):
         # 타일체인지 모드에선 이렇게 하고
         # 높낮이 조절에서는 OnLDown써야됨
@@ -3499,20 +3512,20 @@ void main(void)
             x = x-x%8
             y = y-y%8
             f = open(self.GetWorldItemFileName(x,y), "rb")
-            items = pickle.load(f)
+            items = cPickle.load(f)
             f.close()
             return items
         except:
             return []
     def Save(self, item, fileName):
         f = open(fileName, "wb")
-        pickle.dump(item, f)
+        cPickle.dump(item, f)
         f.close()
     def SaveItems(self):
         for coord in self.worldItems:
             f = open(self.GetWorldItemFileName(*coord), "wb")
             item = self.worldItems[coord]
-            pickle.dump(item, f)
+            cPickle.dump(item, f)
             f.close()
 
     def GetWorldItemFileName(self, x,y):
@@ -3522,7 +3535,7 @@ void main(void)
 
     def Run(self):
         pygame.init()
-        pygame.display.set_caption("Jake's Adventure")
+        pygame.display.set_caption("쓰리디 알피쥐 게임")
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=2048)
         isFullScreen = 0#FULLSCREEN#0
 
@@ -3599,7 +3612,7 @@ void main(void)
             button.enabled = False
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
-        #self.AddWorldItem(item)
+        self.AddWorldItem(item)
         self.SetCharCoord(-1,-1)
         #item = Item(name=u"테스트월드아이템", coord=(1,0,0))
         #self.AddWorldItem(item)
