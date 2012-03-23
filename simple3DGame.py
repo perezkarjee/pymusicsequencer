@@ -141,10 +141,7 @@ class EnemyDef:
         return Enemy(self.tileIdx, self.name, self.pos[0], self.pos[1], self.args)
 
 
-
 GUISt = None
-
-
 class ConstructorGUI(object):
     def __init__(self):
         global GUISt
@@ -155,6 +152,12 @@ class ConstructorGUI(object):
         self.guiRenderer = chunkhandler.GUIBGRenderer()
         self.msgBox = MsgBox()
         self.msgBox.AddText(u"안녕", (255,255,255), (64,64,64))
+        self.inv = self.inventory = Inventory()
+        self.inv.AddItem(Item(name=u"테스트아이템"))
+        self.inv.AddItem(Item(name=u"테스트아이템2"))
+        self.inv.AddItem(Item(name=u"테스트아이템3"))
+        self.inv.AddItem(Item(name=u"테스트아이템4"))
+
 
         self.inventoryOn = False
         self.charOn = False
@@ -162,6 +165,8 @@ class ConstructorGUI(object):
     def OnKeyDown(self, t,m,k):
         if k.pressedKey == K_i:
             self.inventoryOn = not self.inventoryOn
+        elif k.pressedKey == K_c:
+            self.charOn = not self.charOn
         elif k.pressedKey == K_ESCAPE:
             self.inventoryOn = False
             self.charOn = False
@@ -176,6 +181,7 @@ class ConstructorGUI(object):
 
     def Regen(self):
         self.msgBox.Regen()
+        self.inventory.Regen()
         self.tex = texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texture)
         teximg = pygame.image.tostring(self.botimg, "RGBA", 0) 
@@ -210,13 +216,19 @@ class ConstructorGUI(object):
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
         self.guiRenderer.Render()
 
+        self.msgBox.Render()
         
         DrawQuad(0,0,SW,62,(128,200,140,255), (64,128,74,255))
         DrawQuad(0,62,SW,2,(32,32,32,255), (32,32,32,255))
         if self.inventoryOn:
-            DrawQuad(SW/2+2,64,SW/2,SH-64-96,(128,128,128,255), (128,128,128,255))
-            DrawQuad(SW/2,64,2,SH-64-96,(32,32,32,255), (32,32,32,255))
-            DrawQuad(SW/2,SH-98,SW/2,2,(32,32,32,255), (32,32,32,255))
+            y = 64 + self.inv.lineH*len(self.inv.items)
+            DrawQuad(SW/2+128,y,SW/2-128,SH-96-y,(128,128,128,200), (128,128,128,200))
+            DrawQuad(SW/2+128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
+            DrawQuad(SW/2+128,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
+        if self.charOn:
+            DrawQuad(0,64,SW/2-128,SH-64-96,(128,128,128,200), (128,128,128,200))
+            DrawQuad(SW/2-128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
+            DrawQuad(0,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
 
         if AppSt.buttons[0].enabled:
             DrawQuad(400,SH-96,SW-400,128,(128,128,128,128),(128,128,128,128))
@@ -231,8 +243,9 @@ class ConstructorGUI(object):
                     if x+32+5 > SW:
                         x = 400+5
                         y += 32+5
-        self.msgBox.Render()
 
+        if self.inventoryOn:
+            self.inventory.Render()
 
 
 # 이걸 GLQUAD랑 텍스쳐를 이용하도록 한다.
@@ -532,6 +545,96 @@ class TalkBox(object):
         # 다이나믹 렌더러를 가지고있고, AddNew로 텍스트가 추가될 때마다 추가하고
         # 한개씩 렌더링하고
         # 라인수가 일정 이상을 넘어서면 플러시
+class Item:
+    def __init__(self, **kwargs):
+        self.a = kwargs
+
+
+class ItemView:
+    def __init__(self, x,y,item, tr):
+        self.tr = tr
+        self.x = x
+        self.y = y
+        self.item = item
+        self.text = self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32))
+
+    def Render(self):
+        x = self.x
+        y = self.y
+        w = 400
+        h = 400
+        DrawQuad(x,y,w,h,(200,200,200,255),(200,200,200,255))
+        DrawQuad(x,y,w,2,(32,32,32,255),(32,32,32,255))
+        DrawQuad(x,y+h-2,w,2,(32,32,32,255),(32,32,32,255))
+        DrawQuad(x,y,2,h,(32,32,32,255),(32,32,32,255))
+        DrawQuad(x+w-2,y,2,h,(32,32,32,255),(32,32,32,255))
+        self.tr.RenderOne(self.text, (x+5,y+5))
+
+
+class Inventory:
+    def __init__(self):
+        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 12)
+        self.tr = DynamicTextRenderer(self.font3)
+        self.tr2 = DynamicTextRenderer(self.font3)
+        self.items = []
+        self.lines = []
+        self.lineH = 20
+        self.x = SW/2+128
+        self.y = 64
+        EMgrSt.BindLDown(self.LDown)
+        EMgrSt.BindMotion(self.Motion)
+        self.selected = -1
+        self.itemView = None
+
+    def Motion(self,t,m,k):
+        y = 0
+        i = 0
+        if self.itemView:
+            self.tr2.Clear()
+            del self.itemView
+            self.itemView = None
+        for line in self.lines:
+            if InRect(self.x,self.y+y, SW/2-128, self.lineH,m.x,m.y):
+                self.itemView = ItemView(SW/4-200, SH/2-200, self.items[i], self.tr2)
+                break
+            y += self.lineH
+            i += 1
+    def LDown(self,t,m,k):
+        y = 0
+        i = 0
+        for line in self.lines:
+            if InRect(self.x,self.y+y, SW/2-128, self.lineH,m.x,m.y):
+                self.selected = i
+                break
+            y += self.lineH
+            i += 1
+
+
+    def AddItem(self, item):
+        self.items += [item]
+        self.lines += [self.tr.NewTextObject(item.a["name"], (255,255,255), (0,0), border=True, borderColor=(32,32,32))]
+    def Render(self):
+        x = self.x
+        y = self.y
+        i = 0
+        for line in self.lines:
+            if self.selected == i:
+                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(19,66,192,200),(19,66,192,230))
+            elif i%2:
+                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(164,164,164,200),(164,164,164,230))
+            else:
+                DrawQuad(self.x+2,y,SW/2-128-2,self.lineH,(120,120,120,200),(120,120,120,230))
+            self.tr.RenderOne(line, (x+5,y+2))
+            y += self.lineH
+            i += 1
+
+        if self.itemView:
+            self.itemView.Render()
+
+    def Regen(self):
+        self.tr.RegenTex()
+        self.tr2.RegenTex()
+
 class MsgBox(object):
     def __init__(self):
         self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 14)
@@ -544,10 +647,13 @@ class MsgBox(object):
         self.lineCut = True
         self.renderedLines = []
     def Regen(self):
+        self.textRendererArea.RegenTex()
+        """
         self.textRendererArea = DynamicTextRenderer(self.font3)
         self.renderedLines = []
         for text in self.lines:
             self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=True, borderColor = text[2]), text[1], text[2])]
+        """
     def AddText(self, text, color, bcolor):
         lenn = len(self.lines)
         if self.lineCut:
@@ -610,6 +716,9 @@ class DynamicTextRenderer(object):
             self.surfs += [[pygame.Surface((512,512), flags=SRCALPHA), texid, True]]
         self.surfIdx = 0
         self.texts = []
+    def __del__(self):
+        for surf in self.surfs:
+            glDeleteTextures([1])
     def NewTextObject(self, text, color, pos, border=False, borderColor = (255,255,255)):
         if self.surfIdx >= 4:
             return
@@ -745,6 +854,10 @@ class StaticTextRenderer(object):
         texid = glGenTextures(1)
         self.surfs = [[pygame.Surface((512,512), flags=SRCALPHA), texid, True]]
         self.texts = []
+    def __del__(self):
+        for surf in self.surfs:
+            glDeleteTextures([1])
+
     def GetDimension(self, textid):
         surfid, posList = self.texts[textid]
         w = 0
@@ -2908,9 +3021,6 @@ void main(void)
     def GetDegree(self):
         return self.degree
     def Render(self, t, m, k):
-        if RMB in m.pressedButtons:
-            degree = (m.GetScreenVectorDegree()-90-45/2.0)
-            self.degree = degree = degree-(degree%45)
         self.Reload()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
@@ -2928,9 +3038,21 @@ void main(void)
         self.cam1.curPos = curPos
 
         if RMB in m.pressedButtons:
+            if (GUISt.charOn and m.x <= SW/2-128):
+                pass
+            elif (GUISt.inventoryOn and m.x >= SW/2+128):
+                pass
+            else:
+                degree = (m.GetScreenVectorDegree()-90-45/2.0)
+                self.degree = degree = degree-(degree%45)
             if t-self.moveWait > self.moveDelay:
                 self.moveWait = t
-                self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
+                if (GUISt.charOn and m.x <= SW/2-128):
+                    pass
+                elif (GUISt.inventoryOn and m.x >= SW/2+128):
+                    pass
+                else:
+                    self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
         GameDrawMode()
         self.cam1.ApplyCamera(t)
         glUseProgram(0)
@@ -3230,6 +3352,7 @@ void main(void)
         self.font2 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.textRenderer = StaticTextRenderer(self.font)
         self.textRendererSmall = StaticTextRenderer(self.font2)
+        delme = DynamicTextRenderer(self.font2)
         self.lockedText = self.textRenderer.NewTextObject(u"잠김", (255,255,255), True, (50,50,50))
         self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), True, (50,50,50)) for i in range(10)]
         self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), True, (0,0,0))]
