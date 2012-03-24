@@ -585,16 +585,30 @@ class ItemView:
             self.tr.RenderOne(text, (x+5,y+5))
             y += self.lineH
 
+class Enemy:
+    def __init__(self, **kwargs):
+        self.a = kwargs
+
 class EnemySpawner:
     def __init__(self, **kwargs):
         self.a = kwargs
         EMgrSt.BindTick(self.Tick)
         self.spawnTime=pygame.time.get_ticks()
-        self.spawnDelay=5000
+        self.spawnDelay=500
+        self.maxEnemy = 3
     def Tick(self,t,m,k):
         if t-self.spawnTime > self.spawnDelay:
             self.spawnTime = t
-            GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
+            x,y,z = coord = self.a["coord"]
+            x,z = AppSt.GetLocalItemCoord(x,z)
+            if (x,z) not in AppSt.spawnedEnemies:
+                AppSt.spawnedEnemies[(x,z)] = []
+
+            if len(AppSt.spawnedEnemies[(x,z)]) < self.maxEnemy:
+                GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
+                AppSt.spawnedEnemies[(x,z)] += [Enemy(coord=self.a["coord"])]
+                # 여기다 추가하면 렌더링할 때 곤란하므로 AppSt에다가 추가하고 대신 세이브를 하지 않는다.
+                # 구조는 스포너나 아이템과 동일하다.
 class Char:
     def __init__(self):
         self.name = u"플레이어"
@@ -2987,7 +3001,7 @@ void main(void)
                 vec3 color222;
                 color222.r = 0.0;
                 color222.g = 1.0;
-                color222.b = 0.0;
+                color222.b = 1.0;
                 //gl_FragColor.rgb = color;
                 gl_FragColor.rgb = ((color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/4.0
                     + color222.rgb)/2;
@@ -3830,6 +3844,7 @@ void main(void)
 
         self.worldItems = {} # By 8x8 Coord
         self.worldEnemies = {} # Spawners
+        self.spawnedEnemies = {}
 
         self.cam1 = Camera()
         self.camPos = copy.copy(self.cam1.pos)
