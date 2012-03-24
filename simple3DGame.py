@@ -621,12 +621,34 @@ class Enemy:
         curPos = Vector(*self.a["prevcoord"]) + (posOffset.MultScalar(factor))
         self.a["curPos"] = curPos.x,curPos.y,curPos.z
 
-        if t-self.move > self.delay:
+        xx,yy,zz = self.a["coord"]
+        okToDo = False
+        charPos = Vector2(*AppSt.GetCharCoord())
+        mePos = Vector2(xx,zz)
+        offsetPos = charPos-mePos
+
+        if offsetPos.length() > 12:
+            self.inWar = False
+        if self.inWar:
+            if t-self.move > self.delay/4:
+                okToDo = True
+        else:
+            if t-self.move > self.delay:
+                okToDo = True
+        if okToDo:
             self.move = t
-            xx,yy,zz = self.a["coord"]
             if self.inWar:
+
                 x=0
                 y=0
+                if abs(offsetPos.x) >= 2 and offsetPos.x > 0:
+                    x=1
+                elif abs(offsetPos.x) >= 2  and offsetPos.x < 0:
+                    x=-1
+                if abs(offsetPos.y) >= 2 and offsetPos.y > 0:
+                    y=1
+                elif abs(offsetPos.y) >= 2 and offsetPos.y < 0:
+                    y=-1
             else:
                 x = random.randint(-1,1)
                 y = random.randint(-1,1)
@@ -4151,7 +4173,7 @@ void main(void)
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
         #for i in range(125):
-        enemy = EnemySpawner(name=u"적", coord=(2,0,-2), hp=150, str=60, dex=25, int=10)
+        enemy = EnemySpawner(name=u"적", coord=(2,0,-2), hp=1050, str=60, dex=25, int=10)
         self.AddWorldItem(item)
         #self.AddWorldEnemy(enemy)
         self.SetCharCoord(-1,-1)
@@ -4297,4 +4319,3 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 
 타일처럼 몬스터의 그림을 그려두고 그걸 클릭해서 땅에다 클릭하면 스포너가 생긴다.
 """
-
