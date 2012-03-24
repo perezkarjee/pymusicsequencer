@@ -606,7 +606,7 @@ class EnemySpawner:
 
             if len(AppSt.spawnedEnemies[(x,z)]) < self.maxEnemy:
                 GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
-                AppSt.spawnedEnemies[(x,z)] += [Enemy(coord=self.a["coord"])]
+                AppSt.spawnedEnemies[(x,z)] += [Enemy(coord=self.a["coord"], name=u"적", facing=0)]
                 # 여기다 추가하면 렌더링할 때 곤란하므로 AppSt에다가 추가하고 대신 세이브를 하지 않는다.
                 # 구조는 스포너나 아이템과 동일하다.
 class Char:
@@ -3781,6 +3781,9 @@ void main(void)
                 x,y,z = item.a["coord"]
                 glPushMatrix()
                 glTranslatef(x+0.5,y+0.35,z+0.5)
+                degree = (45*item.a["facing"]-90-45/2.0)
+                degree = degree-(degree%45)
+                glRotatef(degree, 0.0, 1.0, 0.0)
                 glRotatef(270, 1.0, 0.0, 0.0)
                 glScale(0.2,0.2,0.2)
                 self.models[2].Draw()
