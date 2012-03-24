@@ -3580,6 +3580,7 @@ void main(void)
         glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
         glActiveTexture(GL_TEXTURE0 + 0)
         self.RenderEnemies()
+        self.RenderSpawnedEnemies()
 
         """
         glPushMatrix()
@@ -3773,6 +3774,18 @@ void main(void)
                 glScale(0.2,0.2,0.2)
                 self.models[1].Draw()
                 glPopMatrix()
+    def RenderSpawnedEnemies(self):
+        for coord in self.spawnedEnemies:
+            items = self.spawnedEnemies[coord]
+            for item in items:
+                x,y,z = item.a["coord"]
+                glPushMatrix()
+                glTranslatef(x+0.5,y+0.35,z+0.5)
+                glRotatef(270, 1.0, 0.0, 0.0)
+                glScale(0.2,0.2,0.2)
+                self.models[2].Draw()
+                glPopMatrix()
+
     def RenderItems(self):
         for coord in self.worldItems:
             items = self.worldItems[coord]
@@ -3877,7 +3890,8 @@ void main(void)
         self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
-        self.models += [chunkhandler.Model("./blend/item.jrpg", 2)]
+        self.models += [chunkhandler.Model("./blend/item.jrpg", 3)]
+        self.models += [chunkhandler.Model("./blend/humanoid.jrpg", 4)]
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
