@@ -589,6 +589,179 @@ class ItemView:
 class Enemy:
     def __init__(self, **kwargs):
         self.a = kwargs
+        EMgrSt.BindTick(self.Tick)
+        self.move = pygame.time.get_ticks()
+        self.delay = 2500
+        self.smoothD = self.delay/10.0
+        self.maps = AppSt.maps
+
+
+    def Tick(self,t,m,k):
+        offset = t-self.move
+        if offset >= self.smoothD:
+            offset = self.smoothD
+            self.a["prevcoord"] = self.a["coord"]
+        factor = float(offset)/float(self.smoothD)
+        posOffset = Vector(*self.a["coord"]) - Vector(*self.a["prevcoord"])
+        curPos = Vector(*self.a["prevcoord"]) + (posOffset.MultScalar(factor))
+        self.a["curPos"] = curPos.x,curPos.y,curPos.z
+
+        if t-self.move > self.delay:
+            self.move = t
+            xx,yy,zz = self.a["coord"]
+            x = random.randint(-1,1)
+            y = random.randint(-1,1)
+            zz = -zz
+
+
+            wallFound = False
+
+            def GetWallFound(xx,zz,facing_):
+                wallFound_ = False
+                walls = self.maps[0].GetWall(xx,-(zz))
+                for wall in walls:
+                    xxx,zzz,facing,tile = wall
+                    if facing == facing_:
+                        wallFound_ = True
+                        break
+                return wallFound_
+
+            y=-y
+
+            if x == 0 and y == -1:
+                self.a["facing"] = 7
+                wallFound = GetWallFound(xx,zz-1,0)
+            elif x == 0 and y == 1:
+                self.a["facing"] = 3
+                wallFound = GetWallFound(xx,zz,0)
+            elif x == 1 and y == 0:
+                self.a["facing"] = 1
+                wallFound = GetWallFound(xx+1,zz,1)
+            elif x == -1 and y == 0:
+                self.a["facing"] = 5
+                wallFound = GetWallFound(xx,zz,1)
+            elif x == 1 and y == 1:
+                self.a["facing"] = 2
+                # 위쪽
+                if GetWallFound(xx+1,zz,1) or GetWallFound(xx,zz,0) or GetWallFound(xx+1,zz,0) or GetWallFound(xx+1,zz+1,1):
+                    wallFound = True
+
+                if wallFound and GetWallFound(xx+1,zz,1): # 포텐셜 z+1이동
+                    if not GetWallFound(xx,zz,0):
+                        wallFound = False
+                        x = 0
+                        y = 1
+                elif wallFound and GetWallFound(xx,zz,0): # 포텐셜 x+1이동
+                    if not GetWallFound(xx+1,zz,1):
+                        wallFound = False
+                        x = 1
+                        y = 0
+            elif x == -1 and y == -1:
+                self.a["facing"] = 6
+                # 아래쪽
+                if GetWallFound(xx,zz,1) or GetWallFound(xx,zz-1,0) or GetWallFound(xx-1,zz-1,0) or GetWallFound(xx,zz-1,1):
+                    wallFound = True
+
+                if wallFound and GetWallFound(xx,zz,1): # 포텐셜 z-1이동
+                    if not GetWallFound(xx,zz-1,0):
+                        wallFound = False
+                        x = 0
+                        y = -1
+                elif wallFound and GetWallFound(xx,zz-1,0): # 포텐션 x-1이동
+                    if not GetWallFound(xx,zz,1):
+                        wallFound = False
+                        x = -1
+                        y = 0
+            elif x == -1 and y == 1:
+                self.a["facing"] = 4
+                # 왼쪽
+                if GetWallFound(xx,zz,0)  or GetWallFound(xx,zz,1) or GetWallFound(xx-1,zz,0) or GetWallFound(xx,zz+1,1):
+                    wallFound = True
+
+                if wallFound and GetWallFound(xx,zz,0): # 포텐셜 x-1이동
+                    if not GetWallFound(xx,zz,1):
+                        wallFound = False
+                        x = -1
+                        y = 0
+                elif wallFound and GetWallFound(xx,zz,1): # 포텐셜 y+1이동
+                    if not GetWallFound(xx,zz,0):
+                        wallFound = False
+                        x = 0
+                        y = 1
+            elif x == 1 and y == -1:
+                self.a["facing"] = 0
+                # 오른쪽
+                if GetWallFound(xx,zz-1,0) or GetWallFound(xx+1,zz,1) or GetWallFound(xx+1,zz-1,0) or GetWallFound(xx+1,zz-1,1):
+                    wallFound = True
+
+
+                if wallFound and GetWallFound(xx,zz-1,0): # x+1
+                    if not GetWallFound(xx+1,zz,1):
+                        wallFound = False
+                        x = 1
+                        y = 0
+                elif wallFound and GetWallFound(xx+1,zz,1): # y-1
+                    if not GetWallFound(xx,zz-1,0):
+                        wallFound = False
+                        x = 0
+                        y = -1
+
+            blocked = AppSt.blocked
+            if not wallFound:
+                if self.maps[0].GetTile(xx+x,-(zz-1+y)) not in blocked:
+                    pass
+                else:
+                    if x == 1 and y == 1:
+                        if self.maps[0].GetTile(xx+1,-(zz-1)) not in blocked:
+                            x = 1
+                            y = 0
+                        elif self.maps[0].GetTile(xx,-(zz-1+1)) not in blocked:
+                            x = 0
+                            y = 1
+                        else:
+                            x=0
+                            y=0
+                    elif x == -1 and y == -1:
+                        # 아래쪽
+                        if self.maps[0].GetTile(xx,-(zz-1-1)) not in blocked:
+                            x = 0
+                            y = -1
+                        elif self.maps[0].GetTile(xx-1,-(zz-1)) not in blocked:
+                            x = -1
+                            y = 0
+                        else:
+                            x=0
+                            y=0
+                    elif x == -1 and y == 1:
+                        if self.maps[0].GetTile(xx-1,-(zz-1)) not in blocked:
+                            x = -1
+                            y = 0
+                        elif self.maps[0].GetTile(xx,-(zz-1+1)) not in blocked:
+                            x = 0
+                            y = 1
+                        else:
+                            x=0
+                            y=0
+                        # 왼쪽
+                    elif x == 1 and y == -1:
+                        if self.maps[0].GetTile(xx+1,-(zz-1)) not in blocked:
+                            x = 1
+                            y = 0
+                        elif self.maps[0].GetTile(xx,-(zz-1-1)) not in blocked:
+                            x = 0
+                            y = -1
+                        else:
+                            x=0
+                            y=0
+                    else:
+                        x=0
+                        y=0
+                y=-y
+                   
+                self.a["prevcoord"] = self.a["coord"]
+                zz = -zz
+                self.a["coord"] = xx+x,yy,zz+y
+
 
 class EnemySpawner:
     def __init__(self, **kwargs):
@@ -607,7 +780,7 @@ class EnemySpawner:
 
             if len(AppSt.spawnedEnemies[(x,z)]) < self.maxEnemy:
                 GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
-                AppSt.spawnedEnemies[(x,z)] += [Enemy(coord=self.a["coord"], name=u"적", facing=0)]
+                AppSt.spawnedEnemies[(x,z)] += [Enemy(prevcoord=self.a["coord"],coord=self.a["coord"], name=u"적", facing=0)]
                 # 여기다 추가하면 렌더링할 때 곤란하므로 AppSt에다가 추가하고 대신 세이브를 하지 않는다.
                 # 구조는 스포너나 아이템과 동일하다.
 class Char:
@@ -3770,7 +3943,8 @@ void main(void)
         x,nonono,y = item.a["coord"]
         x = x-x%8
         y = y-y%8
-        self.worldEnemies[(x,y)] += [item]
+        self.worldEnemies[(x,y)] = [item]
+        #self.worldEnemies[(x,y)] += [item]
 
     def AddWorldItem(self,item):
         x,nonono,y = item.a["coord"]
@@ -3796,7 +3970,7 @@ void main(void)
         for coord in self.spawnedEnemies:
             items = self.spawnedEnemies[coord]
             for item in items:
-                x,y,z = item.a["coord"]
+                x,y,z = item.a["curPos"]
                 itemc = Vector2(x,z)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
@@ -3956,9 +4130,9 @@ void main(void)
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
         #for i in range(125):
-        enemy = EnemySpawner(name=u"적", coord=(-1,0,-2))
+        enemy = EnemySpawner(name=u"적", coord=(2,0,-2))
         self.AddWorldItem(item)
-        self.AddWorldEnemy(enemy)
+        #self.AddWorldEnemy(enemy)
         self.SetCharCoord(-1,-1)
         #item = Item(name=u"테스트월드아이템", coord=(1,0,0))
         #self.AddWorldItem(item)
@@ -3990,6 +4164,7 @@ void main(void)
 
         self.maps[0].SaveFiles()
         self.SaveItems()
+        self.SaveEnemies()
 
 
 if __name__ == '__main__':

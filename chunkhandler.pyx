@@ -322,6 +322,9 @@ cdef class Map:
                 pass
     def GetWall(self, x,z, floor=1):
         result = []
+        key = self.GetWallFileName(int(x),int(z))
+        if key not in self.walls.files[self.idx]:
+            self.walls.files[self.idx][key] = self.LoadWall(key)
         if (x,z) in self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]:
             walls = self.walls.files[self.idx][self.GetWallFileName(int(x),int(z))]
             for wall in walls[(x,z)]:
@@ -348,10 +351,16 @@ cdef class Map:
         self.tileData = tile
     def GetTile(self, x,z):
         xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        key = self.GetFileName(int(x),int(z))
+        if key not in self.files.files[self.idx]:
+            self.files.files[self.idx][key] = self.Load(key)
         height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][1]
         return height
     def GetHeight(self, x,z):
         xxx,zzz = self.GetLocalCoord(int(x),int(z))
+        key = self.GetFileName(int(x),int(z))
+        if key not in self.files.files[self.idx]:
+            self.files.files[self.idx][key] = self.Load(key)
         height = self.files.files[self.idx][self.GetFileName(int(x),int(z))][zzz*8+xxx][0]
         return height
     def ClickTile(self, mode, part, position, floor=1):
