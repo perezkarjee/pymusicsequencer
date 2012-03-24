@@ -132,14 +132,6 @@ class Button(object):
             DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,200),(164,164,164,200))
             self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
 
-class EnemyDef:
-    def __init__(self, tileIdx, name, x, y, args):
-        self.tileIdx = tileIdx
-        self.name = name
-        self.pos = [x,y]
-        self.args = args
-    def Gen(self):
-        return Enemy(self.tileIdx, self.name, self.pos[0], self.pos[1], self.args)
 
 
 GUISt = None
@@ -595,7 +587,11 @@ class Enemy:
         self.smoothD = self.delay/10.0
         self.maps = AppSt.maps
         self.inWar = False
+        self.atkDelay = 250
+        self.atkWait = pygame.time.get_ticks()
 
+    def GetDmg(self):
+        return self.a["str"] * 5
     def GetDefense(self):
         return self.a["dex"]*5
     def GetAttacked(self, attacker):
@@ -627,6 +623,11 @@ class Enemy:
         mePos = Vector2(xx,zz)
         offsetPos = charPos-mePos
 
+        if t-self.atkWait > self.atkDelay:
+            self.atkWait = t
+            if offsetPos.length() < 3 and self.inWar:
+                GUISt.char.GetAttacked(self)
+                GUISt.msgBox.AddText(u"%s이(가) 당신을 공격했다! %d" % (self.a["name"], self.GetDmg()-GUISt.char.GetDefense()), (255,255,255), (255,255,255))
         if offsetPos.length() > 12:
             self.inWar = False
         if self.inWar:
@@ -838,6 +839,12 @@ class Char:
         self.lines.append(self.tr.NewTextObject(u"DEX: ", (0,0,0), (0,0)))
         self.lines.append(self.tr.NewTextObject(u"INT: ", (0,0,0), (0,0)))
         self.lineH = 20
+        self.hp = 1500
+
+    def GetDefense(self):
+        return self.dex * 5
+    def GetAttacked(self, mob):
+        self.hp -= mob.GetDmg()-self.GetDefense()
     def GetDmg(self):
         return self.str*5
     def Regen(self):
@@ -3367,15 +3374,16 @@ void main(void)
                             break
             if t-self.attackTime > self.attackDelay:
                 self.attackTime = t
-                if (xx,zz) in self.spawnedEnemies:
-                    items = self.spawnedEnemies[(xx,zz)]
+                for coord in self.spawnedEnemies:
+                    items = self.spawnedEnemies[coord]
                     for item in items[:]:
                         xxx,nonono,zzz = item.a["coord"]
                         if x == xxx and z == zzz:
                             charPos = Vector2(*self.GetCharCoord())
                             itemPos = Vector2(xxx,zzz)
-                            self.AttackMob(item, charPos, itemPos)
-                            break
+                            if (charPos-itemPos).length() < 5:
+                                self.AttackMob(item, charPos, itemPos)
+                                break
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
     def AttackMob(self, mob, charPos, mobPos):
