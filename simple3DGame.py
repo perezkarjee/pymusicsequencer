@@ -1,3 +1,4 @@
+# License: AGPL 3.0
 # -*- coding: utf-8 -*-
 import os
 os.environ['SDL_VIDEO_CENTERED'] = '1'

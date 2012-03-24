@@ -147,12 +147,10 @@ badd +111 chunk.pyx
 badd +1 glut.py
 badd +4091 simple3DGame.py
 badd +4 server.py
-badd +3994 simple3DGamePYX.pyx
-badd +1 3dgame.py
 silent! argdel *
 set lines=50 columns=165
 winpos -4 -4
-edit 3dgame.py
+edit simple3DGame.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -254,11 +252,11 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 7 - ((6 * winheight(0) + 24) / 49)
+let s:l = 4092 - ((47 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-7
+4092
 normal! 0
 lcd C:\drumsynth
 if exists('s:wipebuf')
