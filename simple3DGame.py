@@ -153,6 +153,7 @@ class ConstructorGUI(object):
         self.msgBox = MsgBox()
         self.msgBox.AddText(u"안녕", (255,255,255), (64,64,64))
         self.inv = self.inventory = Inventory()
+        self.char = Char()
         self.inv.AddItem(Item(name=u"테스트아이템"))
         self.inv.AddItem(Item(name=u"테스트아이템2"))
         self.inv.AddItem(Item(name=u"테스트아이템3"))
@@ -228,16 +229,16 @@ class ConstructorGUI(object):
                 offset = 25
 
             y = 64 + self.inv.lineH*offset
-            DrawQuad(SW/2+128,y,SW/2-128,SH-96-y,(128,128,128,200), (128,128,128,200))
+            DrawQuad(SW/2+128,y,SW/2-128,SH-96-y,(168,168,168,200), (168,168,168,200))
             DrawQuad(SW/2+128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
             DrawQuad(SW/2+128,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
         if self.charOn:
-            DrawQuad(0,64,SW/2-128,SH-64-96,(128,128,128,200), (128,128,128,200))
+            DrawQuad(0,64,SW/2-128,SH-64-96,(168,168,168,200), (168,168,168,200))
             DrawQuad(SW/2-128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
             DrawQuad(0,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
 
         if AppSt.buttons[0].enabled:
-            DrawQuad(400,SH-96,SW-400,128,(128,128,128,128),(128,128,128,128))
+            DrawQuad(400,SH-96,SW-400,128,(168,168,168,128),(168,168,168,128))
             if AppSt.tileMode in [AppSt.TILECHANGE1, AppSt.TILECHANGE2]:
                 x = 400+5
                 y = SH-96
@@ -252,6 +253,8 @@ class ConstructorGUI(object):
 
         if self.inventoryOn:
             self.inventory.Render()
+        if self.charOn:
+            self.char.Render()
 
 
 # 이걸 GLQUAD랑 텍스쳐를 이용하도록 한다.
@@ -428,7 +431,7 @@ class TextArea(object):
     def Update(self, renderer):
         y = 0
         for text in self.lines:
-            renderer.NewTextObject(text, self.color, (self.rect[0], self.rect[1]+y), border=False, borderColor = (128,128,128))
+            renderer.NewTextObject(text, self.color, (self.rect[0], self.rect[1]+y), border=False, borderColor = (168,168,168))
             y += self.lineH
             if y > self.rect[3]:
                 return
@@ -563,8 +566,8 @@ class ItemView:
         self.y = y
         self.item = item
         self.lineH = 20
-        self.text = self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32))
-        self.texts = [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32)) for i in range(4)]
+        self.text = self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(64,64,64))
+        self.texts = [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168)) for i in range(4)]
 
     def Render(self):
         x = self.x
@@ -582,6 +585,59 @@ class ItemView:
             self.tr.RenderOne(text, (x+5,y+5))
             y += self.lineH
 
+class EnemySpawner:
+    def __init__(self, **kwargs):
+        self.a = kwargs
+        EMgrSt.BindTick(self.Tick)
+        self.spawnTime=pygame.time.get_ticks()
+        self.spawnDelay=5000
+    def Tick(self,t,m,k):
+        if t-self.spawnTime > self.spawnDelay:
+            self.spawnTime = t
+            GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
+class Char:
+    def __init__(self):
+        self.name = u"플레이어"
+        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
+        self.tr = DynamicTextRenderer(self.font3)
+        self.str = 60
+        self.dex = 25
+        self.int = 10
+        self.nameT = self.tr.NewTextObject(self.name, (0,0,0), (0,0))
+        self.lines = []
+        self.lines.append(self.tr.NewTextObject(u"STR: ", (0,0,0), (0,0)))
+        self.lines.append(self.tr.NewTextObject(u"DEX: ", (0,0,0), (0,0)))
+        self.lines.append(self.tr.NewTextObject(u"INT: ", (0,0,0), (0,0)))
+        self.lineH = 20
+
+    def Regen(self):
+        self.tr.RegenTex()
+
+    def Render(self):
+        x = 5
+        y = 64+5
+        lineH = self.lineH
+        self.tr.RenderOne(self.nameT, (x, y))
+        y += lineH*2
+
+        i = 0
+        self.tr.RenderOne(self.lines[i], (x, y))
+        w,h = self.tr.GetDimension(self.lines[i])
+        AppSt.RenderNumberS(self.str, x+w, y)
+        y += lineH
+        i += 1
+
+        self.tr.RenderOne(self.lines[i], (x, y))
+        w,h = self.tr.GetDimension(self.lines[i])
+        AppSt.RenderNumberS(self.dex, x+w, y)
+        y += lineH
+        i += 1
+
+        self.tr.RenderOne(self.lines[i], (x, y))
+        w,h = self.tr.GetDimension(self.lines[i])
+        AppSt.RenderNumberS(self.int, x+w, y)
+        y += lineH
+        i += 1
 
 class Inventory:
     def __init__(self):
@@ -661,7 +717,7 @@ class Inventory:
         if len(self.items) > 25*4:
             return False
         self.items += [item]
-        self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(32,32,32))]
+        self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168))]
         return True
     def Render(self):
         x = self.x
@@ -708,7 +764,7 @@ class MsgBox(object):
         self.lines = []
         self.rect = 0,SH-96-96,SW,96
         self.letterW = 9
-        self.lineH = 12
+        self.lineH = 14
         self.color = (255,255,255)
         self.lineCut = True
         self.renderedLines = []
@@ -718,7 +774,7 @@ class MsgBox(object):
         self.textRendererArea = DynamicTextRenderer(self.font3)
         self.renderedLines = []
         for text in self.lines:
-            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=True, borderColor = text[2]), text[1], text[2])]
+            self.renderedLines += [(self.textRendererArea.NewTextObject(text[0], text[1], (0, 0), border=False, borderColor = text[2]), text[1], text[2])]
         """
     def AddText(self, text, color, bcolor):
         lenn = len(self.lines)
@@ -748,7 +804,7 @@ class MsgBox(object):
             idx  = 0
             for text in self.lines[-toDrawLines:]:
                 old, color, bcolor = self.renderedLines[idx]
-                self.renderedLines[idx] = [self.textRendererArea.NewTextObject(text, color, (0, 0), border=False, borderColor = bcolor)]
+                self.renderedLines[idx] = [self.textRendererArea.NewTextObject(text[0], color, (0, 0), border=False, borderColor = bcolor)]
                 idx += 1
             self.lines = self.lines[-toDrawLines:]
 
@@ -796,7 +852,7 @@ class DynamicTextRenderer(object):
             prevsurf, texid, updated = self.surfs[0]
             updated = True
             prevtextposList = [[0,0,0,0]]
-        textsurf = Text.GetSurf(self.font, text, (0, 0), color, border, borderColor)[0]
+        textsurf = Text.GetSurfDS(self.font, text, (0, 0), color, border, borderColor)[0]
         if textsurf.get_height()*((textsurf.get_width()/512)+1) >= 512:
             return None
 
@@ -942,7 +998,7 @@ class StaticTextRenderer(object):
             prevsurf, texid, updated = self.surfs[0]
             prevtextposList = [[0,0,0,0]]
 
-        textsurf = Text.GetSurf(self.font, text, (0, 0), color, border, borderColor)[0]
+        textsurf = Text.GetSurfDS(self.font, text, (0, 0), color, border, borderColor)[0]
         if textsurf.get_height()*((textsurf.get_width()/512)+1) >= 512:
             return None
 
@@ -1074,7 +1130,7 @@ class Text:
             surf = base
         rect = pygame.Rect(pos[0], pos[1], surf.get_rect().width, surf.get_rect().height)
         return surf, rect
-    def GetSurf(self, font, text, pos, color=(255,255,255), border=False, borderColor=(255,255,255)):
+    def GetSurf(self, font, text, pos, color=(255,255,255), border=False, borderColor=(168,168,168)):
         surf = font.render(text, True, color)
         if border:
             base = font.render(text,True,borderColor)
@@ -2747,7 +2803,7 @@ void main(void)
             }
             ''')
 
-            self.programItem = compile_program('''
+            self.programEnemy = compile_program('''
 #version 150 compatibility
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
@@ -2836,6 +2892,101 @@ void main(void)
                 vec3 color222;
                 color222.r = 1.0;
                 color222.g = 0.0;
+                color222.b = 0.0;
+                //gl_FragColor.rgb = color;
+                gl_FragColor.rgb = ((color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/4.0
+                    + color222.rgb)/2;
+            }
+            ''')
+            self.programItem = compile_program('''
+#version 150 compatibility
+            // Vertex program
+            varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
+            varying vec3 vNorm;
+            uniform vec4 eye;
+            varying vec4 eyeWorld;
+            uniform vec2 updown;
+            uniform vec2 leftright;
+            uniform vec2 frontback;
+            varying vec4 min_;
+            varying vec4 max_;
+            void main() {
+                min_.x = leftright.x;
+                min_.y = updown.x;
+                min_.z = frontback.x;
+                min_.w = 1.0;
+                max_.x = leftright.y;
+                max_.y = updown.y;
+                max_.z = frontback.y;
+                max_.w = 1.0;
+                pos = gl_Vertex.xyz;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                eyeWorld = eye;
+                vNorm = gl_NormalMatrix  * gl_Normal;
+            }
+            ''', '''
+#version 150 compatibility
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+            // Fragment program
+            uniform sampler1D colorLookup;
+            uniform sampler1D colorLookup2;
+            uniform sampler1D colorLookup3;
+            uniform float offset;
+            uniform float offset2;
+            uniform float offset3;
+            varying vec4 min_;
+            varying vec4 max_;
+            varying vec3 pos;
+            varying vec3 vNorm;
+            varying vec4 eyeWorld;
+            void main() {
+                float base = min_.y;
+                float high = max_.y;
+                base *= 1.10;
+                high *= 1.10;
+                float cur = pos.z-base;
+                float curCol = cur/(high-base);
+                curCol += offset;
+                if(curCol > 1.0)
+                    curCol -= 1.0;
+
+                base = min_.x;
+                high = max_.x;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.x-base;
+                float curCol2 = cur/(high-base);
+                curCol2 += offset2;
+                if(curCol2 > 1.0)
+                    curCol2 -= 1.0;
+
+                base = min_.z;
+                high = max_.z;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.y-base;
+                float curCol3 = cur/(high-base);
+                curCol3 += offset3;
+                if(curCol3 > 1.0)
+                    curCol3 -= 1.0;
+
+                vec3 light;
+                light.x = 1.0;
+                light.y = 1.0;
+                light.z = 1.0;
+                light = normalize(light).xyz;
+                vec3 norm = normalize(vNorm);
+                float fac = (dot(light, norm)+1.0)/2.0;
+                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                vec3 color222;
+                color222.r = 0.0;
+                color222.g = 1.0;
                 color222.b = 0.0;
                 //gl_FragColor.rgb = color;
                 gl_FragColor.rgb = ((color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/4.0
@@ -3391,6 +3542,31 @@ void main(void)
         glActiveTexture(GL_TEXTURE0 + 0)
         self.RenderItems()
 
+
+        bounds = self.models[1].GetBounds()
+        glUseProgram(self.programEnemy)
+
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
+
+        glEnable(GL_TEXTURE_1D)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glBindTexture(GL_TEXTURE_1D, self.tex3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
+        glActiveTexture(GL_TEXTURE0 + 1)
+        glBindTexture(GL_TEXTURE_1D, self.sat)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
+        glActiveTexture(GL_TEXTURE0 + 2)
+        glBindTexture(GL_TEXTURE_1D, self.sat3)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        self.RenderEnemies()
+
         """
         glPushMatrix()
         glTranslatef(5.5, 0.35, -5.5)
@@ -3542,6 +3718,8 @@ void main(void)
                 yesCoords += [(xxx,zzz)]
                 if (xxx,zzz) not in self.worldItems:
                     self.worldItems[(xxx,zzz)] = self.LoadItem(xxx,zzz)
+                if (xxx,zzz) not in self.worldEnemies:
+                    self.worldEnemies[(xxx,zzz)] = self.LoadEnemy(xxx,zzz)
                 xx += 8
             zz += 8
             xx = x-RANGE/2
@@ -3551,11 +3729,36 @@ void main(void)
             if coord not in yesCoords:
                 self.Save(self.worldItems[coord], self.GetWorldItemFileName(*coord))
                 del self.worldItems[coord]
+
+        keys = self.worldEnemies.keys()
+        for coord in keys:
+            if coord not in yesCoords:
+                self.Save(self.worldEnemies[coord], self.GetWorldEnemyFileName(*coord))
+                del self.worldEnemies[coord]
+
+    def AddWorldEnemy(self,item):
+        x,nonono,y = item.a["coord"]
+        x = x-x%8
+        y = y-y%8
+        self.worldEnemies[(x,y)] += [item]
+
     def AddWorldItem(self,item):
         x,nonono,y = item.a["coord"]
         x = x-x%8
         y = y-y%8
         self.worldItems[(x,y)] += [item]
+
+    def RenderEnemies(self):
+        for coord in self.worldEnemies:
+            items = self.worldEnemies[coord]
+            for item in items:
+                x,y,z = item.a["coord"]
+                glPushMatrix()
+                glTranslatef(x+0.5,y+0.35,z+0.5)
+                glRotatef(270, 1.0, 0.0, 0.0)
+                glScale(0.2,0.2,0.2)
+                self.models[1].Draw()
+                glPopMatrix()
     def RenderItems(self):
         for coord in self.worldItems:
             items = self.worldItems[coord]
@@ -3567,6 +3770,16 @@ void main(void)
                 glScale(0.2,0.2,0.2)
                 self.models[0].Draw()
                 glPopMatrix()
+    def LoadEnemy(self, x, y):
+        try:
+            x = x-x%8
+            y = y-y%8
+            f = open(self.GetWorldEnemyFileName(x,y), "rb")
+            items = cPickle.load(f)
+            f.close()
+            return items
+        except:
+            return []
     def LoadItem(self, x, y):
         try:
             x = x-x%8
@@ -3581,6 +3794,12 @@ void main(void)
         f = open(fileName, "wb")
         cPickle.dump(item, f)
         f.close()
+    def SaveEnemies(self):
+        for coord in self.worldItems:
+            f = open(self.GetWorldEnemyFileName(*coord), "wb")
+            item = self.worldEnemies[coord]
+            cPickle.dump(item, f)
+            f.close()
     def SaveItems(self):
         for coord in self.worldItems:
             f = open(self.GetWorldItemFileName(*coord), "wb")
@@ -3588,6 +3807,10 @@ void main(void)
             cPickle.dump(item, f)
             f.close()
 
+    def GetWorldEnemyFileName(self, x,y):
+        x = x-x%8
+        y = y-y%8
+        return "./items/%d_%d.enemy" % (x,y)
     def GetWorldItemFileName(self, x,y):
         x = x-x%8
         y = y-y%8
@@ -3606,6 +3829,7 @@ void main(void)
 
 
         self.worldItems = {} # By 8x8 Coord
+        self.worldEnemies = {} # Spawners
 
         self.cam1 = Camera()
         self.camPos = copy.copy(self.cam1.pos)
@@ -3638,6 +3862,7 @@ void main(void)
         self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
+        self.models += [chunkhandler.Model("./blend/item.jrpg", 2)]
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
@@ -3657,8 +3882,8 @@ void main(void)
         self.textRendererSmall = StaticTextRenderer(self.font2)
         delme = DynamicTextRenderer(self.font2)
         self.lockedText = self.textRenderer.NewTextObject(u"잠김", (255,255,255), True, (50,50,50))
-        self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), True, (50,50,50)) for i in range(10)]
-        self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), True, (0,0,0))]
+        self.numbers = [self.textRenderer.NewTextObject(`i`, (255,255,255), False, (50,50,50)) for i in range(10)]
+        self.numbers += [self.textRenderer.NewTextObject("-", (255,255,255), False, (0,0,0))]
         self.numbersS = [self.textRendererSmall.NewTextObject(`i`, (0,0,0), False, (0,0,0)) for i in range(10)]
         self.numbersS += [self.textRendererSmall.NewTextObject("-", (0,0,0), False, (0,0,0))]
 
@@ -3673,7 +3898,9 @@ void main(void)
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
         #for i in range(125):
-        #    self.AddWorldItem(item)
+        enemy = EnemySpawner(name=u"적", coord=(-1,0,-2))
+        self.AddWorldItem(item)
+        self.AddWorldEnemy(enemy)
         self.SetCharCoord(-1,-1)
         #item = Item(name=u"테스트월드아이템", coord=(1,0,0))
         #self.AddWorldItem(item)
@@ -3802,5 +4029,6 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 이제 벽으로 막기를 구현
 --------------
 이제 인벤토리, 캐릭터창등을 구현
+----------------
 """
 
