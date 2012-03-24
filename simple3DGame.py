@@ -594,8 +594,23 @@ class Enemy:
         self.delay = 2500
         self.smoothD = self.delay/10.0
         self.maps = AppSt.maps
+        self.inWar = False
 
-
+    def GetDefense(self):
+        return self.a["dex"]*5
+    def GetAttacked(self, attacker):
+        self.inWar = True
+        self.a["hp"] -= attacker.GetDmg()-self.GetDefense()
+        if self.a["hp"] <= 0:
+            try:
+                EMgrSt.bindTick.remove(self.Tick)
+                for c in AppSt.spawnedEnemies:
+                    for mob in AppSt.spawnedEnemies[c]:
+                        if mob == self:
+                            AppSt.spawnedEnemies[c].remove(self)
+            except:
+                pass
+        
     def Tick(self,t,m,k):
         offset = t-self.move
         if offset >= self.smoothD:
@@ -609,8 +624,12 @@ class Enemy:
         if t-self.move > self.delay:
             self.move = t
             xx,yy,zz = self.a["coord"]
-            x = random.randint(-1,1)
-            y = random.randint(-1,1)
+            if self.inWar:
+                x=0
+                y=0
+            else:
+                x = random.randint(-1,1)
+                y = random.randint(-1,1)
             zz = -zz
 
 
@@ -780,7 +799,7 @@ class EnemySpawner:
 
             if len(AppSt.spawnedEnemies[(x,z)]) < self.maxEnemy:
                 GUISt.msgBox.AddText(u"적생성", (255,255,255),(255,255,255))
-                AppSt.spawnedEnemies[(x,z)] += [Enemy(prevcoord=self.a["coord"],coord=self.a["coord"], name=u"적", facing=0)]
+                AppSt.spawnedEnemies[(x,z)] += [Enemy(str=self.a["str"], dex=self.a["dex"], int=self.a["int"], hp=self.a["hp"],prevcoord=self.a["coord"],coord=self.a["coord"], name=self.a["name"], facing=0)]
                 # 여기다 추가하면 렌더링할 때 곤란하므로 AppSt에다가 추가하고 대신 세이브를 하지 않는다.
                 # 구조는 스포너나 아이템과 동일하다.
 class Char:
@@ -797,7 +816,8 @@ class Char:
         self.lines.append(self.tr.NewTextObject(u"DEX: ", (0,0,0), (0,0)))
         self.lines.append(self.tr.NewTextObject(u"INT: ", (0,0,0), (0,0)))
         self.lineH = 20
-
+    def GetDmg(self):
+        return self.str*5
     def Regen(self):
         self.tr.RegenTex()
 
@@ -3338,6 +3358,7 @@ void main(void)
         # 3타일 안에 있어야함
     def AttackMob(self, mob, charPos, mobPos):
         GUISt.msgBox.AddText(u"당신은 %s(을)를 공격했다"% mob.a["name"], (0,0,0), (0,0,0))
+        mob.GetAttacked(GUISt.char)
     def GetLocalItemCoord(self, x,z):
         return x-x%8,z-z%8
     def HandleMapTiling(self, t,m,k, map):
@@ -3608,7 +3629,7 @@ void main(void)
         for map in self.maps:
             map.PosUpdate(self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z)
             x,z = map.GetXZ()
-            mat = ViewingMatrix()
+            #mat = ViewingMatrix()
             map.Render()
             self.HandleItemClicking(t,m,k, map)
             if self.buttons[0].enabled:
@@ -4130,7 +4151,7 @@ void main(void)
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
         #for i in range(125):
-        enemy = EnemySpawner(name=u"적", coord=(2,0,-2))
+        enemy = EnemySpawner(name=u"적", coord=(2,0,-2), hp=150, str=60, dex=25, int=10)
         self.AddWorldItem(item)
         #self.AddWorldEnemy(enemy)
         self.SetCharCoord(-1,-1)
