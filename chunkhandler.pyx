@@ -433,11 +433,11 @@ cdef class Map:
             return [[0,0] for i in range(8*8)]
     def Regen(self, textures, textures2, regen=True, changeTile=False):
         if not changeTile:
-            xLeft = self.prevGenX-OFFSETX
+            xLeft = self.prevGenX-OFFSETX-8
             xOrg = xLeft
-            xRight = xLeft+OFFSETX*2+8
-            zLeft = self.prevGenZ-OFFSETZ
-            zRight = zLeft+OFFSETZ*2+8
+            xRight = xLeft+OFFSETX*2+16
+            zLeft = self.prevGenZ-OFFSETZ-8
+            zRight = zLeft+OFFSETZ*2+16
             fileNames = []
             fileNames3 = []
             fileNamesFloor2 = []

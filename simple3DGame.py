@@ -24,8 +24,8 @@ import legume
 chunkhandler.SIZE_CHUNK = 24
 chunkhandler.REGENX = 1
 chunkhandler.REGENZ = 1
-chunkhandler.OFFSETX = chunkhandler.SIZE_CHUNK/2
-chunkhandler.OFFSETZ = chunkhandler.SIZE_CHUNK/2
+chunkhandler.OFFSETX = chunkhandler.SIZE_CHUNK/2-1
+chunkhandler.OFFSETZ = chunkhandler.SIZE_CHUNK/2-1
 chunkhandler.SW = SW
 chunkhandler.SH = SH
 
@@ -2381,7 +2381,7 @@ class ConstructorApp:
         self.camMoveMode = False
         self.reload = True
         self.tr = -3.0
-        self.camZoom = 7.0
+        self.camZoom = 6.5
         self.prevAniTime = pygame.time.get_ticks()
         self.prevAniDelay = 50
         self.aniOffset = 0.0
@@ -3137,6 +3137,7 @@ void main(void)
         x,z=int(x),int(z)
         if LMB in m.pressedButtons:
             xx,zz = self.GetLocalItemCoord(x,z)
+
             if (xx,zz) in self.worldItems:
                 items = self.worldItems[(xx,zz)]
                 for item in items[:]:
@@ -3148,8 +3149,21 @@ void main(void)
                             if GUISt.inv.AddItem(item):
                                 items.remove(item)
                             break
+            if t-self.attackTime > self.attackDelay:
+                self.attackTime = t
+                if (xx,zz) in self.spawnedEnemies:
+                    items = self.spawnedEnemies[(xx,zz)]
+                    for item in items[:]:
+                        xxx,nonono,zzz = item.a["coord"]
+                        if x == xxx and z == zzz:
+                            charPos = Vector2(*self.GetCharCoord())
+                            itemPos = Vector2(xxx,zzz)
+                            self.AttackMob(item, charPos, itemPos)
+                            break
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
+    def AttackMob(self, mob, charPos, mobPos):
+        GUISt.msgBox.AddText(u"당신은 %s(을)를 공격했다"% mob.a["name"], (0,0,0), (0,0,0))
     def GetLocalItemCoord(self, x,z):
         return x-x%8,z-z%8
     def HandleMapTiling(self, t,m,k, map):
@@ -3768,38 +3782,47 @@ void main(void)
             items = self.worldEnemies[coord]
             for item in items:
                 x,y,z = item.a["coord"]
-                glPushMatrix()
-                glTranslatef(x+0.5,y+0.35,z+0.5)
-                glRotatef(270, 1.0, 0.0, 0.0)
-                glScale(0.2,0.2,0.2)
-                self.models[1].Draw()
-                glPopMatrix()
+                itemc = Vector2(x,z)
+                char = Vector2(*self.GetCharCoord())
+                if (itemc-char).length() < 18:
+                    glPushMatrix()
+                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    glRotatef(270, 1.0, 0.0, 0.0)
+                    glScale(0.2,0.2,0.2)
+                    self.models[1].Draw()
+                    glPopMatrix()
     def RenderSpawnedEnemies(self):
         for coord in self.spawnedEnemies:
             items = self.spawnedEnemies[coord]
             for item in items:
                 x,y,z = item.a["coord"]
-                glPushMatrix()
-                glTranslatef(x+0.5,y+0.35,z+0.5)
-                degree = (45*item.a["facing"]-90-45/2.0)
-                degree = degree-(degree%45)
-                glRotatef(degree, 0.0, 1.0, 0.0)
-                glRotatef(270, 1.0, 0.0, 0.0)
-                glScale(0.2,0.2,0.2)
-                self.models[2].Draw()
-                glPopMatrix()
+                itemc = Vector2(x,z)
+                char = Vector2(*self.GetCharCoord())
+                if (itemc-char).length() < 18:
+                    glPushMatrix()
+                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    degree = (45*item.a["facing"]-90-45/2.0)
+                    degree = degree-(degree%45)
+                    glRotatef(degree, 0.0, 1.0, 0.0)
+                    glRotatef(270, 1.0, 0.0, 0.0)
+                    glScale(0.2,0.2,0.2)
+                    self.models[2].Draw()
+                    glPopMatrix()
 
     def RenderItems(self):
         for coord in self.worldItems:
             items = self.worldItems[coord]
             for item in items:
                 x,y,z = item.a["coord"]
-                glPushMatrix()
-                glTranslatef(x+0.5,y+0.35,z+0.5)
-                glRotatef(270, 1.0, 0.0, 0.0)
-                glScale(0.2,0.2,0.2)
-                self.models[0].Draw()
-                glPopMatrix()
+                itemc = Vector2(x,z)
+                char = Vector2(*self.GetCharCoord())
+                if (itemc-char).length() < 18:
+                    glPushMatrix()
+                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    glRotatef(270, 1.0, 0.0, 0.0)
+                    glScale(0.2,0.2,0.2)
+                    self.models[0].Draw()
+                    glPopMatrix()
     def LoadEnemy(self, x, y):
         try:
             x = x-x%8
@@ -3848,7 +3871,7 @@ void main(void)
 
     def Run(self):
         pygame.init()
-        pygame.display.set_caption("쓰리디 알피쥐 게임")
+        pygame.display.set_caption("허수아비RPG")
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=2048)
         isFullScreen = 0#FULLSCREEN#0
 
@@ -3861,6 +3884,8 @@ void main(void)
         self.worldItems = {} # By 8x8 Coord
         self.worldEnemies = {} # Spawners
         self.spawnedEnemies = {}
+        self.attackTime = pygame.time.get_ticks()
+        self.attackDelay = 250
 
         self.cam1 = Camera()
         self.camPos = copy.copy(self.cam1.pos)
@@ -3890,7 +3915,7 @@ void main(void)
 
 
         self.fps = fps = FPS()
-        self.model = chunkhandler.Model("./blend/humanoid.jrpg", 0)
+        self.model = chunkhandler.Model("./blend/humanoid.jrpg", 5)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
         self.models += [chunkhandler.Model("./blend/item.jrpg", 3)]
