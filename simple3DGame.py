@@ -249,6 +249,29 @@ class ConstructorGUI(object):
         if self.charOn:
             self.char.Render()
 
+        x = 5
+        byFour = 96/3
+        y = SH-96+byFour/2
+        w = 300
+        h = 25
+        w2 = float(self.char.hp)*300.0/float(self.char.maxhp)
+        if w2 < 0:
+            w2 = 0
+
+        DrawQuad(x,y,w,h, (0,0,0,128), (0,0,0,128))
+        DrawQuad(x,y,w2,h, (64,0,0,255), (128,0,0,255))
+
+        x = 5
+        y = SH-96+byFour+byFour/2
+        w = 300
+        h = 25
+        w2 = float(self.char.mp)*300.0/float(self.char.maxmp)
+        if w2 < 0:
+            w2 = 0
+
+        DrawQuad(x,y,w,h, (0,0,0,128), (0,0,0,128))
+        DrawQuad(x,y,w2,h, (0,0,64,255), (0,0,128,255))
+
 
 # 이걸 GLQUAD랑 텍스쳐를 이용하도록 한다.
 # 매번 blit할 필요가 없다.
@@ -587,7 +610,7 @@ class Enemy:
         self.smoothD = self.delay/10.0
         self.maps = AppSt.maps
         self.inWar = False
-        self.atkDelay = 250
+        self.atkDelay = 1125
         self.atkWait = pygame.time.get_ticks()
 
     def GetDmg(self):
@@ -840,11 +863,19 @@ class Char:
         self.lines.append(self.tr.NewTextObject(u"INT: ", (0,0,0), (0,0)))
         self.lineH = 20
         self.hp = 1500
+        self.maxhp = 1500
+        self.mp = 1500
+        self.maxmp = 1500
 
     def GetDefense(self):
         return self.dex * 5
     def GetAttacked(self, mob):
         self.hp -= mob.GetDmg()-self.GetDefense()
+        if self.hp <= 0:
+            self.hp = 0
+            self.Die()
+    def Die(self):
+        pass
     def GetDmg(self):
         return self.str*5
     def Regen(self):
@@ -875,6 +906,7 @@ class Char:
         AppSt.RenderNumberS(self.int, x+w, y)
         y += lineH
         i += 1
+
 
 class Inventory:
     def __init__(self):
@@ -3353,8 +3385,7 @@ void main(void)
         elif xTilePos1+0.5 <= x < xTilePos2 and zTilePos1+0.5 <= z < zTilePos2:
             pos = RIGHTBOT
         #if 0.0 < x < 0.0+64.0 and -64.0 < z < 0.0:
-        if x < 0.0:
-            x -= 1
+        if x < 0.0: x -= 1
         if z < 0.0:
             z -= 1
         x,z=int(x),int(z)
@@ -3387,7 +3418,7 @@ void main(void)
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
     def AttackMob(self, mob, charPos, mobPos):
-        GUISt.msgBox.AddText(u"당신은 %s(을)를 공격했다"% mob.a["name"], (0,0,0), (0,0,0))
+        GUISt.msgBox.AddText(u"당신은 %s(을)를 공격했다 %d"% (mob.a["name"], GUISt.char.GetDmg()-mob.GetDefense()), (0,0,0), (0,0,0))
         mob.GetAttacked(GUISt.char)
     def GetLocalItemCoord(self, x,z):
         return x-x%8,z-z%8
@@ -4111,7 +4142,7 @@ void main(void)
         self.worldEnemies = {} # Spawners
         self.spawnedEnemies = {}
         self.attackTime = pygame.time.get_ticks()
-        self.attackDelay = 250
+        self.attackDelay = 125
 
         self.cam1 = Camera()
         self.camPos = copy.copy(self.cam1.pos)
@@ -4181,7 +4212,7 @@ void main(void)
         self.PosUpdate(0,0,0)
         item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
         #for i in range(125):
-        enemy = EnemySpawner(name=u"적", coord=(2,0,-2), hp=1050, str=60, dex=25, int=10)
+        enemy = EnemySpawner(name=u"적", coord=(2,0,-2), mp=1020,maxmp=1020,maxhp=1050,hp=1050, str=60, dex=25, int=10)
         self.AddWorldItem(item)
         #self.AddWorldEnemy(enemy)
         self.SetCharCoord(-1,-1)
@@ -4326,4 +4357,8 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 
 
 타일처럼 몬스터의 그림을 그려두고 그걸 클릭해서 땅에다 클릭하면 스포너가 생긴다.
+---------
+망상이 끊이지 않으므로 아예 망상을 이용해서 게임을 만든다. 특히 환청이나 목소리 말소리가 들리므로 그것과 대화를 해서 작곡을 하거나
+게임 스토리라인을 짠다.
+
 """
