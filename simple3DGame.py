@@ -3068,13 +3068,15 @@ void main(void)
                 vec3 norm = normalize(vNorm);
                 float fac = dot(light, norm)*0.5+0.5;
                 fac = fac*fac;
+                //fac *=0.3;
+                //fac +=0.6;
                 vec3 color = texture1D(colorLookup2, fac).rgb;
                 //gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/3.0;
                 gl_FragColor.rgb = color;
             }
             ''')
 
-            self.programEnemy = compile_program('''
+            self.programEnemy = compile_program(''' // 음 굉장히 멋진데?
 #version 150 compatibility
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
@@ -3159,13 +3161,13 @@ void main(void)
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+1.0)/2.0;
-                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                vec3 color = texture1D(colorLookup2, fac).rgb;
                 vec3 color222;
                 color222.r = 1.0;
                 color222.g = 0.0;
                 color222.b = 0.0;
                 //gl_FragColor.rgb = color;
-                gl_FragColor.rgb = ((color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/4.0
+                gl_FragColor.rgb = ((color + texture1D(colorLookup3, fac).rgb + texture1D(colorLookup, fac).rgb)*fac/4.0
                     + color222.rgb)/2;
             }
             ''')
@@ -4063,7 +4065,7 @@ void main(void)
                     glPushMatrix()
                     glTranslatef(x+0.5,y+0.35,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
-                    glScale(0.2,0.2,0.2)
+                    glScale(5.5,5.5,5.5)
                     self.models[1].Draw()
                     glPopMatrix()
 
