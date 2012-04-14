@@ -3068,8 +3068,13 @@ void main(void)
                 vec3 norm = normalize(vNorm);
                 float fac = dot(light, norm)*0.5+0.5;
                 fac = fac*fac;
-                //fac *=0.3;
-                //fac +=0.6;
+                fac *=0.5;
+                fac +=0.5;
+                vec3 color222;
+                color222.r = 0.0;
+                color222.g = 0.0;
+                color222.b = 1.0;
+
                 vec3 color = texture1D(colorLookup2, fac).rgb;
                 //gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/3.0;
                 gl_FragColor.rgb = color;
@@ -3161,10 +3166,11 @@ void main(void)
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+1.0)/2.0;
+                fac*=fac;
                 vec3 color = texture1D(colorLookup2, fac).rgb;
                 vec3 color222;
                 color222.r = 1.0;
-                color222.g = 0.0;
+                color222.g = 1.0;
                 color222.b = 0.0;
                 //gl_FragColor.rgb = color;
                 gl_FragColor.rgb = ((color + texture1D(colorLookup3, fac).rgb + texture1D(colorLookup, fac).rgb)*fac/4.0
@@ -4063,9 +4069,9 @@ void main(void)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
                     glPushMatrix()
-                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    glTranslatef(x+0.5,y+1.0,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
-                    glScale(5.5,5.5,5.5)
+                    glScale(1.5,1.5,1.5)
                     self.models[1].Draw()
                     glPopMatrix()
 
@@ -4078,7 +4084,7 @@ void main(void)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
                     glPushMatrix()
-                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    glTranslatef(x+0.5,y+1.0,z+0.5)
                     degree = (45*item.a["facing"]-90-45/2.0)
                     degree = degree-(degree%45)
                     glRotatef(degree, 0.0, 1.0, 0.0)
@@ -4096,7 +4102,7 @@ void main(void)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
                     glPushMatrix()
-                    glTranslatef(x+0.5,y+0.35,z+0.5)
+                    glTranslatef(x+0.5,y+1.0,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.5,0.5,0.5)
                     self.models[0].Draw()
