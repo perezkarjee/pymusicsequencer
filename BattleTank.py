@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # License: AGPL 3.0
 # -*- coding: utf-8 -*-
 import os
@@ -3066,11 +3067,10 @@ void main(void)
                 light.z = 1.0;
                 light = normalize(light).xyz;
                 vec3 norm = normalize(vNorm);
-                float fac = dot(light, norm)*0.5+0.5;
-                fac = fac*fac;
-                vec3 color = texture1D(colorLookup2, fac).rgb;
-                //gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/3.0;
-                gl_FragColor.rgb = color;
+                float fac = (dot(light, norm)+1.0)/2.0;
+                vec3 color = texture1D(colorLookup2, curCol*fac).rgb;
+                //gl_FragColor.rgb = color;
+                gl_FragColor.rgb = (color + texture1D(colorLookup3, curCol3*fac).rgb + texture1D(colorLookup, curCol2*fac).rgb)*fac/3.0;
             }
             ''')
 
@@ -3736,12 +3736,12 @@ void main(void)
 
         bounds = self.model.GetBounds()
 
-        """glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
         glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
         glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
         glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
         glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
-        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)"""
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
         glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
@@ -3773,14 +3773,12 @@ void main(void)
 
         bounds = self.model2.GetBounds()
 
-        """
         glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
         glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
         glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
         glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
         glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
         glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
-        """
         glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
@@ -3809,52 +3807,51 @@ void main(void)
 
 
         bounds = self.models[0].GetBounds()
-        """
-        glUseProgram(self.program)
-        glUniform2f(glGetUniformLocation(self.programItem, "updown"), bounds[0][2],bounds[1][2])
-        glUniform2f(glGetUniformLocation(self.programItem, "leftright"), bounds[0][0],bounds[1][0])
-        glUniform2f(glGetUniformLocation(self.programItem, "frontback"), bounds[0][1],bounds[1][1])
-        glUniform1f(glGetUniformLocation(self.programItem, "offset"), self.aniOffset)
-        glUniform1f(glGetUniformLocation(self.programItem, "offset2"), self.aniOffset2)
-        glUniform1f(glGetUniformLocation(self.programItem, "offset3"), self.aniOffset3)
-        glUniform4f(glGetUniformLocation(self.programItem, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
+        glUseProgram(self.programItem)
+
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
         glBindTexture(GL_TEXTURE_1D, self.tex3)
-        glUniform1i(glGetUniformLocation(self.programItem, "colorLookup"), 0)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
         glActiveTexture(GL_TEXTURE0 + 1)
         glBindTexture(GL_TEXTURE_1D, self.sat)
-        glUniform1i(glGetUniformLocation(self.programItem, "colorLookup2"), 1)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
         glActiveTexture(GL_TEXTURE0 + 2)
         glBindTexture(GL_TEXTURE_1D, self.sat3)
-        glUniform1i(glGetUniformLocation(self.programItem, "colorLookup3"), 2)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
         glActiveTexture(GL_TEXTURE0 + 0)
-        """
         self.RenderItems()
 
 
         bounds = self.models[1].GetBounds()
         glUseProgram(self.programEnemy)
 
-        glUniform2f(glGetUniformLocation(self.programEnemy, "updown"), bounds[0][2],bounds[1][2])
-        glUniform2f(glGetUniformLocation(self.programEnemy, "leftright"), bounds[0][0],bounds[1][0])
-        glUniform2f(glGetUniformLocation(self.programEnemy, "frontback"), bounds[0][1],bounds[1][1])
-        glUniform1f(glGetUniformLocation(self.programEnemy, "offset"), self.aniOffset)
-        glUniform1f(glGetUniformLocation(self.programEnemy, "offset2"), self.aniOffset2)
-        glUniform1f(glGetUniformLocation(self.programEnemy, "offset3"), self.aniOffset3)
-        glUniform4f(glGetUniformLocation(self.programEnemy, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
+        glUniform2f(glGetUniformLocation(self.program, "updown"), bounds[0][2],bounds[1][2])
+        glUniform2f(glGetUniformLocation(self.program, "leftright"), bounds[0][0],bounds[1][0])
+        glUniform2f(glGetUniformLocation(self.program, "frontback"), bounds[0][1],bounds[1][1])
+        glUniform1f(glGetUniformLocation(self.program, "offset"), self.aniOffset)
+        glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
+        glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
+        glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
         glActiveTexture(GL_TEXTURE0 + 0)
         glBindTexture(GL_TEXTURE_1D, self.tex3)
-        glUniform1i(glGetUniformLocation(self.programEnemy, "colorLookup"), 0)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup"), 0)
         glActiveTexture(GL_TEXTURE0 + 1)
         glBindTexture(GL_TEXTURE_1D, self.sat)
-        glUniform1i(glGetUniformLocation(self.programEnemy, "colorLookup2"), 1)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup2"), 1)
         glActiveTexture(GL_TEXTURE0 + 2)
         glBindTexture(GL_TEXTURE_1D, self.sat3)
-        glUniform1i(glGetUniformLocation(self.programEnemy, "colorLookup3"), 2)
+        glUniform1i(glGetUniformLocation(self.program, "colorLookup3"), 2)
         glActiveTexture(GL_TEXTURE0 + 0)
         self.RenderEnemies()
         self.RenderSpawnedEnemies()
@@ -4096,7 +4093,7 @@ void main(void)
                     glPushMatrix()
                     glTranslatef(x+0.5,y+0.35,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
-                    glScale(0.5,0.5,0.5)
+                    glScale(0.2,0.2,0.2)
                     self.models[0].Draw()
                     glPopMatrix()
     def LoadEnemy(self, x, y):
@@ -4273,107 +4270,5 @@ if __name__ == '__main__':
     run()
 
 """
-음 다른거 고민하지 말고 100% 타일구조의 3D 맵 에디터를 만든다.
-의외로 DigDig랑 거의 비슷할지도 모르겠다.
-----------------------------------------
-타일이 꽉 차있지 않으므로 청크 구조는 아닌 반면, 옥트리의 파일구조는 남겨둬서 무한맵이 가능하도록? 맵 크기는 4096x4096x128이 최대로 잡자.
---------------------
-lightmapping을 구현
----------
-익스텐션에 대해:
-    PyOpenGL은 그냥 익스텐션을 자유롭게 쓸 수 있다.
-    ShaderModel 3.0에 맞는 익스텐션만 써서 만들자.
--------------
-음악을 비롯해 모든 예술은 어떤 패턴을 만들고 패턴위에 패턴을 덮어씌우고 한 5단계의 패턴을 합쳐서 놓은 후에 그 패턴 위에 패턴과 어울리는 어떤
-또다른 좀 더 큰 패턴을 만들고 그 다 합쳐진 패턴을 기준으로 또 그 위에 또다른 하나의 그림을 만드는 것이다.
-
-패턴은 에너지를 준다. 그 패턴이 주는 에너지로 좀 더 복잡한 그림이나 멜로디를 보거나 듣고 즐길 수 있는 것이다.
-또한 패턴 위에 패턴을 올리는 것도 있지만 안으로 들어가서 패턴안에 패턴을 넣는것도 있다.
-
-heightmap을 쓰는게 아니라 일단 64x64크기의 맵을 만들어 렌더링한다.
-마우스로 화면 이동 어케하지?
-일단 맵의 중심점으로 pos를 옮긴다.
-그다음에 회전을 한다.
-그다음에 dir벡터의 반대방향으로 카메라를 옮긴다.
-그러니까 pos의 X,Y는 변하지 않으면서 dirV만큼만 이동하면 
--------------------------
-게임의 기본:
-    물질의 얻음,잃음
-    사람간의 상호관계 심리적 주고받음
-    연출의 진행
---------------
-64x64의 맵을 렌더링함. 큐브가 아닌 그냥 쿼드. 한 쿼드가 다른 쿼드보다 높을 때 그냥 단색의 어울리는 색의 색으로 FILL한다.
-------
-심시티2000과 캐피탈리즘과 울온의 게임방식을 섞자.
------------------
-타일이 무지막지하게 크므로 종류가 많으면 곤란?
------------------
-게임은 NP-Hard
--------------------
-맵을 gimp로 그린 후에 픽셀대픽셀로 충돌처리를 한다?
-그러지 말고 땅은 무조건 울퉁불퉁하지 않고 평평하게 한 다음에 그냥 대충 한다.
-
-아 맵 에디터에서 점을 찍어서 맵을 울퉁불퉁하게 만들자. 높이만 결정 가능하고 x축 정점은 맘대로
-
-지하가 필요하면? 지하던젼은 레이어를 찍어서 다른층을 따로 만든다.
--------
-이제 "집"을 만들고 스테이지간의 통로를 만든다.
-
-레벨업을 하고 레이져의 파워를 높이고 체력을 높이며 힐링 마법을 쓸 수 있게 하고 마나통을 키운다.
-파워
-체력
-마나
-힐파워
-이렇게 4가지 속성만 있다.
-
-4가지 색깔의 보석을 모아서 4가지 속성값을 올리고
-경험치를 모아서 레벨을 올려서 속성포인트를 얻어 속성을 올린다.
-돈을 벌어서 보석을 구입 가능
--------
-음악연주법: 이전 노트를 치고 현재노트를 칠 때 이전노트의 끝자락을 잡고 연결해서 연주해야 한다.
-드럼이건 뭐건간에. 이전노트를 연주하고 현재노트를 연주할 때 숨을 크게 쉰다던가 정신을 새롭게 가다듬는다던가 하면 연결성이 끊긴다.
-
-기술적으로는, 노트의 길이 즉 16분음표 16비트라도 음의 길이가 16분음표 수준에서 끊기는게 아닌 324분음표라던지 하는 랜덤하게 보이는 정도의 수준에서 끊어져서 그 짧은 쉼표들이 리듬감이나 느낌을 만들게 된다.
-
-
-
-VBO를 __del__에다가 glDeleteBuffer해줘야되ㅏㅁ
-----------
-그냥 위치에 따라 파일에서 로드해서 32x32맵을 로드한다.
-저장은 16x16크기로 해서 4개의 맵을 로드하도록 한다. 왜냐면 맵이 겹쳐지므로
-이동할 때마다 매번 로드해야하네..... 48x48로 하면 될 듯
-12칸 이동할 때마다 한번씩 로드될 것 같다.
----------------
-파일 하나에 256x256칸을 넣고
-좌표에 따라 파일을 연다. 파일이 이미 열렸다면 열린 파일을 쓴다.
-리젠할 때 파일을 연다.
-타일 저장은 언로드시에 저장한다.
-Save버튼을 만들어서 매뉴얼 저장을 하게 한다.
----------
-심즈처럼 경계선 사이에서 클릭해서 벽만들게 한다.
-2층 3층 4층까지 가능한데 각 층의 높이는 무조건 +2.0이다.
----------------------
-맵상의 오브젝트 클릭시 반응 어떻게 하나?
-이미 오브젝트가 떨어진 곳에는 못 떨어뜨리므로 걍 맵을 클릭하면 아이템이 집어진다.
----------------------
-XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투명하게 그리고 거기 클릭해서 타일을 그린다.
----------------
-이제 벽으로 막기를 구현
---------------
-이제 인벤토리, 캐릭터창등을 구현
-----------------
-캐릭터 데페니션과 모델을 정의
-몬스터의 수는 25종
-몬스터 스포너의 수는 100개(재탕 4번씩)
-맵은 아일랜드의 연결로 이어져있는데 아일랜드는 당연히 스포너의 수만큼 100개 정도
-아이템의 종류는 20종정도
-20종의 아이템으로 속성을 서로 다르게 드랍함
-마법의 종류는 10종
-한번에 싸워야 하는 몬스터는 많아야 100마리
-울온의 공격범위 마법처럼 사각형 범위에 AOE드랍, 일렬로 드랍하기 정도만 구현한다.
-
-
-타일처럼 몬스터의 그림을 그려두고 그걸 클릭해서 땅에다 클릭하면 스포너가 생긴다.
----------
-
+패미컴의 배틀탱크 게임을 만든다.
 """

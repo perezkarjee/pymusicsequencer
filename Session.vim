@@ -137,7 +137,7 @@ badd +43 asd.py
 badd +1 pysynth.py
 badd +58 exportmy.py
 badd +412 simpleAdv.py
-badd +3 simpleMud.py
+badd +1070 simpleMud.py
 badd +8071 digdig.py
 badd +349 chunkhandler.pyx
 badd +505 simpleConstruct.py
@@ -145,11 +145,13 @@ badd +47 cpart.c
 badd +18 cpart.h
 badd +111 chunk.pyx
 badd +1 glut.py
-badd +601 simple3DGame.py
+badd +4375 simple3DGame.py
 badd +4 server.py
+badd +771 CitySim.py
+badd +4272 BattleTank.py
 silent! argdel *
-set lines=50 columns=167
-winpos -4 -4
+set lines=50 columns=165
+winpos 0 0
 edit simple3DGame.py
 set splitbelow splitright
 set nosplitbelow
@@ -199,7 +201,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -252,12 +254,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 4362 - ((47 * winheight(0) + 24) / 49)
+let s:l = 3073 - ((40 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-4362
-normal! 032l
+3073
+normal! 039l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
