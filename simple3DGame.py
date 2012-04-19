@@ -650,7 +650,11 @@ class Enemy:
             self.atkWait = t
             if offsetPos.length() < 3 and self.inWar:
                 GUISt.char.GetAttacked(self)
-                GUISt.msgBox.AddText(u"%s이(가) 당신을 공격했다! %d" % (self.a["name"], self.GetDmg()-GUISt.char.GetDefense()), (255,255,255), (255,255,255))
+                if IsJong(self.a["name"]):
+                    jong = u"이"
+                else:
+                    jong = u"가"
+                GUISt.msgBox.AddText(u"%s%s 당신을 공격했다! %d" % (self.a["name"], jong, self.GetDmg()-GUISt.char.GetDefense()), (255,255,255), (255,255,255))
         if offsetPos.length() > 12:
             self.inWar = False
         if self.inWar:
@@ -2612,6 +2616,18 @@ def RectRectCollide(rect1,rect2):
     return False
             
 
+def IsJong(chr):
+    chr = ord(chr)
+    c = chr - 0xAC00
+    a = c / (21 * 28)
+    c = c % (21 * 28)
+    b = c / 28
+    c = c % 28
+    if c != 0:
+        return True
+    else:
+        return False
+
 class ConstructorApp:
     TILECHANGE1 = 0
     TILECHANGE2 = 1
@@ -3167,6 +3183,7 @@ void main(void)
                 vec3 norm = normalize(vNorm);
                 float fac = (dot(light, norm)+1.0)/2.0;
                 fac*=fac;
+                fac*=fac;
                 vec3 color = texture1D(colorLookup2, fac).rgb;
                 vec3 color222;
                 color222.r = 1.0;
@@ -3428,7 +3445,12 @@ void main(void)
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
     def AttackMob(self, mob, charPos, mobPos):
-        GUISt.msgBox.AddText(u"당신은 %s(을)를 공격했다 %d"% (mob.a["name"], GUISt.char.GetDmg()-mob.GetDefense()), (0,0,0), (0,0,0))
+        if IsJong(mob.a["name"]):
+            jong = u"을"
+        else:
+            jong = u"를"
+
+        GUISt.msgBox.AddText(u"당신은 %s%s 공격했다 %d"% (mob.a["name"], jong,GUISt.char.GetDmg()-mob.GetDefense()), (0,0,0), (0,0,0))
         mob.GetAttacked(GUISt.char)
     def GetLocalItemCoord(self, x,z):
         return x-x%8,z-z%8
@@ -4069,9 +4091,9 @@ void main(void)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
                     glPushMatrix()
-                    glTranslatef(x+0.5,y+1.0,z+0.5)
+                    glTranslatef(x+0.5,y+0.5,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
-                    glScale(1.5,1.5,1.5)
+                    glScale(0.5,0.5,0.5)
                     self.models[1].Draw()
                     glPopMatrix()
 
@@ -4102,7 +4124,7 @@ void main(void)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
                     glPushMatrix()
-                    glTranslatef(x+0.5,y+1.0,z+0.5)
+                    glTranslatef(x+0.5,y+0.5,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.5,0.5,0.5)
                     self.models[0].Draw()
@@ -4383,5 +4405,10 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 
 타일처럼 몬스터의 그림을 그려두고 그걸 클릭해서 땅에다 클릭하면 스포너가 생긴다.
 ---------
-
+황병기씨 가야금의 비밀:
+    그냥 신디사이져로 7개 옥타브의 도음을 한번에 누르면 가야금 1개 소리가 난다. 즉, 걍 여러 음이 한 음에 합쳐져있어서 풍성한 소리가 남.
+    게임에 응용하면 한 연출이나 액션, 게임무브에 여러개의 액션이 있으면 재밌다?
+-------
+게임 디자인:
+    게임은 서비스다. 할거리, 볼거리를 제공해줘야한다.
 """

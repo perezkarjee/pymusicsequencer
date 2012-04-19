@@ -104,7 +104,6 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -145,9 +144,9 @@ badd +47 cpart.c
 badd +18 cpart.h
 badd +111 chunk.pyx
 badd +1 glut.py
-badd +4375 simple3DGame.py
+badd +4106 simple3DGame.py
 badd +4 server.py
-badd +771 CitySim.py
+badd +761 CitySim.py
 badd +4272 BattleTank.py
 silent! argdel *
 set lines=50 columns=165
@@ -201,8 +200,8 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=0
-setlocal imsearch=0
+setlocal iminsert=2
+setlocal imsearch=2
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
 setlocal indentexpr=GetPythonIndent(v:lnum)
@@ -254,12 +253,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 3169 - ((33 * winheight(0) + 24) / 49)
+let s:l = 3451 - ((27 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-3169
-normal! 024l
+3451
+normal! 021l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
