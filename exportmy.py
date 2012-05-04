@@ -127,11 +127,185 @@ class jrpgSettings:
     self.offsety = offsety
     self.offsetz = offsetz
 
+class Bone:
+  def __init__(self, skeleton, parent, name, mat, theboneobj):
+    self.parent = parent #Bone
+    self.name   = name   #string
+    self.children = []   #list of Bone objects
+    self.theboneobj = theboneobj #Blender.Armature.Bone
+    # HACK: this flags if the bone is animated in the one animation that we export
+    self.is_animated = 0  # = 1, if there is an ipo that animates this bone
+
+    self.matrix = mat
+    if parent:
+      parent.children.append(self)
+    
+    self.skeleton = skeleton
+    self.id = skeleton.next_bone_id
+    skeleton.next_bone_id += 1
+    skeleton.bones.append(self)
+    
+    BONES[name] = self
+
+
+  def to_md5mesh(self):
+    buf= "\t\"%s\"\t" % (self.name)
+    parentindex = -1
+    if self.parent:
+        parentindex=self.parent.id
+    buf=buf+"%i " % (parentindex)
+    
+    pos1, pos2, pos3= self.matrix[3][0], self.matrix[3][1], self.matrix[3][2]
+    buf=buf+"( %f %f %f ) " % (pos1*scale, pos2*scale, pos3*scale)
+    #qx, qy, qz, qw = matrix2quaternion(self.matrix)
+    #if qw<0:
+    #    qx = -qx
+    #    qy = -qy
+    #    qz = -qz
+    m = self.matrix
+#    bquat = self.matrix.to_quat()  #changed from matrix.toQuat() in blender 2.4x script
+    bquat = self.matrix.to_quaternion()  #changed from to_quat in 2.57 -mikshaw
+    bquat.normalize()
+    qx = bquat.x
+    qy = bquat.y
+    qz = bquat.z
+    if bquat.w > 0:
+        qx = -qx
+        qy = -qy
+        qz = -qz
+    buf=buf+"( %f %f %f )\t\t// " % (qx, qy, qz)
+    if self.parent:
+        buf=buf+"%s" % (self.parent.name)    
+    
+    buf=buf+"\n"
+    return buf
+
+
+class Skeleton:
+  def __init__(self, MD5Version = 10, commandline = ""):
+    self.bones = []
+    self.MD5Version = MD5Version
+    self.commandline = commandline
+    self.next_bone_id = 0
+    
+
+  def to_md5mesh(self, numsubmeshes):
+    buf = "MD5Version %i\n" % (self.MD5Version)
+    buf = buf + "commandline \"%s\"\n\n" % (self.commandline)
+    buf = buf + "numJoints %i\n" % (self.next_bone_id)
+    buf = buf + "numMeshes %i\n\n" % (numsubmeshes)
+    buf = buf + "joints {\n"
+    for bone in self.bones:
+      buf = buf + bone.to_md5mesh()
+    buf = buf + "}\n\n"
+    return buf
+
+BONES = {}
 
 def save_jrpg(settings):
   starttime = time.clock()#start timer
   bpy.ops.object.mode_set(mode='OBJECT')
   jrpgHeader = JRPGHeader()
+
+  bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+  thearmature = None
+  w_matrix = None
+  skeleton = Skeleton(10, "Exported from Blender by io_export_md5.py by Paul Zirkle")
+  for obj in bpy.context.selected_objects:
+    if obj.type == 'ARMATURE':
+      #skeleton.name = obj.name
+      thearmature = obj
+      w_matrix = obj.matrix_world
+      
+      #define recursive bone parsing function
+      def treat_bone(b, parent = None):
+        if (parent and not b.parent.name==parent.name):
+          return #only catch direct children
+        
+        mat =  mathutils.Matrix(w_matrix) * mathutils.Matrix(b.matrix_local)  #reversed order of multiplication from 2.4 to 2.5!!! ARRRGGG
+        
+        bone = Bone(skeleton, parent, b.name, mat, b)
+        
+        if( b.children ):
+          for child in b.children: treat_bone(child, bone)
+          
+      for b in thearmature.data.bones:
+        if( not b.parent ): #only treat root bones'
+          print( "root bone: " + b.name )
+          treat_bone(b)
+    
+      break #only pull one skeleton out
+  ANIMATIONS = {}
+
+
+  arm_action = thearmature.animation_data.action
+  rangestart = 0
+  rangeend = 0
+  if arm_action:
+    animation = ANIMATIONS[arm_action.name] = MD5Animation(skeleton)
+
+    rangestart = int( bpy.context.scene.frame_start ) # int( arm_action.frame_range[0] )
+    rangeend = int( bpy.context.scene.frame_end ) #int( arm_action.frame_range[1] )
+    currenttime = rangestart
+    while currenttime <= rangeend: 
+      bpy.context.scene.frame_set(currenttime)
+      time = (currenttime - 1.0) / 24.0 #(assuming default 24fps for md5 anim)
+      pose = thearmature.pose
+
+      for bonename in thearmature.data.bones.keys():
+        posebonemat = mathutils.Matrix(pose.bones[bonename].matrix ) # @ivar poseMatrix: The total transformation of this PoseBone including constraints. -- different from localMatrix
+
+        try:
+          bone  = BONES[bonename] #look up md5bone
+        except:
+          print( "found a posebone animating a bone that is not part of the exported armature: " + bonename )
+          continue
+        if bone.parent: # need parentspace-matrix
+          parentposemat = mathutils.Matrix(pose.bones[bone.parent.name].matrix ) # @ivar poseMatrix: The total transformation of this PoseBone including constraints. -- different from localMatrix
+#          posebonemat = parentposemat.invert() * posebonemat #reverse order of multiplication!!!
+          parentposemat.invert() # mikshaw
+          posebonemat = parentposemat * posebonemat # mikshaw
+        else:
+          posebonemat = thearmature.matrix_world * posebonemat  #reverse order of multiplication!!!
+        loc = [posebonemat[3][0],
+            posebonemat[3][1],
+            posebonemat[3][2],
+            ]
+#        rot = posebonemat.to_quat().normalize()
+        rot = posebonemat.to_quaternion() # changed from to_quat in 2.57 -mikshaw
+        rot.normalize() # mikshaw
+        rot = [rot.w,rot.x,rot.y,rot.z]
+        
+        animation.addkeyforbone(bone.id, time, loc, rot)
+      currenttime += 1
+
+  if True:#( settings.exportMode == "mesh & anim" or settings.exportMode == "anim only" ):
+    md5anim_filename = settings.savepath + ".md5anim"
+
+    #save animation file
+    if len(ANIMATIONS)>0:
+      anim = ANIMATIONS.popitem()[1] #ANIMATIONS.values()[0]
+      print( str( anim ) )
+      try:
+        file = open(md5anim_filename, 'w')
+      except IOError:
+        errmsg = "IOError " #%s: %s" % (errno, strerror)
+      objects = []
+      for submesh in meshes[0].submeshes:
+        if len(submesh.weights) > 0:
+          obj = None
+          for sob in bpy.context.selected_objects:
+              if sob and sob.type == 'MESH' and sob.name == submesh.name:
+                obj = sob
+          objects.append (obj)
+      generateboundingbox(objects, anim, [rangestart, rangeend])
+      buffer = anim.to_md5anim()
+      file.write(buffer)
+      file.close()
+      print( "saved anim to " + md5anim_filename )
+    else:
+      print( "No md5anim file was generated." )
+ 
 
   for obj in bpy.context.selected_objects:
     if obj.type == 'MESH':
@@ -172,6 +346,7 @@ def save_jrpg(settings):
           uv_v = round(faceTexCoords.uv[v][1],5)#Drek
           mymesh.uvs[vert_index] = (uv_u,uv_v)
           vertlist += [vert_index]
+          weightlist
       bpy.data.meshes.remove(nobj)
 
       fobj = obj.to_mesh(bpy.context.scene,True,'PREVIEW')
@@ -182,6 +357,7 @@ def save_jrpg(settings):
           mymesh.verts[vi][1] = round(((mymesh.verts[vi][1] + obj.matrix_world[3][1]) * settings.scale) + settings.offsety,5)
           mymesh.verts[vi][2] = round(((mymesh.verts[vi][2] + obj.matrix_world[3][2]) * settings.scale) + settings.offsetz,5)
           mymesh.normals[vi] = vert.normal
+          mymesh.weights[vi] = vert.
       bpy.data.meshes.remove(fobj)
       """
                 self.binaryFormat1="<6siii%dsi"
@@ -226,6 +402,8 @@ class ExportJRPG(bpy.types.Operator):
   jrpgoffsetx = FloatProperty(name="Offset X", description="Transition scene along x axis",default=0.0,precision=5)
   jrpgoffsety = FloatProperty(name="Offset Y", description="Transition scene along y axis",default=0.0,precision=5)
   jrpgoffsetz = FloatProperty(name="Offset Z", description="Transition scene along z axis",default=0.0,precision=5)
+
+
 
   def execute(self, context):
    settings = jrpgSettings(savepath = self.properties.filepath,

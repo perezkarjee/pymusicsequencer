@@ -1148,6 +1148,28 @@ cdef class Model:
         self.buffers.buffers[self.idx].vbos.vbos[0] = VertexBuffer(self.verts[:self.num*4*3])
         self.buffers.buffers[self.idx].vbos.vbos[1] = VertexBuffer(self.normals[:self.num*4*3])
         self.buffers.buffers[self.idx].vbos.vbos[2] = ElementBuffer(self.inds[:self.indNum*4])
+    def DrawOutline(self):
+        GL.glCullFace(GL.GL_FRONT)
+        GL.glPolygonMode( GL.GL_FRONT_AND_BACK, GL.GL_LINE );
+        GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
+        self.buffers.buffers[self.idx].vbos.vbos[0].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+        #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+        #glDrawArrays(GL.GL_TRIANGLES, 0, self.num)
+        GL.glDisable(GL.GL_TEXTURE_3D)
+        GL.glDisable(GL.GL_TEXTURE_2D)
+        GL.glDisable(GL.GL_TEXTURE_1D)
+        self.buffers.buffers[self.idx].vbos.vbos[2].bind()
+        glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>0)
+        GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_TEXTURE_1D)
+        GL.glCullFace(GL.GL_BACK)
+        GL.glPolygonMode( GL.GL_FRONT_AND_BACK, GL.GL_FILL );
     def Draw(self):
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
         GL.glEnableClientState(GL.GL_NORMAL_ARRAY)

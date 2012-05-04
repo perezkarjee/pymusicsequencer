@@ -2229,6 +2229,8 @@ def init():
     glShadeModel(GL_SMOOTH)
     glClearColor(1.0, 1.0, 1.0, 0.0)
     
+    
+    
 
 def glpPerspective(fovy, aspect, zNear, zFar):
     top = math.tan(fovy * math.pi / 360.0) * zNear
@@ -3798,7 +3800,13 @@ void main(void)
         self.tr += 0.001
         if self.tr >= 3.0:
             self.tr = -3.0
+        glLineWidth(3.0)
+        glEnable(GL_LINE_SMOOTH)
+        glHint(GL_LINE_SMOOTH_HINT,  GL_NICEST)
         self.model.Draw()
+        glUseProgram(0)
+        glColor4f(0.3,0.3,0.9,1.0)
+        #self.model.DrawOutline()
         glPopMatrix()
 
         bounds = self.model2.GetBounds()
@@ -3811,6 +3819,7 @@ void main(void)
         glUniform1f(glGetUniformLocation(self.program, "offset2"), self.aniOffset2)
         glUniform1f(glGetUniformLocation(self.program, "offset3"), self.aniOffset3)
         """
+        glUseProgram(self.program)
         glUniform4f(glGetUniformLocation(self.program, "eye"), -self.cam1.pos.x, -self.cam1.pos.y, self.cam1.pos.z, 1.0)
 
         glEnable(GL_TEXTURE_1D)
@@ -3835,6 +3844,10 @@ void main(void)
         if self.tr >= 3.0:
             self.tr = -3.0
         self.model2.Draw()
+        glUseProgram(0)
+        glColor4f(0.3,0.3,0.9,1.0)
+        #self.model2.DrawOutline()
+        glUseProgram(self.program)
         glPopMatrix()
 
 
@@ -4094,7 +4107,14 @@ void main(void)
                     glTranslatef(x+0.5,y+0.5,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.5,0.5,0.5)
+
                     self.models[1].Draw()
+
+                    glUseProgram(0)
+                    glColor4f(0.3,0.3,0.9,1.0)
+                    #self.models[1].DrawOutline()
+                    glUseProgram(AppSt.programEnemy)
+
                     glPopMatrix()
 
     def RenderSpawnedEnemies(self):
@@ -4113,6 +4133,10 @@ void main(void)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.2,0.2,0.2)
                     self.models[2].Draw()
+                    glUseProgram(0)
+                    glColor4f(0.3,0.3,0.9,1.0)
+                    #self.models[2].DrawOutline()
+                    glUseProgram(AppSt.programEnemy)
                     glPopMatrix()
 
     def RenderItems(self):
@@ -4127,7 +4151,14 @@ void main(void)
                     glTranslatef(x+0.5,y+0.5,z+0.5)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.5,0.5,0.5)
+
+                    glUseProgram(0)
+                    glColor4f(0.3,0.3,0.9,1.0)
+                    #self.models[0].DrawOutline()
+                    glUseProgram(AppSt.program)
+
                     self.models[0].Draw()
+
                     glPopMatrix()
     def LoadEnemy(self, x, y):
         try:
@@ -4177,6 +4208,9 @@ void main(void)
 
     def Run(self):
         pygame.init()
+        pygame.display.gl_set_attribute(GL_MULTISAMPLEBUFFERS,1)
+        pygame.display.gl_set_attribute(GL_MULTISAMPLESAMPLES,8)
+
         pygame.display.set_caption("허수아비RPG")
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=2048)
         isFullScreen = 0#FULLSCREEN#0
@@ -4225,7 +4259,7 @@ void main(void)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
         self.models += [chunkhandler.Model("./blend/item.jrpg", 3)]
-        self.models += [chunkhandler.Model("./blend/humanoid.jrpg", 4)]
+        self.models += [chunkhandler.Model("./blend/123213.jrpg", 4)]
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
@@ -4413,4 +4447,8 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
     게임은 서비스다. 할거리, 볼거리를 제공해줘야한다.
 --------------------
 음악 작곡할 때 좀 이해가 잘 안되는 멜로디는 볼륨을 줄여서 백그라운드로 넣으면 이해가 된다.
+----------
+바운딩 박스로 적 클릭하는걸 구현해야한다.
+언프로젝트하고 모든 적의 바운딩박스와 언프로젝트된 포지션을 Y축으로 길게 늘려서 만든 레이와 충돌검사
+------------
 """
