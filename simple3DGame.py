@@ -650,7 +650,7 @@ class Enemy:
             self.atkWait = t
             if offsetPos.length() < 3 and self.inWar:
                 GUISt.char.GetAttacked(self)
-                if IsJong(self.a["name"]):
+                if IsJong(self.a["name"][-1]):
                     jong = u"이"
                 else:
                     jong = u"가"
@@ -3099,7 +3099,7 @@ void main(void)
             }
             ''')
 
-            self.programEnemy = compile_program(''' // 음 굉장히 멋진데?
+            self.programEnemy2 = compile_program(''' // 음 굉장히 멋진데?
 #version 150 compatibility
             // Vertex program
             varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
@@ -3190,10 +3190,145 @@ void main(void)
                 vec3 color222;
                 color222.r = 1.0;
                 color222.g = 1.0;
-                color222.b = 0.0;
+                color222.b = 0.5;
                 //gl_FragColor.rgb = color;
                 gl_FragColor.rgb = ((color + texture1D(colorLookup3, fac).rgb + texture1D(colorLookup, fac).rgb)*fac/4.0
                     + color222.rgb)/2;
+            }
+            ''')
+            self.programEnemy = compile_program(''' // 음 굉장히 멋진데?
+#version 150 compatibility
+            // Vertex program
+            varying vec3 pos; // 이걸 응용해서 텍스쳐 없이 그냥 프래그먼트로 쉐이딩만 잘해서 컬러링을 한다.
+            varying vec3 vNorm;
+            uniform vec4 eye;
+            varying vec4 eyeWorld;
+            uniform vec2 updown;
+            uniform vec2 leftright;
+            uniform vec2 frontback;
+            varying vec4 min_;
+            varying vec4 max_;
+            void main() {
+                min_.x = leftright.x;
+                min_.y = updown.x;
+                min_.z = frontback.x;
+                min_.w = 1.0;
+                max_.x = leftright.y;
+                max_.y = updown.y;
+                max_.z = frontback.y;
+                max_.w = 1.0;
+                pos = gl_Vertex.xyz;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                eyeWorld = eye;
+                vNorm = gl_NormalMatrix  * gl_Normal;
+            }
+            ''', '''
+#version 150 compatibility
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+            // Fragment program
+            uniform sampler1D colorLookup;
+            uniform sampler1D colorLookup2;
+            uniform sampler1D colorLookup3;
+            uniform float offset;
+            uniform float offset2;
+            uniform float offset3;
+            varying vec4 min_;
+            varying vec4 max_;
+            varying vec3 pos;
+            varying vec3 vNorm;
+            varying vec4 eyeWorld;
+            void main() {
+                float base = min_.y;
+                float high = max_.y;
+                base *= 1.10;
+                high *= 1.10;
+                float cur = pos.z-base;
+                float curCol = cur/(high-base);
+                curCol += offset;
+                if(curCol > 1.0)
+                    curCol -= 1.0;
+
+                base = min_.x;
+                high = max_.x;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.x-base;
+                float curCol2 = cur/(high-base);
+                curCol2 += offset2;
+                if(curCol2 > 1.0)
+                    curCol2 -= 1.0;
+
+                base = min_.z;
+                high = max_.z;
+                base *= 1.10;
+                high *= 1.10;
+                cur = pos.y-base;
+                float curCol3 = cur/(high-base);
+                curCol3 += offset3;
+                if(curCol3 > 1.0)
+                    curCol3 -= 1.0;
+
+                vec3 light;
+                light.x = 1.0;
+                light.y = 1.0;
+                light.z = 1.0;
+                light = normalize(light).xyz;
+                vec3 norm = normalize(vNorm);
+                float fac = (dot(light, norm)+1.0)/2.0;
+                fac*=fac;
+                fac*=fac;
+                vec3 color = texture1D(colorLookup2, fac).rgb;
+                vec3 color222;
+                color222.r = 0.8;
+                color222.g = 0.8;
+                color222.b = 0.0;
+                //gl_FragColor.rgb = color;
+                vec3 color333;
+                vec3 color334;
+                color334 = (color + texture1D(colorLookup3, fac).rgb + texture1D(colorLookup, fac).rgb)*fac/4.0;
+                if(fac < 0.25)
+                {
+                    color333.r = 0.25;
+                    color333.g = 0.25;
+                    color333.b = 0.25;
+                }
+                else if(fac < 0.3)
+                {
+                    color333.r = 0.35;
+                    color333.g = 0.35;
+                    color333.b = 0.35;
+                }
+                else if(fac < 0.5)
+                {
+                    color333.r = 0.55;
+                    color333.g = 0.55;
+                    color333.b = 0.55;
+                }
+                else if(fac < 0.62)
+                {
+                    color333.r = 0.65;
+                    color333.g = 0.65;
+                    color333.b = 0.65;
+                }
+                else if(fac < 0.75)
+                {
+                    color333.r = 0.75;
+                    color333.g = 0.75;
+                    color333.b = 0.75;
+                }
+                else
+                {
+                    color333.r = 1.0;
+                    color333.g = 1.0;
+                    color333.b = 1.0;
+                }
+                gl_FragColor.rgb = (color333 + color222.rgb + color334.rgb)/3;
             }
             ''')
             self.programItem = compile_program('''
@@ -3434,20 +3569,26 @@ void main(void)
                             break
             if t-self.attackTime > self.attackDelay:
                 self.attackTime = t
+
+                selectedMob = None
                 for coord in self.spawnedEnemies:
                     items = self.spawnedEnemies[coord]
-                    for item in items[:]:
-                        xxx,nonono,zzz = item.a["coord"]
-                        if x == xxx and z == zzz:
-                            charPos = Vector2(*self.GetCharCoord())
-                            itemPos = Vector2(xxx,zzz)
-                            if (charPos-itemPos).length() < 5:
-                                self.AttackMob(item, charPos, itemPos)
-                                break
+                    found = False
+                    for item in items:
+                        if "selected" in item.a and item.a["selected"]:
+                            selectedMob = item
+                            break
+
+                if selectedMob:
+                    charPos = Vector2(*self.GetCharCoord())
+                    xxx,nonono,zzz = selectedMob.a["coord"]
+                    itemPos = Vector2(xxx,zzz)
+                    if (charPos-itemPos).length() < 5:
+                        self.AttackMob(item, charPos, itemPos)
         # 걍 맵의 타일을 클릭하면 아이템이 선택되도록 하고 아이템은 클릭도 안됨 타일을 원클릭하면 집어짐.
         # 3타일 안에 있어야함
     def AttackMob(self, mob, charPos, mobPos):
-        if IsJong(mob.a["name"]):
+        if IsJong(mob.a["name"][-1]):
             jong = u"을"
         else:
             jong = u"를"
@@ -3901,6 +4042,21 @@ void main(void)
         glActiveTexture(GL_TEXTURE0 + 0)
         self.RenderEnemies()
         self.RenderSpawnedEnemies()
+        # XXX: 여기에 적 바운딩박스로 충돌하는걸 구현
+        x,y,z = self.GetWorldMouse(m.x, m.y)
+        ray1 = x,-9000, z
+        for coord in self.spawnedEnemies:
+            items = self.spawnedEnemies[coord]
+            found = False
+            for item in items:
+                x,y,z = item.a["curPos"]
+                item.a["drawHighlight"] = False
+                item.a["selected"] = False
+                if InRect(x-0.5,z-0.5,1.5,1.5,ray1[0],ray1[2]) and not found:
+                    item.a["drawHighlight"] = True
+                    item.a["selected"] = True
+                    found = True
+
 
         """
         glPushMatrix()
@@ -4132,10 +4288,14 @@ void main(void)
                     glRotatef(degree, 0.0, 1.0, 0.0)
                     glRotatef(270, 1.0, 0.0, 0.0)
                     glScale(0.2,0.2,0.2)
+                    if "drawHighlight" in item.a and item.a["drawHighlight"]:
+                        glUseProgram(AppSt.programEnemy2)
+                    else:
+                        glUseProgram(AppSt.programEnemy)
                     self.models[2].Draw()
                     glUseProgram(0)
-                    glColor4f(0.3,0.3,0.9,1.0)
-                    #self.models[2].DrawOutline()
+                    glColor4f(0.8,0.8,0.2,1.0)
+                    self.models[2].DrawOutline()
                     glUseProgram(AppSt.programEnemy)
                     glPopMatrix()
 
@@ -4259,7 +4419,7 @@ void main(void)
         self.model2 = chunkhandler.Model("./blend/chest.jrpg", 1)
         self.models = [chunkhandler.Model("./blend/item.jrpg", 2)]
         self.models += [chunkhandler.Model("./blend/item.jrpg", 3)]
-        self.models += [chunkhandler.Model("./blend/123213.jrpg", 4)]
+        self.models += [chunkhandler.Model("./blend/humanoid.jrpg", 4)]
         self.maps = []
         self.maps = [chunkhandler.Map(0)]
 
@@ -4451,4 +4611,15 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 바운딩 박스로 적 클릭하는걸 구현해야한다.
 언프로젝트하고 모든 적의 바운딩박스와 언프로젝트된 포지션을 Y축으로 길게 늘려서 만든 레이와 충돌검사
 ------------
+음 이제 아이템 장비하고 스킬도 쓰며 적을 잡아보자.
+-------------
+현재 레벨과 장비로 몹을 잡을 수 있느냐 없느냐가 중요
+퍼즐처럼 해서 여러가지 패턴(스킬셋과 장비셋과 스탯셋)으로 어떤 몹을 잡을 수 있고 어떤 몹을 못잡는지를 결정한다.
+아 레벨은 없고 스킬이 올라가는 것만 있다. 그리고 무제한이라서 노가다를 뛰면 결국 못잡는 몹이 없게 하고
+몹의 종류를 계속 만들어 올려서 한참동안 플레이할 수 있게 한다.
+
+
+여러 리듬을 겹쳐서 음악을 작곡한다.
+4분음표 8분음표로만 나누는게 아니라 서로 다른 8분음표 패턴을 섞으면 된다. 낮은도 높은도만 있는게 아니라 그 사이에 1도레미파가 있듯이 리듬도 나눠진다.
+
 """
