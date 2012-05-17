@@ -112,12 +112,35 @@ class ButtonGame(object):
         w,h = self.ren.GetDimension(self.txtID)
         DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(164,164,164,255),(164,164,164,255))
         self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
-class Button(object):
+class ButtonInven(object):
     def __init__(self, ren, txt, func, x,y):
         self.rect = x,y
         self.func = func
         self.ren = ren
         self.txtID = ren.NewTextObject(txt, (0,0,0))
+        EMgrSt.BindLDown(self.OnClick)
+        self.enabled = True
+        self.selected = False
+    def OnClick(self, t,m,k):
+        if self.enabled:
+            w,h = self.ren.GetDimension(self.txtID)
+            if InRect(self.rect[0],self.rect[1],w+10,h+10,m.x,m.y):
+                self.func()
+    def Render(self):
+        if self.enabled:
+            w,h = self.ren.GetDimension(self.txtID)
+            DrawQuad(self.rect[0],self.rect[1],w+10,h+10,(143,128,99,200),(143,128,99,200))
+            if self.selected:
+                DrawQuad(self.rect[0]+2,self.rect[1]+2,w+6,h+6,(244,228,198,200),(244,228,198,200))
+            else:
+                DrawQuad(self.rect[0]+2,self.rect[1]+2,w+6,h+6,(144+50,128+50,98+50,200),(144+50,128+50,98+50,200))
+            self.ren.RenderText(self.txtID, (self.rect[0]+5,self.rect[1]+5))
+class Button(object):
+    def __init__(self, ren, txt, func, x,y):
+        self.rect = x,y
+        self.func = func
+        self.ren = ren
+        self.txtID = ren.NewTextObject(txt, (0,0,0), (x,y))
         AppSt.BindRenderGUI(self.Render)
         EMgrSt.BindLDown(self.OnClick)
         self.enabled = True
@@ -215,6 +238,7 @@ class ConstructorGUI(object):
         
         DrawQuad(0,0,SW,62,(128,200,140,255), (64,128,74,255))
         DrawQuad(0,62,SW,2,(32,32,32,255), (32,32,32,255))
+        """
         if self.inventoryOn:
             lenItem = len(self.inv.items)
             startPos = self.inv.page*25
@@ -226,6 +250,7 @@ class ConstructorGUI(object):
             DrawQuad(SW/2+128,y,SW/2-128,SH-96-y,(168,168,168,200), (168,168,168,200))
             DrawQuad(SW/2+128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
             DrawQuad(SW/2+128,SH-98,SW/2-128,2,(32,32,32,200), (32,32,32,200))
+        """
         if self.charOn:
             DrawQuad(0,64,SW/2-128,SH-64-96,(168,168,168,200), (168,168,168,200))
             DrawQuad(SW/2-128,64,2,SH-64-96,(32,32,32,200), (32,32,32,200))
@@ -857,14 +882,31 @@ class Char:
         self.name = u"플레이어"
         self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.tr = DynamicTextRenderer(self.font3)
+        self.tr2 = DynamicTextRenderer(self.font3)
         self.str = 60
         self.dex = 25
         self.int = 10
         self.nameT = self.tr.NewTextObject(self.name, (0,0,0), (0,0))
         self.lines = []
+        self.itemsTXT = []
+        self.itemUpdated = True
+        self.itemNames = [
+                u"왼손",
+                u"오른손",
+                u"머리",
+                u"상체",
+                u"하체",
+                u"손가락",
+                u"손가락",
+                u"목걸이",
+                u"장갑",
+                u"신발",
+                ]
         self.lines.append(self.tr.NewTextObject(u"STR: ", (0,0,0), (0,0)))
         self.lines.append(self.tr.NewTextObject(u"DEX: ", (0,0,0), (0,0)))
         self.lines.append(self.tr.NewTextObject(u"INT: ", (0,0,0), (0,0)))
+        for name in self.itemNames:
+            self.lines.append(self.tr.NewTextObject(name + u": ", (0,0,0), (0,0)))
         self.lineH = 20
         self.hp = 1500
         self.maxhp = 1500
@@ -912,24 +954,83 @@ class Char:
         y += lineH
         i += 1
 
+        if self.itemUpdated:
+            self.itemUpdated = False
+            self.tr2.Clear()
+            self.itemsTXT = []
+            for name in self.itemNames:
+                self.itemsTXT.append(self.tr2.NewTextObject(name, (0,0,0), (0,0)))
+
+        for j, name in enumerate(self.itemNames):
+            self.tr.RenderOne(self.lines[i+j], (x, y))
+            w,h = self.tr.GetDimension(self.lines[i+j])
+            self.tr2.RenderOne(self.itemsTXT[j], (x+w, y))
+            y += lineH
+
+
 
 class Inventory:
     def __init__(self):
         self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.tr = DynamicTextRenderer(self.font3)
-        self.tr2 = DynamicTextRenderer(self.font3)
+        self.tr2 = StaticTextRenderer(self.font3)
         self.items = []
         self.lines = []
         self.lineH = 20
-        self.x = SW/2+128
+        self.x = SW-350
         self.y = 64
-        EMgrSt.BindLDown(self.LDown)
-        EMgrSt.BindMotion(self.Motion)
+        #EMgrSt.BindLDown(self.LDown)
+        #EMgrSt.BindMotion(self.Motion)
         self.selected = -1
         self.itemView = None
         self.scrollW = 24
         self.page = 0
-
+        self.buttons = []
+        self.buttons += [ButtonInven(self.tr2, u"  1  ", self.On1, SW-350+27, 64+250)]
+        w = 52
+        self.buttons += [ButtonInven(self.tr2, u"  2  ", self.On2, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  3  ", self.On3, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  4  ", self.On4, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  5  ", self.On5, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  6  ", self.On6, SW-350+27+w, 64+250)]
+        self.buttons[0].selected = True
+        self.invenPage = 0
+    #def __init__(self, ren, txt, func, x,y):
+    def On1(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[0].selected = True
+        self.invenPage = 0
+    def On2(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[1].selected = True
+        self.invenPage = 1
+    def On3(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[2].selected = True
+        self.invenPage = 2
+    def On4(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[3].selected = True
+        self.invenPage = 3
+    def On5(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[4].selected = True
+        self.invenPage = 4
+    def On6(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[5].selected = True
+        self.invenPage = 5
+    """
     def Motion(self,t,m,k):
         if GUISt.inventoryOn:
             y = 0
@@ -986,6 +1087,7 @@ class Inventory:
                     self.page = maxPage
                 self.selected = -1
 
+    """
 
     def AddItem(self, item):
         if len(self.items) > 25*4:
@@ -993,6 +1095,13 @@ class Inventory:
         self.items += [item]
         self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168))]
         return True
+    def Render(self):
+        glBindTexture(GL_TEXTURE_2D, AppSt.inven)
+        DrawQuadTex2(self.x, self.y, 350, 510, 350, 510, 512, 512)
+        for button in self.buttons:
+            button.Render()
+
+    """
     def Render(self):
         x = self.x
         y = self.y
@@ -1026,6 +1135,7 @@ class Inventory:
         DrawQuad(x,y1,w,SH-96-64,(32,32,32,200),(32,32,32,230))
         DrawQuad(x,y1,w,h,(0,0,0,200),(0,0,0,230))
         DrawQuad(x,y2,w,h,(0,0,0,200),(0,0,0,230))
+    """
 
     def Regen(self):
         self.tr.RegenTex()
@@ -1126,7 +1236,7 @@ class DynamicTextRenderer(object):
             prevsurf, texid, updated = self.surfs[0]
             updated = True
             prevtextposList = [[0,0,0,0]]
-        textsurf = Text.GetSurfDS(self.font, text, (0, 0), color, border, borderColor)[0]
+        textsurf = Text.GetSurf(self.font, text, (0, 0), color, border, borderColor)[0]
         if textsurf.get_height()*((textsurf.get_width()/512)+1) >= 512:
             return None
 
@@ -1272,7 +1382,7 @@ class StaticTextRenderer(object):
             prevsurf, texid, updated = self.surfs[0]
             prevtextposList = [[0,0,0,0]]
 
-        textsurf = Text.GetSurfDS(self.font, text, (0, 0), color, border, borderColor)[0]
+        textsurf = Text.GetSurf(self.font, text, (0, 0), color, border, borderColor)[0]
         if textsurf.get_height()*((textsurf.get_width()/512)+1) >= 512:
             return None
 
@@ -2507,6 +2617,17 @@ def DrawQuadTexFlipX(x,y,w,h):
     glTexCoord2f(1.0, 0.0)
     glVertex3f(float(x), -float(y), 100.0)
     glEnd()
+def DrawQuadTex2(x,y,w,h, w2,h2, dimw, dimh):
+    glBegin(GL_QUADS)
+    glTexCoord2f(0.0, float(h2)/float(dimh))
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glTexCoord2f(float(w2)/float(dimw), float(h2)/float(dimh))
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glTexCoord2f(float(w2)/float(dimw), 0.0)
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
 def DrawQuadTex(x,y,w,h):
     glBegin(GL_QUADS)
     glTexCoord2f(0.0, 1.0)
@@ -2849,6 +2970,10 @@ class ConstructorApp:
             self.textRendererSmall.RegenTex()
             glEnable(GL_TEXTURE_2D)
             glEnable(GL_TEXTURE_1D)
+
+
+
+
             image = pygame.image.load("./img/sat3.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
             self.sat3 = texture = glGenTextures(1)
@@ -2910,7 +3035,7 @@ class ConstructorApp:
                 glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE)
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
-
+            self.inven = LoadTex("./img/inven.png", 512, 512)
 
             image = pygame.image.load("./img/tile_wall.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
@@ -3297,26 +3422,26 @@ void main(void)
                     color333.r = 0.25;
                     color333.g = 0.25;
                     color333.b = 0.25;
-                }
+                }/*
                 else if(fac < 0.3)
                 {
                     color333.r = 0.35;
                     color333.g = 0.35;
                     color333.b = 0.35;
-                }
-                else if(fac < 0.5)
+                }*/
+                else if(fac < 0.3)
                 {
                     color333.r = 0.55;
                     color333.g = 0.55;
                     color333.b = 0.55;
                 }
-                else if(fac < 0.62)
+                /*else if(fac < 0.62)
                 {
                     color333.r = 0.65;
                     color333.g = 0.65;
                     color333.b = 0.65;
-                }
-                else if(fac < 0.75)
+                }*/
+                else if(fac < 0.55)
                 {
                     color333.r = 0.75;
                     color333.g = 0.75;
@@ -3845,7 +3970,7 @@ void main(void)
         if RMB in m.pressedButtons:
             if (GUISt.charOn and m.x <= SW/2-128):
                 pass
-            elif (GUISt.inventoryOn and m.x >= SW/2+128):
+            elif (GUISt.inventoryOn and m.x >= SW-350):
                 pass
             else:
                 degree = (m.GetScreenVectorDegree()-90-45/2.0)
@@ -3854,7 +3979,7 @@ void main(void)
                 self.moveWait = t
                 if (GUISt.charOn and m.x <= SW/2-128):
                     pass
-                elif (GUISt.inventoryOn and m.x >= SW/2+128):
+                elif (GUISt.inventoryOn and m.x >= SW-350):
                     pass
                 else:
                     self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
@@ -4295,7 +4420,8 @@ void main(void)
                     self.models[2].Draw()
                     glUseProgram(0)
                     glColor4f(0.8,0.8,0.2,1.0)
-                    self.models[2].DrawOutline()
+                    if not("drawHighlight" in item.a and item.a["drawHighlight"]):
+                        self.models[2].DrawOutline()
                     glUseProgram(AppSt.programEnemy)
                     glPopMatrix()
 
@@ -4621,5 +4747,10 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 
 여러 리듬을 겹쳐서 음악을 작곡한다.
 4분음표 8분음표로만 나누는게 아니라 서로 다른 8분음표 패턴을 섞으면 된다. 낮은도 높은도만 있는게 아니라 그 사이에 1도레미파가 있듯이 리듬도 나눠진다.
-
+---------
+음악의 한 멜로디라인은 게임의 던젼의 스릴을 표현하고 다른 멜로디라인은 주인공이 던젼을 탐험하고 깨는 통쾌함을 표현.
+------------
+영어 책을 읽을 때 내가 아는 문법에 맞춰서 읽지말고 그대로 일거야 한다..
+----------------
+일단 캐릭터 아이템 몬스터 장비 스탯 스킬 인벤토리 등을 완전하게 디아2처럼 해서 완성한다.
 """

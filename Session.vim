@@ -104,7 +104,6 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -254,12 +253,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 4290 - ((35 * winheight(0) + 24) / 49)
+let s:l = 983 - ((24 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-4290
-normal! 036l
+983
+normal! 077l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
