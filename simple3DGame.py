@@ -272,6 +272,17 @@ class ConstructorGUI(object):
 
         if self.inventoryOn:
             self.inventory.Render()
+            glPushMatrix()
+            glTranslatef(850.0,-180.0,0.0)
+            glRotatef(270, 1.0, 0.0, 0.0)
+            glScale(18.0, 18.0, 18.0)
+            glUseProgram(AppSt.program)
+
+            glColor4f(0.3,0.3,0.9,1.0)
+            AppSt.model.DrawOutline()
+            AppSt.model.Draw()
+            glUseProgram(0)
+            glPopMatrix()
         if self.charOn:
             self.char.Render()
 
@@ -598,6 +609,7 @@ class TalkBox(object):
 class Item:
     def __init__(self, **kwargs):
         self.a = kwargs
+        self.imgIdx = 0
 
 
 class ItemView:
@@ -1090,17 +1102,28 @@ class Inventory:
     """
 
     def AddItem(self, item):
-        if len(self.items) > 25*4:
+        if len(self.items) > 24*6:
             return False
         self.items += [item]
-        self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168))]
+        #self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168))]
         return True
     def Render(self):
         glBindTexture(GL_TEXTURE_2D, AppSt.inven)
         DrawQuadTex2(self.x, self.y, 350, 510, 350, 510, 512, 512)
         for button in self.buttons:
             button.Render()
-
+        idx = 2
+        idxLocal = idx%(11*11)
+        pageNum = (idx-(idx%(11*11)))/(11*11)
+        x = idxLocal % 11
+        y = (idxLocal-(idxLocal%11))/11
+        if pageNum == 0:
+            glBindTexture(GL_TEXTURE_2D, AppSt.items1)
+        elif pageNum == 1:
+            glBindTexture(GL_TEXTURE_2D, AppSt.items2)
+        elif pageNum == 2:
+            glBindTexture(GL_TEXTURE_2D, AppSt.items3)
+        DrawQuadTex3(SW-350+21, 64+286, 46, 46, x*46, y*46, 46,46,512, 512)
     """
     def Render(self):
         x = self.x
@@ -2617,6 +2640,17 @@ def DrawQuadTexFlipX(x,y,w,h):
     glTexCoord2f(1.0, 0.0)
     glVertex3f(float(x), -float(y), 100.0)
     glEnd()
+def DrawQuadTex3(x,y,w,h, x2,y2,w2,h2, dimw, dimh):
+    glBegin(GL_QUADS)
+    glTexCoord2f(float(x2)/float(dimw), float(y2+h2)/float(dimh))
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glTexCoord2f(float(x2+w2)/float(dimw), float(y2+h2)/float(dimh))
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glTexCoord2f(float(x2+w2)/float(dimw), float(y2)/float(dimh))
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glTexCoord2f(float(x2)/float(dimw), float(y2)/float(dimh))
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
 def DrawQuadTex2(x,y,w,h, w2,h2, dimw, dimh):
     glBegin(GL_QUADS)
     glTexCoord2f(0.0, float(h2)/float(dimh))
@@ -3036,6 +3070,7 @@ class ConstructorApp:
                 glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE)
                 return texture
             self.inven = LoadTex("./img/inven.png", 512, 512)
+            self.items1 = LoadTex("./img/items.png", 512, 512)
 
             image = pygame.image.load("./img/tile_wall.png")
             teximg = pygame.image.tostring(image, "RGBA", 0) 
