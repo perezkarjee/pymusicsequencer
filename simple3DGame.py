@@ -169,24 +169,40 @@ class ConstructorGUI(object):
         self.msgBox = MsgBox()
         self.msgBox.AddText(u"안녕", (255,255,255), (64,64,64))
         self.inv = self.inventory = Inventory()
+        self.itemMkr = ItemMaker()
         self.char = Char()
-        self.inv.AddItem(Item(name=u"테스트아이템"))
-        self.inv.AddItem(Item(name=u"테스트아이템2"))
-        self.inv.AddItem(Item(name=u"테스트아이템3"))
-        self.inv.AddItem(Item(name=u"테스트아이템4"))
+        self.inv.AddItem(Item(name=u"테스트아이템", itemgrp=1))
+        self.inv.AddItem(Item(name=u"테스트아이템2", itemgrp=2))
+        self.inv.AddItem(Item(name=u"테스트아이템3", itemgrp=11))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.AddItem(Item(name=u"테스트아이템4", itemgrp=12))
+        self.inv.items[24] = Item(name=u"테스트아이템4", itemgrp=12)
 
 
         self.inventoryOn = False
         self.charOn = False
+        self.itemMakerOn = False
         EMgrSt.BindKeyDown(self.OnKeyDown)
     def OnKeyDown(self, t,m,k):
         if k.pressedKey == K_i:
             self.inventoryOn = not self.inventoryOn
+            if self.inventoryOn:
+                self.itemMakerOn = False
+        elif k.pressedKey == K_j:
+            self.itemMakerOn = not self.itemMakerOn
+            if self.itemMakerOn:
+                self.inventoryOn = False
         elif k.pressedKey == K_c:
             self.charOn = not self.charOn
         elif k.pressedKey == K_ESCAPE:
             self.inventoryOn = False
             self.charOn = False
+            self.itemMakerOn = False
     def DragStart(self,t,m,k):
         self.dragging = True
         self.dragStartPos = (m.x,m.y)
@@ -269,6 +285,9 @@ class ConstructorGUI(object):
                     if x+32+5 > SW:
                         x = 400+5
                         y += 32+5
+
+        if self.itemMakerOn:
+            self.itemMkr.Render()
 
         if self.inventoryOn:
             self.inventory.Render()
@@ -981,12 +1000,12 @@ class Char:
 
 
 
-class Inventory:
+class ItemMaker:
     def __init__(self):
         self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
         self.tr = DynamicTextRenderer(self.font3)
         self.tr2 = StaticTextRenderer(self.font3)
-        self.items = []
+        self.items = [None for i in range(6*4*6)]
         self.lines = []
         self.lineH = 20
         self.x = SW-350
@@ -1102,28 +1121,247 @@ class Inventory:
     """
 
     def AddItem(self, item):
-        if len(self.items) > 24*6:
-            return False
-        self.items += [item]
-        #self.lines += [self.tr.NewTextObject(item.a["name"], (0,0,0), (0,0), border=False, borderColor=(168,168,168))]
-        return True
+        found = False
+        for slotIdx in range(len(self.items)):
+            if self.items[slotIdx] == None:
+                self.items[slotIdx] = item
+                found = True
+                break
+        return found
     def Render(self):
         glBindTexture(GL_TEXTURE_2D, AppSt.inven)
         DrawQuadTex2(self.x, self.y, 350, 510, 350, 510, 512, 512)
         for button in self.buttons:
             button.Render()
-        idx = 2
-        idxLocal = idx%(11*11)
-        pageNum = (idx-(idx%(11*11)))/(11*11)
-        x = idxLocal % 11
-        y = (idxLocal-(idxLocal%11))/11
-        if pageNum == 0:
-            glBindTexture(GL_TEXTURE_2D, AppSt.items1)
-        elif pageNum == 1:
-            glBindTexture(GL_TEXTURE_2D, AppSt.items2)
-        elif pageNum == 2:
-            glBindTexture(GL_TEXTURE_2D, AppSt.items3)
-        DrawQuadTex3(SW-350+21, 64+286, 46, 46, x*46, y*46, 46,46,512, 512)
+
+        xx = SW-350+21
+        yy = 64+286
+        idxxx = 0
+
+        for item in self.items[self.invenPage*24:]:
+            if item:
+                idx = item.a["itemgrp"]
+                idxLocal = idx%(11*11)
+                pageNum = (idx-(idx%(11*11)))/(11*11)
+                x = idxLocal % 11
+                y = (idxLocal-(idxLocal%11))/11
+                if pageNum == 0:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items1)
+                elif pageNum == 1:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items2)
+                elif pageNum == 2:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items3)
+                elif pageNum == 3:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items4)
+                DrawQuadTex3(xx, yy, 46, 46, x*46, y*46, 46,46,512, 512)
+            xx += 48+4
+            idxxx += 1
+            if not (idxxx % 6):
+                xx = SW-350+21
+                yy += 48+4
+            if idxxx >= 6*4:
+                break
+    """
+    def Render(self):
+        x = self.x
+        y = self.y
+        i = 0
+
+        lenItem = len(self.items)
+        startPos = self.page*25
+        offset = lenItem-startPos
+        if offset >= 25:
+            offset = 25
+
+        for i in range(startPos, startPos+offset):
+            line = self.lines[i]
+            if self.selected == i:
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(19,66,192,200),(19,66,192,230))
+            elif i%2:
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(164,164,164,200),(164,164,164,230))
+            else:
+                DrawQuad(self.x+2,y,SW/2-128-2-self.scrollW,self.lineH,(120,120,120,200),(120,120,120,230))
+            self.tr.RenderOne(line, (x+5,y+2))
+            y += self.lineH
+
+        if self.itemView:
+            self.itemView.Render()
+
+        w = self.scrollW
+        h = self.scrollW
+        x = self.x+SW/2-128-w
+        y1 = 64
+        y2 = SH-96-h
+        DrawQuad(x,y1,w,SH-96-64,(32,32,32,200),(32,32,32,230))
+        DrawQuad(x,y1,w,h,(0,0,0,200),(0,0,0,230))
+        DrawQuad(x,y2,w,h,(0,0,0,200),(0,0,0,230))
+    """
+
+    def Regen(self):
+        self.tr.RegenTex()
+        self.tr2.RegenTex()
+
+class Inventory:
+    def __init__(self):
+        self.font3 = pygame.font.Font("./fonts/NanumGothicBold.ttf", 13)
+        self.tr = DynamicTextRenderer(self.font3)
+        self.tr2 = StaticTextRenderer(self.font3)
+        self.items = [None for i in range(6*4*6)]
+        self.lines = []
+        self.lineH = 20
+        self.x = SW-350
+        self.y = 64
+        #EMgrSt.BindLDown(self.LDown)
+        #EMgrSt.BindMotion(self.Motion)
+        self.selected = -1
+        self.itemView = None
+        self.scrollW = 24
+        self.page = 0
+        self.buttons = []
+        self.buttons += [ButtonInven(self.tr2, u"  1  ", self.On1, SW-350+27, 64+250)]
+        w = 52
+        self.buttons += [ButtonInven(self.tr2, u"  2  ", self.On2, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  3  ", self.On3, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  4  ", self.On4, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  5  ", self.On5, SW-350+27+w, 64+250)]
+        w += 52
+        self.buttons += [ButtonInven(self.tr2, u"  6  ", self.On6, SW-350+27+w, 64+250)]
+        self.buttons[0].selected = True
+        self.invenPage = 0
+    #def __init__(self, ren, txt, func, x,y):
+    def On1(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[0].selected = True
+        self.invenPage = 0
+    def On2(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[1].selected = True
+        self.invenPage = 1
+    def On3(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[2].selected = True
+        self.invenPage = 2
+    def On4(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[3].selected = True
+        self.invenPage = 3
+    def On5(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[4].selected = True
+        self.invenPage = 4
+    def On6(self):
+        for button in self.buttons:
+            button.selected = False
+        self.buttons[5].selected = True
+        self.invenPage = 5
+    """
+    def Motion(self,t,m,k):
+        if GUISt.inventoryOn:
+            y = 0
+            if self.itemView:
+                self.tr2.Clear()
+                del self.itemView
+                self.itemView = None
+
+            lenItem = len(self.items)
+            startPos = self.page*25
+            offset = lenItem-startPos
+            if offset >= 25:
+                offset = 25
+
+            for i in range(startPos, startPos+offset):
+                if InRect(self.x,self.y+y, SW/2-128-self.scrollW, self.lineH,m.x,m.y):
+                    self.itemView = ItemView(SW/4-200, SH/2-200, self.items[i], self.tr2)
+                    break
+                y += self.lineH
+
+    def LDown(self,t,m,k):
+        if GUISt.inventoryOn:
+            self.selected = -1
+            y = 0
+            i = 0
+
+            lenItem = len(self.items)
+            startPos = self.page*25
+            offset = lenItem-startPos
+            if offset >= 25:
+                offset = 25
+
+            for i in range(startPos, startPos+offset):
+                if InRect(self.x,self.y+y, SW/2-128-self.scrollW, self.lineH,m.x,m.y):
+                    self.selected = i
+                    return
+                y += self.lineH
+
+            w = self.scrollW
+            h = self.scrollW
+            x = self.x+SW/2-128-w
+            y1 = 64
+            y2 = SH-96-h
+
+            if InRect(x,y1,w,h,m.x,m.y):
+                self.page -= 1
+                if self.page < 0:
+                    self.page = 0
+                self.selected = -1
+            if InRect(x,y2,w,h,m.x,m.y):
+                self.page += 1
+                maxPage = len(self.items)/25
+                if self.page >= maxPage:
+                    self.page = maxPage
+                self.selected = -1
+
+    """
+
+    def AddItem(self, item):
+        found = False
+        for slotIdx in range(len(self.items)):
+            if self.items[slotIdx] == None:
+                self.items[slotIdx] = item
+                found = True
+                break
+        return found
+    def Render(self):
+        glBindTexture(GL_TEXTURE_2D, AppSt.inven)
+        DrawQuadTex2(self.x, self.y, 350, 510, 350, 510, 512, 512)
+        for button in self.buttons:
+            button.Render()
+
+        xx = SW-350+21
+        yy = 64+286
+        idxxx = 0
+
+        for item in self.items[self.invenPage*24:]:
+            if item:
+                idx = item.a["itemgrp"]
+                idxLocal = idx%(11*11)
+                pageNum = (idx-(idx%(11*11)))/(11*11)
+                x = idxLocal % 11
+                y = (idxLocal-(idxLocal%11))/11
+                if pageNum == 0:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items1)
+                elif pageNum == 1:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items2)
+                elif pageNum == 2:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items3)
+                elif pageNum == 3:
+                    glBindTexture(GL_TEXTURE_2D, AppSt.items4)
+                DrawQuadTex3(xx, yy, 46, 46, x*46, y*46, 46,46,512, 512)
+            xx += 48+4
+            idxxx += 1
+            if not (idxxx % 6):
+                xx = SW-350+21
+                yy += 48+4
+            if idxxx >= 6*4:
+                break
     """
     def Render(self):
         x = self.x
@@ -4005,7 +4243,7 @@ void main(void)
         if RMB in m.pressedButtons:
             if (GUISt.charOn and m.x <= SW/2-128):
                 pass
-            elif (GUISt.inventoryOn and m.x >= SW-350):
+            elif ((GUISt.inventoryOn or GUISt.itemMakerOn) and m.x >= SW-350):
                 pass
             else:
                 degree = (m.GetScreenVectorDegree()-90-45/2.0)
@@ -4014,7 +4252,7 @@ void main(void)
                 self.moveWait = t
                 if (GUISt.charOn and m.x <= SW/2-128):
                     pass
-                elif (GUISt.inventoryOn and m.x >= SW-350):
+                elif ((GUISt.inventoryOn or GUISt.itemMakerOn) and m.x >= SW-350):
                     pass
                 else:
                     self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
@@ -4612,7 +4850,7 @@ void main(void)
         self.buttons += [self.button2]
         for button in self.buttons:
             button.enabled = False
-        item = Item(name=u"테스트월드아이템", coord=(-1,0,-1))
+        item = Item(name=u"테스트월드아이템", coord=(-1,0,-1), itemgrp=0)
         #for i in range(125):
         #enemy = EnemySpawner(name=u"적", coord=(2,0,-30), mp=1020,maxmp=1020,maxhp=1050,hp=1050, str=60, dex=25, int=10)
         self.AddWorldItem(item)
@@ -4787,5 +5025,63 @@ XXX XXX XXX XXX XXX 2층 구현:  벽 주면에 2층짜리 사각형을 2개 투
 ------------
 영어 책을 읽을 때 내가 아는 문법에 맞춰서 읽지말고 그대로 일거야 한다..
 ----------------
-일단 캐릭터 아이템 몬스터 장비 스탯 스킬 인벤토리 등을 완전하게 디아2처럼 해서 완성한다.
+RPG크래프트
+적이나 스펠 아이템등을 유져가 모두 다 제작한다.
+더 센 적을 만들수록 드랍하는 골드라던가 경험치가 더 높아짐
+-----------
+적 제작 메뉴
+아이템 제작 메뉴
+마법및 기술 제작 메뉴
+
+아이템 제작은 일단 울온같은 메뉴에서 아이템을 제작한다.
+그 다음 인챈팅을 하는데 오블리비언에서 마법을 만드는 창을 띄우게 하고 보유중인 마법으로 마법을 만들어 장비에 바르면 인챈팅이 된다.
+인챈트가 끝난 아이템에 추가적으로 이미 있는 옵션을 빼거나 없는 옵션을 넣거나 옵션치를 변경할 수 있다.
+
+마법:
+불데미지
+얼음데미지
+번개데미지
+불저항업다운
+얼음저항업다운
+번개저항업다운
+스턴
+속도업다운
+물리데미지업버프/다운저주
+물리방어업다운
+마법데미지업다운
+STR업다운
+DEX업다운
+INT업다운
+체력흡수
+마나흡수
+마나쉴드
+최대체력깎기
+최대마나깎기
+남은 체력 퍼센티지로 깎기
+남은 마나 퍼센티지로 깎기
+체력/마나 퍼센테지로 회복
+공격속도 증가/감소
+체력/마나리젠 업/다운
+소환
+스킬 업다운
+
+인챈트에만 존재하는것:
+    무기의 기본 공격력 증가(물리및 각 속성별)
+    방어구의 기본 방어력 증가(물리및 각 속성별)
+    얻는 경험치 증가
+    골드 증가
+
+모든 마법은 밀리가 아니라 레인지드이며 지속시간과 범위가 있다.
+공격마법이나 체력깎기라던가 하는 것들은 지속시간이 길면 길수록 초단위로 데미지를 입힌다.
+예를들어 데미지 50 5초면 총합 250의 데미지를 입힌다.
+스턴이나 슬로우같은 깎기 종류가 아닌것은 그냥 지속만 된다.
+
+지식:
+    파괴마법
+    소환마법
+    저주마법
+    증폭마법
+    웨폰리
+    아머
+
 """
