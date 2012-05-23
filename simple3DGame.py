@@ -10,6 +10,9 @@ from ctypes import *
 from math import radians 
 from OpenGL import platform
 from OpenGL.GL.EXT.texture_filter_anisotropic import *
+from OpenGL.GL.ARB.framebuffer_object import *
+from OpenGL.GL.EXT.framebuffer_object import *
+
 import math
 gl = platform.OpenGL
 import copy
@@ -1485,7 +1488,7 @@ class DynamicTextRenderer(object):
         self.texts = []
     def __del__(self):
         for surf in self.surfs:
-            glDeleteTextures([1])
+            glDeleteTextures(surf[1])
     def NewTextObject(self, text, color, pos, border=False, borderColor = (255,255,255)):
         if self.surfIdx >= 4:
             return
@@ -1623,7 +1626,7 @@ class StaticTextRenderer(object):
         self.texts = []
     def __del__(self):
         for surf in self.surfs:
-            glDeleteTextures([1])
+            glDeleteTextures(surf[1])
 
     def GetDimension(self, textid):
         surfid, posList = self.texts[textid]
@@ -3100,6 +3103,9 @@ class LSys:
 
         DoLoop()
         glPopMatrix()
+        # 로테이션 매트릭스를 쿼터니온으로 구해서 직접 곱해줘야 한다.
+        # 트랜슬레이션은 그냥 수동으로 하면 된다.
+        # 그래서 VBO로 만들어서 렌더링하면 빠름
 
 class ConstructorApp:
     TILECHANGE1 = 0
@@ -3760,7 +3766,7 @@ void main(void)
                 float fac = (dot(light, norm)+1.0)/2.0;
                 fac*=fac;
                 fac*=fac;
-                vec3 color = texture1D(colorLookup2, fac).rgb;
+                vec3 color = (texture1D(colorLookup2, fac).rgb+texture1D(colorLookup2, fac+0.1).rgb+texture1D(colorLookup2, fac-0.1).rgb)/3.0;
                 vec3 color222;
                 color222.r = 0.8;
                 color222.g = 0.8;
@@ -3768,7 +3774,8 @@ void main(void)
                 //gl_FragColor.rgb = color;
                 vec3 color333;
                 vec3 color334;
-                color334 = (color + texture1D(colorLookup3, fac).rgb + texture1D(colorLookup, fac).rgb)*fac/4.0;
+                vec3 lookup3 = (texture1D(colorLookup3, fac).rgb + texture1D(colorLookup3, fac+0.1).rgb + texture1D(colorLookup3, fac-0.1).rgb)/3.0;
+                color334 = (color + lookup3 + texture1D(colorLookup, fac).rgb)*fac/4.0;
                 if(fac < 0.25)
                 {
                     color333.r = 0.25;
@@ -3805,7 +3812,8 @@ void main(void)
                     color333.g = 1.0;
                     color333.b = 1.0;
                 }
-                gl_FragColor.rgb = (color333 + color222.rgb + color334.rgb)/3;
+                //gl_FragColor.rgb = (color333 + color222.rgb + color334.rgb)/3;
+                gl_FragColor.rgb = (color222.rgb + color334.rgb)/2.0;
             }
             ''')
             self.programItem = compile_program('''
@@ -4335,6 +4343,34 @@ void main(void)
                     pass
                 else:
                     self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
+
+        """
+        rendertarget=glGenTextures( 1 )
+
+        glBindTexture( GL_TEXTURE_2D, rendertarget )
+        glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
+        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+                        GL_REPEAT);
+        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+                        GL_REPEAT );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+
+        # occupy 512x512 texture memory
+
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA,1024,1024,0,GL_RGBA,
+                    GL_UNSIGNED_INT, None)
+
+        fbo = glGenFramebuffers(1)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo)
+
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, 
+                                    GL_TEXTURE_2D, rendertarget, 0)
+        glPushAttrib(GL_VIEWPORT_BIT)
+        glViewport(0, 0, 1024, 1024)
+        """
+
+
         GameDrawMode()
         self.cam1.ApplyCamera(t)
         glUseProgram(0)
@@ -4518,7 +4554,7 @@ void main(void)
         glUniform1i(glGetUniformLocation(self.programEnemy, "colorLookup3"), 2)
         glActiveTexture(GL_TEXTURE0 + 0)
         self.RenderEnemies()
-        self.RenderSpawnedEnemies()
+        self.RenderSpawnedEnemies(t)
         # XXX: 여기에 적 바운딩박스로 충돌하는걸 구현
         x,y,z = self.GetWorldMouse(m.x, m.y)
         ray1 = x,-9000, z
@@ -4554,7 +4590,17 @@ void main(void)
         glUseProgram(0)
         self.lsys.Render()
 
+
         GUIDrawMode()
+        """
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glPopAttrib()
+        glBindTexture( GL_TEXTURE_2D, rendertarget )
+        DrawQuadTex2(0,0,SW,SH, SW,SH, 1024,1024)
+        glDeleteTextures([rendertarget])
+        glDeleteFramebuffers([fbo])
+        """
+
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.gui.Render()
@@ -4751,7 +4797,7 @@ void main(void)
 
                     glPopMatrix()
 
-    def RenderSpawnedEnemies(self):
+    def RenderSpawnedEnemies(self, t):
         for coord in self.spawnedEnemies:
             items = self.spawnedEnemies[coord]
             for item in items:
@@ -4759,6 +4805,10 @@ void main(void)
                 itemc = Vector2(x,z)
                 char = Vector2(*self.GetCharCoord())
                 if (itemc-char).length() < 18:
+
+                    
+
+
                     glPushMatrix()
                     glTranslatef(x+0.5,y+1.0,z+0.5)
                     degree = (45*item.a["facing"]-90-45/2.0)
@@ -4777,6 +4827,7 @@ void main(void)
                         self.models[2].DrawOutline()
                     glUseProgram(AppSt.programEnemy)
                     glPopMatrix()
+
 
     def RenderItems(self):
         for coord in self.worldItems:
