@@ -3071,23 +3071,15 @@ class LSys:
         glTranslatef(0.0, 0.0, -4.0)
         DrawCube2((0.0, 0.0, 0.0),(0.07,10.0,0.07),(255,255,255,255))
         def DoLoop(depth=0):
-            z = 0.0
-            if depth == 0:
-                z = 1.0
-            if depth == 1:
-                z = 0.2
-            if depth == 2:
-                z = 0.03
+            z = 1.0
+            for i in range(depth):
+                z *= 0.3
             for pm in self.sys:
                 glPushMatrix()
                 glTranslatef(0.0, z, 0.0)
-                lens = 0.0
-                if depth == 0:
-                    lens = 5.0
-                if depth == 1:
-                    lens = 2.0
-                if depth == 2:
-                    lens = 0.7
+                lens = 5.0
+                for i in range(depth):
+                    lens *= 0.3
                 if pm > 0:
                     glRotatef(30, 0.0, 0.0, 1.0)
                     DrawCube2((0.0, 0.0, 0.0),(0.01,lens,0.01),(255,255,255,255))
@@ -3098,15 +3090,13 @@ class LSys:
                 else:
                     glRotatef(-30, 0.0, 0.0, 1.0)
                     DrawCube2((0.0, 0.0, 0.0),(0.01,lens,0.01),(255,255,255,255))
-                if depth < 3:
+                if depth < 1:
                     DoLoop(depth+1)
                 glPopMatrix()
-                if depth == 0:
-                    z += 2.0
-                if depth == 1:
-                    z += 0.7
-                if depth == 2:
-                    z += 0.2
+                zlen = 2.0
+                for i in range(depth):
+                    zlen *= 0.3
+                z += zlen
 
         DoLoop()
         glPopMatrix()
@@ -4562,7 +4552,7 @@ void main(void)
 
 
         glUseProgram(0)
-        #self.lsys.Render()
+        self.lsys.Render()
 
         GUIDrawMode()
         glEnable(GL_BLEND)
