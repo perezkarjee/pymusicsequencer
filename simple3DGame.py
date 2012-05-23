@@ -2926,6 +2926,46 @@ def DrawQuad(x,y,w,h, color1, color2):
     glEnable(GL_TEXTURE_1D)
 
 
+def DrawCube2(pos,bound, color): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_TEXTURE_1D)
+    x,y,z = pos
+    w,h,j = bound
+    x -= w/2
+    #y -= h/2
+    z -= j/2
+
+    vidx = [ 
+            (4, 5, 1, 0),  # bottom    
+            (6,7,3, 2),  # top
+            (3, 7, 4, 0),  # left
+            (6,2,1, 5),  # right
+            (7,6,5, 4),  # back
+            (2,3,0, 1),  # front
+            ]
+
+    v = [   (0.0+x, 0.0+y, j+z),
+            (w+x, 0.0+y, j+z),
+            (w+x, h+y, j+z),
+            (0.0+x, h+y, j+z),
+            (0.0+x, 0.0+y, 0.0+z),
+            (w+x, 0.0+y, 0.0+z),
+            (w+x, h+y, 0.0+z),
+            (0.0+x, h+y, 0.0+z) ]
+
+    for face in range(6):
+        v1, v2, v3, v4 = vidx[face]
+        glBegin(GL_QUADS)
+        glColor4ub(*color)
+        glVertex( v[v1] )
+        glVertex( v[v2] )
+        glVertex( v[v3] )
+        glVertex( v[v4] )            
+        glEnd()
+    glEnable(GL_TEXTURE_1D)
+    glEnable(GL_TEXTURE_2D)
+
+
 def DrawCube(pos,bound, color, texture): # 텍스쳐는 아래 위 왼쪽 오른쪽 뒤 앞
     glBindTexture(GL_TEXTURE_2D, texture)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
@@ -3022,6 +3062,54 @@ def IsJong(chr):
         return True
     else:
         return False
+class LSys:
+    def __init__(self):
+        self.sys = [1,-1,1, 1, 1]
+        self.degree = 30
+    def Render(self):
+        glPushMatrix()
+        glTranslatef(0.0, 0.0, -4.0)
+        DrawCube2((0.0, 0.0, 0.0),(0.07,10.0,0.07),(255,255,255,255))
+        def DoLoop(depth=0):
+            z = 0.0
+            if depth == 0:
+                z = 1.0
+            if depth == 1:
+                z = 0.2
+            if depth == 2:
+                z = 0.03
+            for pm in self.sys:
+                glPushMatrix()
+                glTranslatef(0.0, z, 0.0)
+                lens = 0.0
+                if depth == 0:
+                    lens = 5.0
+                if depth == 1:
+                    lens = 2.0
+                if depth == 2:
+                    lens = 0.7
+                if pm > 0:
+                    glRotatef(30, 0.0, 0.0, 1.0)
+                    DrawCube2((0.0, 0.0, 0.0),(0.01,lens,0.01),(255,255,255,255))
+
+                    #glTranslatef(0.0, 0.3, 0.0)
+                    #glRotatef(30, 0.0, 0.0, 1.0)
+                    #DrawCube2((0.0, 0.0, 0.0),(0.01,0.5,0.01),(255,255,255,255))
+                else:
+                    glRotatef(-30, 0.0, 0.0, 1.0)
+                    DrawCube2((0.0, 0.0, 0.0),(0.01,lens,0.01),(255,255,255,255))
+                if depth < 3:
+                    DoLoop(depth+1)
+                glPopMatrix()
+                if depth == 0:
+                    z += 2.0
+                if depth == 1:
+                    z += 0.7
+                if depth == 2:
+                    z += 0.2
+
+        DoLoop()
+        glPopMatrix()
 
 class ConstructorApp:
     TILECHANGE1 = 0
@@ -3073,6 +3161,7 @@ class ConstructorApp:
         self.degree = 0
 
         self.blocked = [0]
+        self.lsys = LSys()
 
 
     def MultMat4x4(self, mat, vec):
@@ -4473,6 +4562,7 @@ void main(void)
 
 
         glUseProgram(0)
+        #self.lsys.Render()
 
         GUIDrawMode()
         glEnable(GL_BLEND)
@@ -5102,4 +5192,8 @@ INT업다운
 
 
 파티장을 이쁘게 꾸미듯 맵도 이쁘게 꾸며야 한다.
+
+
+그 이외에 프랙탈 조형물은 랜덤하게 생성해서 나무처럼 또는 나무 대신 장식물로 쓸 수 있다.
+L-System을 이용/확장하여 나무가 아닌 여러가지 물체를 만들어 본다.
 """
