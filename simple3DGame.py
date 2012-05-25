@@ -3093,7 +3093,7 @@ class LSys:
                 else:
                     glRotatef(-30, 0.0, 0.0, 1.0)
                     DrawCube2((0.0, 0.0, 0.0),(0.01,lens,0.01),(255,255,255,255))
-                if depth < 1:
+                if depth < 2:
                     DoLoop(depth+1)
                 glPopMatrix()
                 zlen = 2.0
@@ -4588,7 +4588,7 @@ void main(void)
 
 
         glUseProgram(0)
-        self.lsys.Render()
+        #self.lsys.Render()
 
 
         GUIDrawMode()
@@ -4823,7 +4823,7 @@ void main(void)
                     self.models[2].Draw()
                     glUseProgram(0)
                     glColor4f(0.8,0.8,0.2,1.0)
-                    if not("drawHighlight" in item.a and item.a["drawHighlight"]):
+                    if ("drawHighlight" in item.a and item.a["drawHighlight"]):
                         self.models[2].DrawOutline()
                     glUseProgram(AppSt.programEnemy)
                     glPopMatrix()
@@ -5237,4 +5237,13 @@ INT업다운
 
 그 이외에 프랙탈 조형물은 랜덤하게 생성해서 나무처럼 또는 나무 대신 장식물로 쓸 수 있다.
 L-System을 이용/확장하여 나무가 아닌 여러가지 물체를 만들어 본다.
+---------------
+예술품의 릴리즈에는 3단계가 있는데
+머릿속,
+인 하우스,
+공개가 있다.
+머릿속에서 매우 좋은것도 인 하우스에선 별로이고
+인하우스에서 꽤 괜찮은것도 공개적인 곳에선 별로일 수 있다.
+
+결국 인하우스나 공개적인곳에서 좋으려면 머릿속에선 얼마나 좋아야 할까?
 """
