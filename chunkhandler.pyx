@@ -856,6 +856,63 @@ cdef class Map:
             self.buffers.buffers[self.idx].vbos.vbos[6] += [ElementBuffer(ele3[:len(self.buffers.buffers[self.idx].ele.ele3[i])*sizeof(int)])]
 
 
+    def RenderNoTex(self):
+        GL.glDisable(GL.GL_TEXTURE_2D)
+        GL.glDisable(GL.GL_TEXTURE_1D)
+        GL.glEnableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glEnableClientState(GL.GL_NORMAL_ARRAY)
+        #GL.glEnableClientState(GL.GL_COLOR_ARRAY)
+        self.buffers.buffers[self.idx].vbos.vbos[0].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+            if len(self.buffers.buffers[self.idx].ele.ele[i]):
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.buffers.buffers[self.idx].tex.tex[i][0])
+                self.buffers.buffers[self.idx].vbos.vbos[3][i].bind()
+                #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+                #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+                #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele[i]), GL.GL_UNSIGNED_INT, <void*>0)
+                #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+
+        GL.glDisable(GL.GL_CULL_FACE)
+        self.buffers.buffers[self.idx].vbos.vbos[5].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex2)):
+            if len(self.buffers.buffers[self.idx].ele.ele3[i]):
+                GL.glBindTexture(GL.GL_TEXTURE_2D, self.buffers.buffers[self.idx].tex.tex2[i])
+                self.buffers.buffers[self.idx].vbos.vbos[6][i].bind()
+                #GL.glNormalPointer(GL.GL_FLOAT, 0, None) 
+                #glTexCoordPointer( 2, GL.GL_FLOAT, 0, <void*>self.tT[i]) 
+                #glColorPointer(3, GL.GL_UNSIGNED_BYTE, 0, <void*>self.tC[i]) 
+
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele3[i]), GL.GL_UNSIGNED_INT, <void*>0)
+                #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4)
+
+        GL.glEnable(GL.GL_CULL_FACE)
+
+
+        """
+        GL.glDisable(GL.GL_TEXTURE_2D)
+        self.buffers.buffers[self.idx].vbos.vbos[1].bind()
+        GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
+        #glDrawArrays(GL.GL_QUADS, 0, SIZE_CHUNK*SIZE_CHUNK*4*4)
+        for i in range(len(self.buffers.buffers[self.idx].tex.tex)):
+            if len(self.buffers.buffers[self.idx].ele.ele2[i]):
+                self.buffers.buffers[self.idx].vbos.vbos[4][i].bind()
+                GL.glColor4ub(*self.buffers.buffers[self.idx].tex.tex[i][1])
+                glDrawElements(GL.GL_QUADS, len(self.buffers.buffers[self.idx].ele.ele2[i]), GL.GL_UNSIGNED_INT, <void*>0)
+        #glDrawElements(GL.GL_TRIANGLES, self.indNum, GL.GL_UNSIGNED_INT, <void*>self.inds)
+        GL.glDisableClientState(GL.GL_VERTEX_ARRAY)
+        #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
+        #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
+        #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
+        """
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        GL.glEnable(GL.GL_TEXTURE_1D)
+
     def Render(self):
         GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glDisable(GL.GL_TEXTURE_1D)
@@ -900,6 +957,7 @@ cdef class Map:
         GL.glEnable(GL.GL_CULL_FACE)
 
 
+        """
         GL.glDisable(GL.GL_TEXTURE_2D)
         self.buffers.buffers[self.idx].vbos.vbos[1].bind()
         GL.glVertexPointer( 3, GL.GL_FLOAT, 0, None)#<void*>self.verts) 
@@ -914,6 +972,7 @@ cdef class Map:
         #GL.glDisableClientState(GL.GL_NORMAL_ARRAY)
         #GL.glDisableClientState(GL.GL_TEXTURE_COORD_ARRAY)
         #GL.glDisableClientState(GL.GL_COLOR_ARRAY)
+        """
         GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_TEXTURE_1D)
     def SaveFiles(self):

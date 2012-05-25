@@ -2892,6 +2892,17 @@ def DrawQuadTex3(x,y,w,h, x2,y2,w2,h2, dimw, dimh):
     glTexCoord2f(float(x2)/float(dimw), float(y2)/float(dimh))
     glVertex3f(float(x), -float(y), 100.0)
     glEnd()
+def DrawQuadTex4(x,y,w,h, w2,h2, dimw, dimh):
+    glBegin(GL_QUADS)
+    glTexCoord2f(0.0, -float(h2)/float(dimh))
+    glVertex3f(float(x), -float(y+h), 100.0)
+    glTexCoord2f(float(w2)/float(dimw), -float(h2)/float(dimh))
+    glVertex3f(float(x+w), -float(y+h), 100.0)
+    glTexCoord2f(float(w2)/float(dimw), 0.0)
+    glVertex3f(float(x+w), -float(y), 100.0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(float(x), -float(y), 100.0)
+    glEnd()
 def DrawQuadTex2(x,y,w,h, w2,h2, dimw, dimh):
     glBegin(GL_QUADS)
     glTexCoord2f(0.0, float(h2)/float(dimh))
@@ -3482,6 +3493,72 @@ void main(void)
    gl_FragColor = v * color;
 
 }
+            ''')
+            self.postEff = compile_program('''
+#version 150 compatibility
+            // Vertex program
+            varying vec2 texCoord;
+            void main() {
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                texCoord = gl_MultiTexCoord0.xy;
+            }
+            ''', '''
+#version 150 compatibility
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   // Default precision
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+            // Fragment program
+            uniform sampler2D tex;
+            uniform sampler2D depth;
+            varying vec2 texCoord;
+            void main() {
+                vec2 tex1 = texCoord.xy;
+                vec3 color = texture2D(tex, texCoord).rgb;
+                vec3 color2 = texture2D(tex, texCoord).rgb;
+                tex1.xy = texCoord.xy;
+                tex1.x -= 1.0/1024;
+                tex1.y -= 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.x += 1.0/1024;
+                tex1.y -= 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.x -= 1.0/1024;
+                tex1.y += 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.x += 1.0/1024;
+                tex1.y += 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.y -= 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.y += 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.x += 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+
+                tex1.xy = texCoord.xy;
+                tex1.x -= 1.0/1024;
+                color += texture2D(tex, tex1).rgb;
+                //color += ((texture2D(depth, texCoord).rgb*1000)-999)*0.004+0.3;
+                color /= 9;
+                gl_FragColor.rgb = ((1.0-(1.0-color2)*(1.0-color*0.15))*color);///2*color2*color;
+                //gl_FragColor = texture2D(depth, texCoord)*10000-9999;
+            }
             ''')
             self.program = compile_program('''
 #version 150 compatibility
@@ -4342,38 +4419,96 @@ void main(void)
                 elif ((GUISt.inventoryOn or GUISt.itemMakerOn) and m.x >= SW-350):
                     pass
                 else:
-                    self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
+                    if not self.buttons[0].enabled:
+                        self.MoveWithMouse(DegreeTo8WayDirection(m.GetScreenVectorDegree()))
 
-        """
+
+
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        GameDrawMode()
+        self.cam1.ApplyCamera(t)
+        glUseProgram(0)
+        for map in self.maps:
+            map.PosUpdate(self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z)
+            x,z = map.GetXZ()
+            #mat = ViewingMatrix()
+            map.RenderNoTex()
+            self.HandleItemClicking(t,m,k, map)
+            if self.buttons[0].enabled:
+                if self.tileMode == self.TILECHANGE1:
+                    self.HandleMapTiling(t,m,k, map)
+                if self.tileMode == self.WALLCHANGE1:
+                    self.HandleMapWalling(t,m,k, map)
+        glUseProgram(0)
+        #self.RenderEnemies()
+        self.RenderSpawnedEnemiesNoTex(t)
+        # XXX: 여기에 적 바운딩박스로 충돌하는걸 구현
+        x,y,z = self.GetWorldMouse(m.x, m.y)
+        ray1 = x,-9000, z
+        for coord in self.spawnedEnemies:
+            items = self.spawnedEnemies[coord]
+            found = False
+            for item in items:
+                x,y,z = item.a["curPos"]
+                item.a["drawHighlight"] = False
+                item.a["selected"] = False
+                if InRect(x-0.5,z-0.5,1.5,1.5,ray1[0],ray1[2]) and not found:
+                    item.a["drawHighlight"] = True
+                    item.a["selected"] = True
+                    found = True
+
+
+
         rendertarget=glGenTextures( 1 )
-
         glBindTexture( GL_TEXTURE_2D, rendertarget )
-        glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
-        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-                        GL_REPEAT);
-        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
-                        GL_REPEAT );
+        glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-
-        # occupy 512x512 texture memory
-
         glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA,1024,1024,0,GL_RGBA,
                     GL_UNSIGNED_INT, None)
 
+        depthTex = glGenTextures( 1 )
+        glBindTexture( GL_TEXTURE_2D, depthTex )
+        glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE )
+        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP )
+        glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP )
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+            1024, 1024, 0,
+            GL_DEPTH_COMPONENT, GL_FLOAT, None)
+
+
         fbo = glGenFramebuffers(1)
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo)
-
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, 
                                     GL_TEXTURE_2D, rendertarget, 0)
+        rbo = glGenRenderbuffersEXT(1)
+        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, rbo)
+        glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT,
+                GL_TEXTURE_2D, depthTex, 0)
+
+        #glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, 1024, 1024)
+        #glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, rbo)
+
+
         glPushAttrib(GL_VIEWPORT_BIT)
         glViewport(0, 0, 1024, 1024)
-        """
+
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glClearColor(132.0/255.0, 217.0/255.0, 212.0/255.0,1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
 
 
         GameDrawMode()
         self.cam1.ApplyCamera(t)
         glUseProgram(0)
+
         # 이제 마우스로 이동을 구현한다.
         #
         self.PosUpdate(self.cam1.pos.x, self.cam1.pos.y, -self.cam1.pos.z)
@@ -4382,12 +4517,6 @@ void main(void)
             x,z = map.GetXZ()
             #mat = ViewingMatrix()
             map.Render()
-            self.HandleItemClicking(t,m,k, map)
-            if self.buttons[0].enabled:
-                if self.tileMode == self.TILECHANGE1:
-                    self.HandleMapTiling(t,m,k, map)
-                if self.tileMode == self.WALLCHANGE1:
-                    self.HandleMapWalling(t,m,k, map)
 
             """
             if mat is not None:
@@ -4556,34 +4685,6 @@ void main(void)
         self.RenderEnemies()
         self.RenderSpawnedEnemies(t)
         # XXX: 여기에 적 바운딩박스로 충돌하는걸 구현
-        x,y,z = self.GetWorldMouse(m.x, m.y)
-        ray1 = x,-9000, z
-        for coord in self.spawnedEnemies:
-            items = self.spawnedEnemies[coord]
-            found = False
-            for item in items:
-                x,y,z = item.a["curPos"]
-                item.a["drawHighlight"] = False
-                item.a["selected"] = False
-                if InRect(x-0.5,z-0.5,1.5,1.5,ray1[0],ray1[2]) and not found:
-                    item.a["drawHighlight"] = True
-                    item.a["selected"] = True
-                    found = True
-
-
-        """
-        glPushMatrix()
-        glTranslatef(5.5, 0.35, -5.5)
-        glRotatef(270, 1.0, 0.0, 0.0)
-        #glRotatef(self.tr*200.0, 0.0, 0.0, 1.0)
-        glScalef(0.2, 0.2, 0.2)
-        self.tr += 0.001
-        if self.tr >= 3.0:
-            self.tr = -3.0
-        self.models[0].Draw()
-        glPopMatrix()
-        """
-
 
 
 
@@ -4592,14 +4693,27 @@ void main(void)
 
 
         GUIDrawMode()
-        """
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
         glPopAttrib()
-        glBindTexture( GL_TEXTURE_2D, rendertarget )
-        DrawQuadTex2(0,0,SW,SH, SW,SH, 1024,1024)
+
+
+        glUseProgram(self.postEff)
+        glEnable(GL_TEXTURE_2D)
+        glDisable(GL_TEXTURE_1D)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glBindTexture(GL_TEXTURE_2D, rendertarget)
+        glUniform1i(glGetUniformLocation(self.postEff, "tex"), 0)
+        glActiveTexture(GL_TEXTURE0 + 1)
+        glBindTexture(GL_TEXTURE_2D, depthTex)
+        glUniform1i(glGetUniformLocation(self.postEff, "depth"), 1)
+        DrawQuadTex4(0,0,SW,SH, 1024,1024, 1024,1024)
+        glActiveTexture(GL_TEXTURE0 + 0)
+        glUseProgram(0)
         glDeleteTextures([rendertarget])
+        glDeleteTextures([depthTex])
         glDeleteFramebuffers([fbo])
-        """
+        glDeleteRenderbuffers(1, [rbo])
+
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -4797,6 +4911,24 @@ void main(void)
 
                     glPopMatrix()
 
+    def RenderSpawnedEnemiesNoTex(self, t):
+        for coord in self.spawnedEnemies:
+            items = self.spawnedEnemies[coord]
+            for item in items:
+                x,y,z = item.a["curPos"]
+                itemc = Vector2(x,z)
+                char = Vector2(*self.GetCharCoord())
+                if (itemc-char).length() < 18:
+                    glUseProgram(0)
+                    glPushMatrix()
+                    glTranslatef(x+0.5,y+1.0,z+0.5)
+                    degree = (45*item.a["facing"]-90-45/2.0)
+                    degree = degree-(degree%45)
+                    glRotatef(degree, 0.0, 1.0, 0.0)
+                    glRotatef(270, 1.0, 0.0, 0.0)
+                    glScale(0.2,0.2,0.2)
+                    self.models[2].Draw()
+                    glPopMatrix()
     def RenderSpawnedEnemies(self, t):
         for coord in self.spawnedEnemies:
             items = self.spawnedEnemies[coord]
