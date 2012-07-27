@@ -303,7 +303,7 @@ class Converter:
                             jong = jongsung.index(keystr[3])
                             if keystr[4] in singlesStr2Uni:
                                 uni = unichr(self.NumbersToUniNumber(cho, jung, jong)) + \
-                                        singlesStr2Uni[keystr[3]]
+                                        singlesStr2Uni[keystr[4]]
                                 finished = True
                                 finishedIdx = 3
                                 finishedUni = unichr(self.NumbersToUniNumber(cho, jung, jong))
