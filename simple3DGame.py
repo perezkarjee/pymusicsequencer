@@ -3143,7 +3143,7 @@ class ConstructorApp:
         self.camMoveMode = False
         self.reload = True
         self.tr = -3.0
-        self.camZoom = 6.5
+        self.camZoom = 6.0
         self.prevAniTime = pygame.time.get_ticks()
         self.prevAniDelay = 50
         self.aniOffset = 0.0
@@ -4019,6 +4019,7 @@ void main(void)
         projection = glGetDoublev(GL_PROJECTION_MATRIX)
 
         z_cursor = glReadPixels(x_cursor, viewport[3]-y_cursor, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
+        print z_cursor
         x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, z_cursor, modelview, projection, viewport)
         #x,y,z = gluUnProject(x_cursor, viewport[3]-y_cursor, 0.0, modelview, projection, viewport)
         #xx,yy, zz = gluUnProject(x_cursor, viewport[3]-y_cursor, 1.0, modelview, projection, viewport)
@@ -5517,4 +5518,17 @@ LSystem의 활용 곤충 메쉬 생성기?
 패닝: 패닝을 조절하면 각각의 악기가 더 잘 들린다. 센터가 아니라도 관계없음.
 이것과 관련해 과감하게 음악 멜로디의 비트를 16분음표나 32분음표 정도 쉬프트를 해버리는 것도 좋을 듯. 멜로디 쉬프트는 바로 화음.
 소설에도 적용 가능할 듯. 예를들어 이벤트가 동시에 터지는게 아니라 시간차를 두고 터짐
+----------
+전자제품을 만드는 법: 소프트웨어로 먼저 짜고 똑같은 기능을 하드웨어로 바꾸기만 하면 된다.
+---------------------
+point - if only i had enough mp i could summon bunch of xxx
+------------
+작곡시에 클라이막스를 먼저 작곡하고 앞뒤를 나중에 그거에 맞게 작곡.
+모든 장르에 다 적용.
+프로그램 잘 때 목표를 정하고 짜는것과 비슷하게 목표를 정하고 작곡하는 것.
+
+
+음악의 구조는 트리구조이다. 오징어처럼 몸통이 클라이막스, 다리들이 이외의 모든 멜로디라인과 마디들.
+------------------
+클라이막스를 몬조 작곡하고 클라이막스로 진행하는 듯한게 작곡이듯 모든 곡의ㅐ 박자와 마디마디가 클라이막스이자 그곳으로 다다르는 진행이다.
 """
