@@ -122,7 +122,7 @@ set smarttab
 set softtabstop=4
 set whichwrap=b,s,<,>,[,]
 set wildignore=*.pyc
-set window=49
+set window=56
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -144,14 +144,20 @@ badd +47 cpart.c
 badd +18 cpart.h
 badd +3299 chunk.pyx
 badd +1 glut.py
-badd +4449 simple3DGame.py
+badd +5071 simple3DGame.py
 badd +4 server.py
 badd +761 CitySim.py
 badd +4272 BattleTank.py
+badd +6690 io_export_ogreDotScene.py
+badd +4363 Synth.py
+badd +26 simpleMultiPlayer.py
+badd +129 simpleMultiServer.py
+badd +8 run.py
+badd +1 shared.py
 silent! argdel *
-set lines=50 columns=165
+set lines=57 columns=187
 winpos -4 -4
-edit simple3DGame.py
+edit simpleMultiServer.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -200,7 +206,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -253,11 +259,11 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 5476 - ((47 * winheight(0) + 24) / 49)
+let s:l = 129 - ((27 * winheight(0) + 28) / 56)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-5476
+129
 normal! 0
 lcd C:\drumsynth
 if exists('s:wipebuf')

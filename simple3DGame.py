@@ -5529,6 +5529,32 @@ point - if only i had enough mp i could summon bunch of xxx
 
 
 음악의 구조는 트리구조이다. 오징어처럼 몸통이 클라이막스, 다리들이 이외의 모든 멜로디라인과 마디들.
+----------------
+게임에서 크리스마스 트리처럼 나무를 꾸민다. 주변에 오브도 돌아가게 만들고 복잡하게 꾸민다.
 ------------------
 클라이막스를 몬조 작곡하고 클라이막스로 진행하는 듯한게 작곡이듯 모든 곡의ㅐ 박자와 마디마디가 클라이막스이자 그곳으로 다다르는 진행이다.
+---------------------
+한 마디에 85개박을 넣고 8분음표로 겹치게 연주한다. 시작은 9개 한조로 8비트 연주였다. 8개 한조로 하면 7개만 나온다.
+-----
+ㅁ멀티플 스윙. 스윙하는 정도를 여러가지로 버라이에이션을 줘서 화음처럼 여러 스윙을 동시에 연주하기도 하는 드럼
+-------------------------------------
+음........ 실시간 레이트레이싱과 실시간 글로벌 일루미네이션, 레디오시티 등을 구현하자.
+---------------------
+- realtime global illumination / realtime radiosity / realtime raytracing
+- realtime penumbra shadows, soft shadows, RGB shadows, RGB blending
+- realtime color bleeding
+- dynamic lights
+- dynamic objects
+- dynamic skybox
+- multithreaded, all cores/CPUs and GPU work at once
+- offline processing ready for render farms
+- everything computed in HDR
+- custom scale on inputs/outputs (HDR/sRGB/other)
+- scene size not limited
+
+즉 글로벌 일루미네이션은 라잇소스에서 오는 빛만 라이팅하는게 아니라 그 빛이 오브젝트에 튕겨나온 빛까지 계산하면 된다.
+
+Work is split between GPU and CPU, GPU does primary rays (rasterization), CPU adds indirect rays and filters results. Results are cached between frames, so when light stops moving, load decreases.
+---------
+흠...글로벌 일루미네이션의 비밀은 앰비언트가 한가지 색깔이 아닌 어떤 여러가지 색깔이라는 것이다.
 """
