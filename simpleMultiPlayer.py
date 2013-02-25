@@ -86,7 +86,8 @@ class BallClient(object):
         print('latency: %3.3f    fps:%3.3f' % (
             self._client.latency, pyglet.clock.get_fps()))
 
-
+W = 1000
+H = 700
 def main():
     if "--remote" in sys.argv:
         host = REMOTEHOST
@@ -101,10 +102,25 @@ def main():
     #ball_sprite = pyglet.sprite.Sprite(ball_image)
 
     w = pyglet.window.Window(vsync=VSYNC)
+    w.set_maximum_size(W, H)
+    w.set_minimum_size(W, H)
+    w.set_size(W,H)
+    w.set_location(3,29)
+    w.set_caption("ItemDiggers")
+
+    label = pyglet.text.Label('Hello, world',
+                          font_name='Times New Roman',
+                          font_size=12,
+                          x=w.width-100, y=20,
+                          anchor_x='center', anchor_y='center')
+
 
 
     @w.event
     def on_key_press(s, m):
+        if s == pyglet.window.key.ESCAPE:
+            client.running = False
+            w.close()
         if s == 114: # "r"
             client.force_resync()
 
@@ -127,6 +143,7 @@ def main():
     @w.event
     def on_draw():
         w.clear()
+        label.draw()
         """
         if client.ball_positions is not None:
             for x, y in client.ball_positions:
