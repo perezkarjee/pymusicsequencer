@@ -160,6 +160,7 @@ def main():
     batchChar = pyglet.graphics.Batch()
     batchClothFG = pyglet.graphics.Batch()
     batchWeapon = pyglet.graphics.Batch()
+    batchMagic = pyglet.graphics.Batch()
 
     posX = W//2
     posY = H//2
@@ -188,6 +189,7 @@ def main():
         batchChar.draw()
         batchClothFG.draw()
         batchWeapon.draw()
+        batchMagic.draw()
         """
         main_batch2.draw()
         main_batch1.draw()
