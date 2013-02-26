@@ -135,7 +135,7 @@ badd +275 TheorySequencer.py
 badd +43 asd.py
 badd +1 pysynth.py
 badd +19 exportmy.py
-badd +412 simpleAdv.py
+badd +1 simpleAdv.py
 badd +1070 simpleMud.py
 badd +8071 digdig.py
 badd +887 chunkhandler.pyx
@@ -150,14 +150,14 @@ badd +761 CitySim.py
 badd +4272 BattleTank.py
 badd +6690 io_export_ogreDotScene.py
 badd +4363 Synth.py
-badd +26 simpleMultiPlayer.py
-badd +129 simpleMultiServer.py
+badd +165 simpleMultiPlayer.py
+badd +164 simpleMultiServer.py
 badd +8 run.py
 badd +1 shared.py
 silent! argdel *
 set lines=57 columns=187
 winpos -4 -4
-edit simpleMultiServer.py
+edit simpleMultiPlayer.py
 set splitbelow splitright
 set nosplitbelow
 set nosplitright
@@ -259,12 +259,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 129 - ((27 * winheight(0) + 28) / 56)
+let s:l = 185 - ((28 * winheight(0) + 28) / 56)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-129
-normal! 0
+185
+normal! 018l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

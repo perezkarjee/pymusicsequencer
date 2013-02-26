@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 import threading
 import time
 import legume
 import pyglet
 import sys
 import shared
+import astar
 
 LOCALHOST = 'localhost'
 REMOTEHOST = 'aura.psyogenix.co.uk'
@@ -88,6 +90,17 @@ class BallClient(object):
 
 W = 1000
 H = 700
+
+def centerimg(image):
+    """Sets an image's anchor point to its center"""
+    image.anchor_x = image.width/2
+    image.anchor_y = image.height/2
+    return image
+
+def SubImg(img, x,y,w,h):
+    newimg = centerimg(img.get_region(x,img.height-y-h,w,h))
+    return newimg
+
 def main():
     if "--remote" in sys.argv:
         host = REMOTEHOST
@@ -98,8 +111,6 @@ def main():
     client = BallClient()
     client.connect(host)
 
-    #ball_image = pyglet.image.load('ball.png')
-    #ball_sprite = pyglet.sprite.Sprite(ball_image)
 
     w = pyglet.window.Window(vsync=VSYNC)
     w.set_maximum_size(W, H)
@@ -140,10 +151,47 @@ def main():
     def on_close():
         client.running = False
 
+
+    playerImg = pyglet.image.load(r'tiles\player.png')
+    #bImg = pyglet.image.load(r'tiles\title_denzi_dragon.png')
+    batchMap = pyglet.graphics.Batch()
+    batchItem = pyglet.graphics.Batch()
+    batchClothBG = pyglet.graphics.Batch()
+    batchChar = pyglet.graphics.Batch()
+    batchClothFG = pyglet.graphics.Batch()
+    batchWeapon = pyglet.graphics.Batch()
+
+    posX = W//2
+    posY = H//2
+    humanImg = SubImg(playerImg,282,875,22,30)
+    humanSpr = pyglet.sprite.Sprite(img=humanImg, x=posX, y=posY, batch=batchChar)
+    cloakImg = SubImg(playerImg,287,906,20,25)
+    cloakSpr = pyglet.sprite.Sprite(img=cloakImg, x=posX, y=posY-3, batch=batchClothBG)
+    robeImg = SubImg(playerImg,320,935,16,21)
+    robeSpr = pyglet.sprite.Sprite(img=robeImg, x=posX, y=posY-3, batch=batchClothFG)
+    staffImg = SubImg(playerImg,169,985,6,29)
+    staffSpr = pyglet.sprite.Sprite(img=staffImg, x=posX-9, y=posY+2, batch=batchWeapon)
+    """
+    main_batch1 = pyglet.graphics.Batch()
+    main_batch2 = pyglet.graphics.Batch()
+    sprite1 = pyglet.sprite.Sprite(img=aImg, x=0, y=0, batch=main_batch1)
+    sprite2 = pyglet.sprite.Sprite(img=bImg, x=30, y=30, batch=main_batch2)
+    """
+
     @w.event
     def on_draw():
         w.clear()
         label.draw()
+        batchMap.draw()
+        batchItem.draw()
+        batchClothBG.draw()
+        batchChar.draw()
+        batchClothFG.draw()
+        batchWeapon.draw()
+        """
+        main_batch2.draw()
+        main_batch1.draw()
+        """
         """
         if client.ball_positions is not None:
             for x, y in client.ball_positions:
@@ -169,3 +217,10 @@ if __name__ == '__main__':
     import logging
     logging.basicConfig(filename='client.log', level=logging.DEBUG)
     main()
+
+
+"""
+그래픽이 노가다가 쩔 것 같다.
+던크 타일이 좋긴 좋은데 32x32로 딱 나뉜 게 아니다. 수동으로 나중에 다 해줘야 함.
+하나씩 하나씩 필요한 거 골라서 하면 된다.
+"""
