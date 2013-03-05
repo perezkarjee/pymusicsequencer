@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from subprocess import Popen
 
 client = Popen(["python", "simpleMultiServer.py"])

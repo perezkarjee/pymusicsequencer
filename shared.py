@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 import legume
 import astar
+import random
+import time
 class TestPos(legume.messages.BaseMessage):
     MessageTypeID = legume.messages.BASE_MESSAGETYPEID_USER+1
     MessageValues = {
@@ -15,7 +18,7 @@ legume.messages.message_factory.add(TestPos)
 
 class MapGen(object):
     def __init__(self, w, h):
-        self.map = [0 for i in (w*h)]
+        self.map = [0 for i in range(w*h)]
         self.w = w
         self.h = h
 
@@ -26,9 +29,36 @@ class MapGen(object):
         완성된 길목들의 주변에 벽을 쌓음
         끝
         """
-        pass
+        rooms = []
+        for i in range(4):
+            x = random.randint(2,self.w-34)
+            y = random.randint(2,self.h-34)
+            w = random.randint(4,32)
+            h = random.randint(4,32)
+            rooms += [(x,y,w,h)]
+            self.FillOneRoom(x,y,w,h)
 
+        for room in rooms[1:]:
+            x = room[0]-1
+            y = random.randint(room[1], room[1]+room[3])
+            x2 = rooms[0][0]-1
+            y2 = random.randint(rooms[0][1], rooms[0][1]+rooms[0][3])
+            self.FillRoad((x,y),(x2,y2))
+
+
+    def FillRoad(self, startPos, endPos):
+        prevTime = time.clock()
+        def TimeFunc():
+            curTime = time.clock()
+            return (curTime-prevTime)*1000
+        finder = astar.AStarFinder(self.map, self.w, self.h, startPos[0], startPos[1], endPos[0], endPos[1], TimeFunc)
+        found = finder.Find()
+        for coord in found:
+            self.map[coord[1]*self.w + coord[0]] = 1
     def FillOneRoom(self, x,y,w,h):
         for yy in range(h):
             for xx in range(w):
-                self.map[(yy+y)*self.h+(x+xx)] = 1
+                self.map[(yy+y)*self.w+(x+xx)] = 1
+
+map = MapGen(256,256)
+map.Gen()

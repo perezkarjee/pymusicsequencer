@@ -150,6 +150,9 @@ def main():
     @w.event
     def on_close():
         client.running = False
+    
+    map = shared.MapGen(256,256)
+    map.Gen()
 
 
     playerImg = pyglet.image.load(r'tiles\player.png')

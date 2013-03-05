@@ -151,10 +151,11 @@ badd +761 CitySim.py
 badd +4272 BattleTank.py
 badd +6690 io_export_ogreDotScene.py
 badd +4363 Synth.py
-badd +192 simpleMultiPlayer.py
-badd +164 simpleMultiServer.py
-badd +8 run.py
-badd +1 shared.py
+badd +155 simpleMultiPlayer.py
+badd +1 simpleMultiServer.py
+badd +1 run.py
+badd +51 shared.py
+badd +145 astar.py
 silent! argdel *
 set lines=57 columns=187
 winpos -4 -4
@@ -207,7 +208,7 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
+setlocal iminsert=0
 setlocal imsearch=0
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
@@ -260,12 +261,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 27 - ((26 * winheight(0) + 28) / 56)
+let s:l = 42 - ((40 * winheight(0) + 28) / 56)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-27
-normal! 08l
+42
+normal! 036l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
