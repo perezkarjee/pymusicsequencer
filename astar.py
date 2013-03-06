@@ -142,7 +142,7 @@ class AStarFinder:
 
     map[y*mapHeight + x]
     """
-    def __init__(self, theMap, mapWidth, mapHeight, startX, startY, targetX, targetY, timeFunc=None, timeOut = 100, returnNearest=True):
+    def __init__(self, theMap, mapWidth, mapHeight, startX, startY, targetX, targetY, timeFunc=None, timeOut = 10, returnNearest=True):
         self.theMap = theMap
         self.w = mapWidth
         self.h = mapHeight
@@ -152,7 +152,7 @@ class AStarFinder:
         self.closedList = [] # put nodes here
 
         self.costGHorizontal = 10
-        self.costGDiagonal = 21#10+10+1. better to move 2 horizontal than one diagonel. to encourage diagonal movement use 14
+        self.costGDiagonal = 14#21#10+10+1. better to move 2 horizontal than one diagonel. to encourage diagonal movement use 14
 
 
         self.timeFunc = timeFunc
