@@ -15,6 +15,24 @@ legume.messages.message_factory.add(TestPos)
 
 
 
+def InRect(x,y,w,h, x2, y2):
+    if x <= x2 < x+w and y <= y2 < y+h:
+        return True
+    else:
+        return False
+def RectRectCollide2(rect1,rect2):
+    """
+    boolean rectangle_collision(float x_1, float y_1, float width_1, float height_1, float x_2, float y_2, float width_2, float height_2)
+    {
+    return !(x_1 > x_2+width_2 || x_1+width_1 < x_2 || y_1 > y_2+height_2 || y_1+height_1 < y_2);
+    }
+    """
+
+
+    x,y,w,h = rect1
+    xx,yy,ww,hh = rect2
+
+    return not (x > xx+ww or x+w < xx or y > yy+hh or y+h < yy)
 
 class MapGen(object):
     def __init__(self, w, h):
@@ -23,7 +41,7 @@ class MapGen(object):
         self.h = h
         self.rooms = []
 
-    def Gen(self):
+    def Gen(self, numRooms, roomW=10, roomH=10, roomMinW=4, roomMinH=4):
         """
         사각형의 방을 만든 후 주변의 랜덤한 위치에 길목을 만듬
         각 방들의 길목을 모두 이음
@@ -31,17 +49,33 @@ class MapGen(object):
         끝
         """
         rooms = []
-        roomW = 20
-        roomH = 20
-        roomMinW = 8
-        roomMinH = 8
-        for i in range(8):
+        counter = 0
+        failCount = 0
+        while counter < numRooms:
             x = random.randint(2,self.w-2-roomW)
             y = random.randint(2,self.h-2-roomH)
             w = random.randint(roomMinW,roomW)
             h = random.randint(roomMinH,roomH)
-            rooms += [(x,y,w,h)]
-            self.FillOneRoom(x,y,w,h)
+            if rooms:
+                found = False
+                for room in rooms:
+                    if RectRectCollide2(room, (x,y,w,h)):
+                        found = True
+                if not found:
+                    rooms += [(x,y,w,h)]
+                    self.FillOneRoom(x,y,w,h)
+                    counter+=1
+                else:
+                    failCount += 1
+            else:
+                rooms += [(x,y,w,h)]
+                self.FillOneRoom(x,y,w,h)
+                counter+=1
+
+
+            if failCount > 10:
+                break
+
 
         for room in rooms[1:]:
             x = room[0]
@@ -50,6 +84,7 @@ class MapGen(object):
             y2 = random.randint(rooms[0][1], rooms[0][1]+rooms[0][3]-1)
             self.FillRoad((x,y),(x2,y2))
 
+        """
         conn = []
         for i in range(4):
             conn += [(random.randint(0, len(rooms)-1), random.randint(0, len(rooms)-1))]
@@ -61,6 +96,28 @@ class MapGen(object):
             x2 = rooms[roomB][0]
             y2 = random.randint(rooms[roomB][1], rooms[roomB][1]+rooms[roomB][3]-1)
             self.FillRoad((x,y),(x2,y2))
+        """
+        walls = [0 for i in range(self.w*self.h)]
+        self.walls = walls
+        for y in range(1,self.h-1):
+            for x in range(1,self.w-1):
+                if self.map[(y)*self.w + x] == 0:
+                    if self.map[(y-1)*self.w + x-1] == 1:
+                        self.walls[(y-1)*self.w + x-1] = 1
+                    if self.map[(y-1)*self.w + x] == 1:
+                        self.walls[(y-1)*self.w + x] = 1
+                    if self.map[(y-1)*self.w + x+1] == 1:
+                        self.walls[(y-1)*self.w + x+1] = 1
+                    if self.map[(y)*self.w + x-1] == 1:
+                        self.walls[(y)*self.w + x-1] = 1
+                    if self.map[(y)*self.w + x+1] == 1:
+                        self.walls[(y)*self.w + x+1] = 1
+                    if self.map[(y+1)*self.w + x-1] == 1:
+                        self.walls[(y+1)*self.w + x-1] = 1
+                    if self.map[(y+1)*self.w + x] == 1:
+                        self.walls[(y+1)*self.w + x] = 1
+                    if self.map[(y+1)*self.w + x+1] == 1:
+                        self.walls[(y+1)*self.w + x+1] = 1
 
         self.rooms = rooms
 
@@ -155,5 +212,9 @@ class MapGen(object):
             for xx in range(w):
                 self.map[(yy+y)*self.w+(x+xx)] = 0
 
-map = MapGen(256,256)
-map.Gen()
+if __name__ == "__main__":
+    map = MapGen(256,256)
+    map.Gen(8)
+
+
+

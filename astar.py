@@ -142,7 +142,7 @@ class AStarFinder:
 
     map[y*mapHeight + x]
     """
-    def __init__(self, theMap, mapWidth, mapHeight, startX, startY, targetX, targetY, timeFunc=None, timeOut = 10, returnNearest=True):
+    def __init__(self, theMap, mapWidth, mapHeight, startX, startY, targetX, targetY, timeFunc=None, timeOut = 3, returnNearest=True):
         self.theMap = theMap
         self.w = mapWidth
         self.h = mapHeight
