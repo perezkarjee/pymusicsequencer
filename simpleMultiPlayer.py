@@ -48,7 +48,7 @@ class State:
         self.lastMouseX = 0
         self.lastMouseY = 0
         self.rButtonDown = False
-        self.moveDelay = 150
+        self.moveDelay = 30
         self.moveWait = 0
         self.prevTick = time.clock()*1000
         self.tick = 0

@@ -6,4 +6,3 @@ server = Popen(["python", "simpleMultiPlayer.py"])
 
 client.wait()
 server.kill()
-

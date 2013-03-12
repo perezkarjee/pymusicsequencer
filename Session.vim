@@ -150,9 +150,9 @@ badd +761 CitySim.py
 badd +4272 BattleTank.py
 badd +6690 io_export_ogreDotScene.py
 badd +4363 Synth.py
-badd +217 simpleMultiPlayer.py
-badd +148 simpleMultiServer.py
-badd +8 run.py
+badd +51 simpleMultiPlayer.py
+badd +37 simpleMultiServer.py
+badd +7 run.py
 badd +7 shared.py
 badd +145 astar.py
 badd +253 soundPlayer.py
@@ -261,11 +261,11 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 199 - ((27 * winheight(0) + 28) / 56)
+let s:l = 51 - ((27 * winheight(0) + 28) / 56)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-199
+51
 normal! 026l
 lcd C:\drumsynth
 if exists('s:wipebuf')

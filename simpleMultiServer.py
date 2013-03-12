@@ -34,18 +34,19 @@ class ClientChannel(Channel):
         randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
         self.pX = self.x = randX
         self.pY = self.y = randY
-        self.moveD = 50
+        self.moveD = 150
         self.moveW = 0
 
     
     def Close(self):
+        print 'closed'
         self._server.DelPlayer(self)
     
     ##################################
     ### Network specific callbacks ###
     ##################################
     def IsShaked(self):
-        if self._server.players[self] == GameServer.HANDSHAKED:
+        if self._server.players[self] == GameServer.HANDSHAKED or self._server.players[self] == GameServer.AUTHED:
             return True
         return False
     def IsAuthed(self):
@@ -98,10 +99,13 @@ class GameServer(Server):
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
         self.players = WeakKeyDictionary()
+        self.done = False
         print 'Server launched'
     
     def Connected(self, channel, addr):
         self.players[channel] = self.ADDED
+        channel.dataAllowedPerSecond = 100000 # Adjust these to control how much amount of data that can be sent per second
+        channel.dataAllowedPer30Second = 1000000 # per 30 seconds. if data amount sent is not under the limit, it will disconnect the client
         channel.Send({"action": "handshake", "msg": "ITEMDIGGERS PING %s" % shared.VERSION})
 
     def DelPlayer(self, player):
@@ -132,7 +136,7 @@ class GameServer(Server):
     def Launch(self):
         clockPrev = time.clock()
         clockEnd = time.clock()
-        while True:
+        while not self.done:
             tick = (clockEnd-clockPrev)*1000
             clockPrev = time.clock()
             time.clock()
@@ -141,7 +145,7 @@ class GameServer(Server):
             for p in self.players.iterkeys():
                 p.moveW += tick
 
-            sleep(0.0001)
+            sleep(0.001)
             clockEnd = time.clock()
 
 
