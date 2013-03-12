@@ -3,9 +3,103 @@ import legume
 import astar
 import random
 import time
+import pyglet
 
 PORT = 3117
 VERSION = "0.0.1"
+
+W = 800
+H = 600
+mapW = 20
+mapH = 20
+posX = W//2
+posY = H//2
+tileW = 32
+tileH = 32
+
+class MobManager(object):
+    def __init__(self):
+        self.mobs = []
+        self.waited = 0
+        self.delay = 2000
+        self.serverMobs = []
+        self.curIdx = 0
+
+    def GenIdx(self):
+        self.curIdx += 1
+        return self.curIdx - 1
+    def AddMob(self, mob):
+        self.mobs += [mob]
+
+    def RemoveMob(self, mob):
+        del self.mobs[self.mobs.index(mob)]
+
+    def Draw(self):
+        for mob in self.mobs:
+            mob.Draw()
+
+    def GenServer(self, mob):
+        self.serverMobs += [mob]
+        return {'action': 'genmob', 'imgRect': mob.imgRect, 'imgBGRect': mob.imgBGRect, 'x': mob.x, 'y': mob.y, 'idx': mob.idx}
+
+    def Move(self, map):
+        newPoses = []
+        for mob in self.serverMobs:
+            prevTime = time.clock()
+            def TimeFunc():
+                curTime = time.clock()
+                return (curTime-prevTime)*1000
+            finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
+            found = finder.Find()
+            if found and len(found) >= 2:
+                cX, cY = found[1][0], found[1][1]
+                mob.SetPos(cX,cY)
+                newPoses += [(cX,cY,mob.idx)]
+        return newPoses
+
+
+class ServerMob(object):
+    def __init__(self, imgRect, imgBGRect, x, y, idx):
+        self.imgRect = imgRect
+        self.imgBGRect = imgBGRect
+        self.x = x
+        self.y = y
+        self.idx = idx
+    def SetPos(self, x, y):
+        self.x = x
+        self.y = y
+
+class Mob(object):
+    def __init__(self, MobMgrS, img, bgImg = None):
+        self.MobMgrS = MobMgrS
+        self.img = img
+        self.bgImg = bgImg
+        if bgImg:
+            self.sprBG = pyglet.sprite.Sprite(img=img, x=0, y=0)
+        else:
+            self.sprBG = None
+        self.spr = pyglet.sprite.Sprite(img=img, x=0, y=0)
+        self.x = 0
+        self.y = 0
+        self.MobMgrS.AddMob(self)
+        self.idx = 0
+
+    
+    def Draw(self):
+        if self.sprBG:
+            self.sprBG.draw()
+        self.spr.draw()
+    def Delete(self):
+        self.MobMgrS.RemoveMob(self)
+
+    def SetPos(self, x, y):
+        self.x = x
+        self.y = y
+        if self.sprBG:
+            self.sprBG.x = x*tileW+posX
+            self.sprBG.y = y*tileH+posY
+        self.spr.x = x*tileW+posX
+        self.spr.y = y*tileH+posY
 
 def InRect(x,y,w,h, x2, y2):
     if x <= x2 < x+w and y <= y2 < y+h:

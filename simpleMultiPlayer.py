@@ -29,8 +29,6 @@ VSYNC = True
 
 PORT = 27806
 
-W = 800
-H = 600
 
 def centerimg(image):
     """Sets an image's anchor point to its center"""
@@ -118,6 +116,11 @@ def InRect(x,y,w,h, x2, y2):
         return False
 
 con = connection
+playerImg = pyglet.image.load(r'tiles\player.png')
+floorImg = pyglet.image.load(r'tiles\floor.png')
+wallImg = pyglet.image.load(r'tiles\wall.png')
+mainImg = pyglet.image.load(r'tiles\main.png')
+
 class Client(ConnectionListener):
     def __init__(self, host, port):
         self.Connect((host, port))
@@ -140,14 +143,21 @@ class Client(ConnectionListener):
         if data["msg"] == "ITEMDIGGERS PING %s" % shared.VERSION:
             self.Send({'action': 'handshake', 'msg': "ITEMDIGGERS PONG %s" % shared.VERSION})
     def Network_map(self, data):
-        StateS.map = shared.MapGen(mapW,mapH)
+        StateS.map = shared.MapGen(shared.mapW,shared.mapH)
         StateS.map.map = data["map"]
         StateS.map.rooms = data["rooms"]
         StateS.map.walls = data["walls"]
         StateS.map.w = data["w"]
         StateS.map.h = data["h"]
         StateS.moveTo(data['x'], data['y'])
-    
+    def Network_genmob(self, data):
+        mob = shared.Mob(MobMgrS, SubImg(*((playerImg,) + data["imgRect"] + data["imgBGRect"])))
+        mob.SetPos(data["x"], data["y"])
+        mob.idx = data["idx"]
+    def Network_movemob(self, data):
+        for mob in MobMgrS.mobs:
+            if mob.idx == data["idx"]:
+                mob.SetPos(data["x"], data["y"])
     # built in stuff
     def Network_connected(self, data):
         print "You are now connected to the server"
@@ -161,12 +171,6 @@ class Client(ConnectionListener):
 
 StateS = None
 MobMgrS = None
-mapW = 20
-mapH = 20
-posX = W//2
-posY = H//2
-tileW = 32
-tileH = 32
 def main():
     global StateS, MobMgrS
 
@@ -181,9 +185,9 @@ def main():
 
 
     #w = pyglet.window.Window(vsync=VSYNC)
-    w.set_maximum_size(W, H)
-    w.set_minimum_size(W, H)
-    w.set_size(W,H)
+    w.set_maximum_size(shared.W, shared.H)
+    w.set_minimum_size(shared.W, shared.H)
+    w.set_size(shared.W,shared.H)
     w.set_location(3,29)
     w.set_caption("ItemDiggers")
 
@@ -195,6 +199,7 @@ def main():
 
     state = State()
     StateS = state
+    MobMgrS = shared.MobManager()
 
     state.client = Client(REMOTEHOST, shared.PORT)
 
@@ -246,8 +251,8 @@ def main():
         state.lastMouseX = x
         state.lastMouseY = y
 
-        clickedMobX = state.x+(x-posX+tileW/2)//tileW
-        clickedMobY = state.y+(y-posY+tileH/2)//tileH
+        clickedMobX = state.x+(x-shared.posX+shared.tileW/2)//shared.tileW
+        clickedMobY = state.y+(y-shared.posY+shared.tileH/2)//shared.tileH
         found = False
         for mob in MobMgrS.mobs:
             if mob.x == clickedMobX and mob.y == clickedMobY:
@@ -277,21 +282,23 @@ def main():
                 state.inited = True
                 # 서버 움직임 완료. 이제 서버 몹 움직임!
 
-                rat = Mob(SubImg(playerImg, 184, 74, 28, 20))
+                """
+                rat = shared.Mob(MobMgrS, SubImg(playerImg, 184, 74, 28, 20))
 
                 randRoom = state.map.rooms[random.randint(0, len(state.map.rooms)-1)]
                 randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
                 randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
                 rat.SetPos(randX,randY)
+                """
 
-                for y in range(mapH):
-                    for x in range(mapW):
+                for y in range(shared.mapH):
+                    for x in range(shared.mapW):
                         if state.map.map[y*state.map.w + x] == 0:
-                            state.floorSprs += [[pyglet.sprite.Sprite(img=floorTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
-                for y in range(mapH):
-                    for x in range(mapW):
+                            state.floorSprs += [[pyglet.sprite.Sprite(img=floorTile, x=(x-0)*shared.tileW+shared.posX, y=(y-0)*shared.tileH+shared.posY, batch=state.batchMap), x,y]]
+                for y in range(shared.mapH):
+                    for x in range(shared.mapW):
                         if state.map.walls[y*state.map.w + x] == 1:
-                            state.wallSprs += [[pyglet.sprite.Sprite(img=wallTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
+                            state.wallSprs += [[pyglet.sprite.Sprite(img=wallTile, x=(x-0)*shared.tileW+shared.posX, y=(y-0)*shared.tileH+shared.posY, batch=state.batchMap), x,y]]
 
         curTick = int(time.clock()*1000)
         tick = state.tick = curTick-state.prevTick
@@ -302,13 +309,15 @@ def main():
 
         if state.rButtonDown and ( (state.moveWait+tick) > state.moveDelay):
             state.moveWait = 0
-            state.client.MoveTo(state.x+(x-posX+tileW/2)//tileW, state.y+(y-posY+tileH/2)//tileH)
+            state.client.MoveTo(state.x+(x-shared.posX+shared.tileW/2)//shared.tileW, state.y+(y-shared.posY+shared.tileH/2)//shared.tileH)
         state.moveWait += tick
-
+        
+        """
         if MobMgrS.waited+tick > MobMgrS.delay:
             MobMgrS.waited = 0
             MobMgrS.Move()
         MobMgrS.waited += tick
+        """
         #state.send()
 
     """
@@ -327,90 +336,26 @@ def main():
 
     아 다좋은데 legume 너무 구림.
     PodSixNet이라는 환상적인 라이브러리가 있으니 이걸 쓰자.
+
+    이제 몹을 서버에서 생성/이동
     """
 
-    playerImg = pyglet.image.load(r'tiles\player.png')
-    floorImg = pyglet.image.load(r'tiles\floor.png')
-    wallImg = pyglet.image.load(r'tiles\wall.png')
-    mainImg = pyglet.image.load(r'tiles\main.png')
     state.batchMap = pyglet.graphics.Batch()
     state.batchStructure = pyglet.graphics.Batch()
 
     humanImg = SubImg(playerImg,282,875,22,30)
-    humanSpr = pyglet.sprite.Sprite(img=humanImg, x=posX, y=posY)
+    humanSpr = pyglet.sprite.Sprite(img=humanImg, x=shared.posX, y=shared.posY)
     cloakImg = SubImg(playerImg,287,906,20,25)
-    cloakSpr = pyglet.sprite.Sprite(img=cloakImg, x=posX, y=posY-3)
+    cloakSpr = pyglet.sprite.Sprite(img=cloakImg, x=shared.posX, y=shared.posY-3)
     robeImg = SubImg(playerImg,320,935,16,21)
-    robeSpr = pyglet.sprite.Sprite(img=robeImg, x=posX, y=posY-3)
+    robeSpr = pyglet.sprite.Sprite(img=robeImg, x=shared.posX, y=shared.posY-3)
     staffImg = SubImg(playerImg,169,985,6,29)
-    staffSpr = pyglet.sprite.Sprite(img=staffImg, x=posX-9, y=posY+2)
+    staffSpr = pyglet.sprite.Sprite(img=staffImg, x=shared.posX-9, y=shared.posY+2)
 
-    floorTile = SubImg(floorImg, 288, 96, tileW, tileH)
-    wallTile = SubImg(wallImg, 416, 64, tileW, tileH)
+    floorTile = SubImg(floorImg, 288, 96, shared.tileW, shared.tileH)
+    wallTile = SubImg(wallImg, 416, 64, shared.tileW, shared.tileH)
     state.floorSprs = []
     state.wallSprs = []
-
-
-
-    class MobManager(object):
-        def __init__(self):
-            self.mobs = []
-            self.waited = 0
-            self.delay = 2000
-
-        def AddMob(self, mob):
-            self.mobs += [mob]
-
-        def RemoveMob(self, mob):
-            del self.mobs[self.mobs.index(mob)]
-
-        def Draw(self):
-            for mob in self.mobs:
-                mob.Draw()
-
-        def Move(self):
-            for mob in self.mobs:
-                prevTime = time.clock()
-                def TimeFunc():
-                    curTime = time.clock()
-                    return (curTime-prevTime)*1000
-                finder = astar.AStarFinder(state.map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
-                found = finder.Find()
-                if found and len(found) >= 2:
-                    cX, cY = found[1][0], found[1][1]
-                    mob.SetPos(cX,cY)
-
-    MobMgrS = MobManager()
-
-    class Mob(object):
-        def __init__(self, img, bgImg = None):
-            self.img = img
-            self.bgImg = bgImg
-            if bgImg:
-                self.sprBG = pyglet.sprite.Sprite(img=img, x=0, y=0)
-            else:
-                self.sprBG = None
-            self.spr = pyglet.sprite.Sprite(img=img, x=0, y=0)
-            self.x = 0
-            self.y = 0
-            MobMgrS.AddMob(self)
-
-        
-        def Draw(self):
-            if self.sprBG:
-                self.sprBG.draw()
-            self.spr.draw()
-        def Delete(self):
-            MobMgrS.RemoveMob(self)
-
-        def SetPos(self, x, y):
-            self.x = x
-            self.y = y
-            if self.sprBG:
-                self.sprBG.x = x*tileW+posX
-                self.sprBG.y = y*tileH+posY
-            self.spr.x = x*tileW+posX
-            self.spr.y = y*tileH+posY
 
 
     arial = pyglet.font.load('Arial', 12, bold=True, italic=False)
@@ -428,7 +373,7 @@ def main():
         """
         # Draw Map, Structures, Mobs
         glLoadIdentity()
-        glTranslatef(-float(tileW*state.x), -float(tileH*state.y), 0.0)
+        glTranslatef(-float(shared.tileW*state.x), -float(shared.tileH*state.y), 0.0)
         state.batchMap.draw()
         state.batchStructure.draw()
         MobMgrS.Draw()
@@ -441,7 +386,7 @@ def main():
         staffSpr.draw()
 
         # Draw Magic Effect ETC.
-        glTranslatef(-float(tileW*state.x), -float(tileH*state.y), 0.0)
+        glTranslatef(-float(shared.tileW*state.x), -float(shared.tileH*state.y), 0.0)
 
         glLoadIdentity()
         label.draw()

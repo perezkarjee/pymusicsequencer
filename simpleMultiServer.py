@@ -10,8 +10,6 @@ from weakref import WeakKeyDictionary
 from PodSixNet.Server import Server
 from PodSixNet.Channel import Channel
 
-mapW = 20
-mapH = 20
 class ClientChannel(Channel):
     """
     This is the server representation of a single connected client.
@@ -20,8 +18,9 @@ class ClientChannel(Channel):
         self.account = "anonymous"
         Channel.__init__(self, *args, **kwargs)
 
-        self.map = map = shared.MapGen(mapW,mapH)
+        self.map = map = shared.MapGen(shared.mapW,shared.mapH)
         map.Gen(4, 5, 5, 3, 3)
+        self.MobMgr = shared.MobManager()
 
 
         self.x = 0
@@ -37,16 +36,20 @@ class ClientChannel(Channel):
         self.moveD = 150
         self.moveW = 0
 
+        self.mobMoveD = 2000
+        self.mobMoveW = 0
+
     
     def Close(self):
         print 'closed'
         self._server.DelPlayer(self)
-    
-    ##################################
-    ### Network specific callbacks ###
-    ##################################
-    def IsShaked(self):
-        if self._server.players[self] == GameServer.HANDSHAKED or self._server.players[self] == GameServer.AUTHED:
+    def Tick(self, tick):
+        if self.mobMoveW + tick > self.mobMoveD:
+            self.mobMoveW = 0
+            self.MoveMob()
+        self.mobMoveW += tick
+    def IsShaken(self):
+        if self._server.players[self] == GameServer.HANDSHAKEN or self._server.players[self] == GameServer.AUTHED:
             return True
         return False
     def IsAuthed(self):
@@ -54,6 +57,15 @@ class ClientChannel(Channel):
             return True
         return False
 
+    def MoveMob(self):
+        poses = self.MobMgr.Move(self.map)
+        for pos in poses:
+            x,y,idx = pos
+            self.Send({'action':'movemob', 'x':x, 'y':y, 'idx':idx})
+
+    ##################################
+    ### Network specific callbacks ###
+    ##################################
     def Network_moveto(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
             self.moveW = 0
@@ -61,7 +73,7 @@ class ClientChannel(Channel):
             def TimeFunc():
                 curTime = time.clock()
                 return (curTime-prevTime)*1000
-            finder = astar.AStarFinder(self.map.map, mapW, mapH, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
+            finder = astar.AStarFinder(self.map.map, shared.mapW, shared.mapH, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
             found = finder.Find()
 
             if found and len(found) >= 2:
@@ -74,13 +86,21 @@ class ClientChannel(Channel):
 
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
-            self._server.players[self] = GameServer.HANDSHAKED
+            self._server.players[self] = GameServer.HANDSHAKEN
             self._server.players[self] = GameServer.AUTHED
             self.Send({'action':'handshaken'})
 
     def Network_map(self, data):
         if self.IsAuthed():
             self.Send({'action':'map', 'map': self.map.map, 'walls': self.map.walls, 'w': self.map.w, 'h': self.map.h, 'rooms': self.map.rooms, 'x':self.x, 'y':self.y})
+
+            for i in range(4):
+                randRoom = self.map.rooms[random.randint(0, len(self.map.rooms)-1)]
+                randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
+                randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
+                mob = shared.ServerMob((184, 74, 28, 20), tuple(), randX, randY, self.MobMgr.GenIdx())
+                packet = self.MobMgr.GenServer(mob)
+                self.Send(packet)
 
     """
     def Network_message(self, data):
@@ -94,7 +114,7 @@ class ClientChannel(Channel):
 class GameServer(Server):
     channelClass = ClientChannel
     ADDED = 1
-    HANDSHAKED = 2
+    HANDSHAKEN = 2
     AUTHED = 3
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
@@ -108,6 +128,9 @@ class GameServer(Server):
         channel.dataAllowedPer30Second = 1000000 # per 30 seconds. if data amount sent is not under the limit, it will disconnect the client
         channel.Send({"action": "handshake", "msg": "ITEMDIGGERS PING %s" % shared.VERSION})
 
+    def Tick(self, tick):
+        for p in self.players:
+            p.Tick(tick)
     def DelPlayer(self, player):
         #print "Deleting Player" + str(player.addr)
         del self.players[player]
@@ -141,6 +164,7 @@ class GameServer(Server):
             clockPrev = time.clock()
             time.clock()
             self.Pump()
+            self.Tick(tick)
 
             for p in self.players.iterkeys():
                 p.moveW += tick
