@@ -2,18 +2,18 @@ let SessionLoad = 1
 if &cp | set nocp | endif
 let s:cpo_save=&cpo
 set cpo&vim
-imap <C-PageUp> H
-imap <C-PageDown> L$
-map! <F1> <F1>
-map! <F2> <F2>
-map! <F3> <F3>
-map! <S-F1> <S-F1>
-map! <S-F2> <S-F2>
-map! <S-F3> <S-F3>
-map! <S-F4> <S-F4>
-map! <End> <End>
-map! <Home> <Home>
 map! <F4> <F4>
+map! <Home> <Home>
+map! <End> <End>
+map! <S-F4> <S-F4>
+map! <S-F3> <S-F3>
+map! <S-F2> <S-F2>
+map! <S-F1> <S-F1>
+map! <F3> <F3>
+map! <F2> <F2>
+map! <F1> <F1>
+imap <C-PageDown> L$
+imap <C-PageUp> H
 cnoremap <C-F4> c
 inoremap <C-F4> c
 cnoremap <C-Tab> w
@@ -34,39 +34,39 @@ vnoremap  "+x
 noremap  
 noremap  u
 noremap # #
-cnoremap Â  :simalt ~
 inoremap Â  :simalt ~
+cnoremap Â  :simalt ~
 map Q gq
-vmap <silent> \x <Plug>VisualTraditional
-vmap <silent> \c <Plug>VisualTraditionalj
-nmap <silent> \x <Plug>Traditional
 nmap <silent> \c <Plug>Traditionalj
+nmap <silent> \x <Plug>Traditional
+vmap <silent> \c <Plug>VisualTraditionalj
+vmap <silent> \x <Plug>VisualTraditional
 nmap gx <Plug>NetrwBrowseX
-vmap <C-PageUp> H
-vmap <C-PageDown> L$
-nmap <C-PageUp> H
-nmap <C-PageDown> L$
-nmap <S-Insert> "+gP
-map <F1> <F1>
-map <S-F1> <S-F1>
-map <S-F2> <S-F2>
-map <S-F3> <S-F3>
-map <S-F4> <S-F4>
-map <End> <End>
-map <Home> <Home>
-map <F8> :w:!compilepyrex.py "%"
-noremap <Plug>VisualFirstLine :call EnhancedCommentify('', 'first',				    line("'<"), line("'>"))
-noremap <Plug>VisualTraditional :call EnhancedCommentify('', 'guess',				    line("'<"), line("'>"))
-noremap <Plug>VisualDeComment :call EnhancedCommentify('', 'decomment',				    line("'<"), line("'>"))
-noremap <Plug>VisualComment :call EnhancedCommentify('', 'comment',				    line("'<"), line("'>"))
-noremap <Plug>FirstLine :call EnhancedCommentify('', 'first')
-noremap <Plug>Traditional :call EnhancedCommentify('', 'guess')
-noremap <Plug>DeComment :call EnhancedCommentify('', 'decomment')
-noremap <Plug>Comment :call EnhancedCommentify('', 'comment')
-map <F4> <F4>
-map <F9> :w:!E:\python26\python "%"
-map <F3> :mks!
 map <F2> :w!
+map <F3> :mks!
+map <F9> :w:!E:\python26\python "%"
+map <F4> <F4>
+noremap <Plug>Comment :call EnhancedCommentify('', 'comment')
+noremap <Plug>DeComment :call EnhancedCommentify('', 'decomment')
+noremap <Plug>Traditional :call EnhancedCommentify('', 'guess')
+noremap <Plug>FirstLine :call EnhancedCommentify('', 'first')
+noremap <Plug>VisualComment :call EnhancedCommentify('', 'comment',				    line("'<"), line("'>"))
+noremap <Plug>VisualDeComment :call EnhancedCommentify('', 'decomment',				    line("'<"), line("'>"))
+noremap <Plug>VisualTraditional :call EnhancedCommentify('', 'guess',				    line("'<"), line("'>"))
+noremap <Plug>VisualFirstLine :call EnhancedCommentify('', 'first',				    line("'<"), line("'>"))
+map <F8> :w:!compilepyrex.py "%"
+map <Home> <Home>
+map <End> <End>
+map <S-F4> <S-F4>
+map <S-F3> <S-F3>
+map <S-F2> <S-F2>
+map <S-F1> <S-F1>
+map <F1> <F1>
+nmap <S-Insert> "+gP
+nmap <C-PageDown> L$
+nmap <C-PageUp> H
+vmap <C-PageDown> L$
+vmap <C-PageUp> H
 nnoremap <silent> <Plug>NetrwBrowseX :call netrw#NetBrowseX(expand("<cWORD>"),0)
 noremap <C-F4> c
 noremap <C-Tab> w
@@ -86,8 +86,8 @@ inoremap  
 inoremap  u
 inoremap # X<BS>#
 noremap Â  :simalt ~
-imap <silent> \x <Plug>Traditional
 imap <silent> \c <Plug>Traditionalji
+imap <silent> \x <Plug>Traditional
 let &cpo=s:cpo_save
 unlet s:cpo_save
 set autoindent
@@ -104,7 +104,6 @@ set guifont=µ¸¿òÃ¼:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set iminsert=0
 set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
@@ -151,11 +150,12 @@ badd +761 CitySim.py
 badd +4272 BattleTank.py
 badd +6690 io_export_ogreDotScene.py
 badd +4363 Synth.py
-badd +332 simpleMultiPlayer.py
-badd +1 simpleMultiServer.py
-badd +1 run.py
-badd +119 shared.py
+badd +217 simpleMultiPlayer.py
+badd +148 simpleMultiServer.py
+badd +8 run.py
+badd +7 shared.py
 badd +145 astar.py
+badd +253 soundPlayer.py
 silent! argdel *
 set lines=57 columns=187
 winpos -4 -4
@@ -261,12 +261,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 302 - ((35 * winheight(0) + 28) / 56)
+let s:l = 199 - ((27 * winheight(0) + 28) / 56)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-302
-normal! 029l
+199
+normal! 026l
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf

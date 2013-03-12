@@ -1,190 +1,158 @@
 # -*- coding: utf-8 -*-
-import legume
-"""
-import pymedia
-print pymedia
-
-def aplayer( name ): 
-  import pymedia.muxer as muxer, pymedia.audio.acodec as acodec, pymedia.audio.sound as sound 
-  import time 
-  snd= dec= None 
-
-  dm= muxer.Demuxer( str.split( name, '.' )[ -1 ].lower() ) 
-  f= open( name, 'rb' ) 
-  s= f.read( 32000 ) 
-
-  while len( s ): 
-    frames= dm.parse( s ) 
-    if frames: 
-      for fr in frames: 
-        # Assume for now only audio streams 
-        if dec== None: 
-          print dm.getInfo(), dm.streams 
-          dec= acodec.Decoder( dm.streams[ fr[ 0 ] ] ) 
-        
-        r= dec.decode( fr[ 1 ] ) 
-        if r and r.data: 
-          if snd== None: 
-            snd= sound.Output( int( r.sample_rate ), r.channels, sound.AFMT_S16_LE, 0 ) 
-          
-          data= r.data 
-          snd.play( data ) 
-    
-    s= f.read( 512 ) 
-
-  while snd.isPlaying(): 
-    time.sleep( .05 )
-#aplayer("a.mp3")
-"""
-
 import time
-import legume
 import random
 import shared
+import astar
+import sys
+from time import sleep, localtime
+from weakref import WeakKeyDictionary
 
-PORT = 27806
+from PodSixNet.Server import Server
+from PodSixNet.Channel import Channel
 
-"""
-class ServerBall(shared.Ball):
-    BALL_ID = 0
-    def __init__(self, env):
-        shared.Ball.__init__(self, env)
-        self.x = random.randint(0, shared.ZONE_WIDTH)
-        self.y = random.randint(0, shared.ZONE_HEIGHT)
-        self.vx = random.randint(-200, 200)
-        self.vy = random.randint(-200, 200)
-        self.ball_id = ServerBall.BALL_ID
-        ServerBall.BALL_ID += 1
+mapW = 20
+mapH = 20
+class ClientChannel(Channel):
+    """
+    This is the server representation of a single connected client.
+    """
+    def __init__(self, *args, **kwargs):
+        self.account = "anonymous"
+        Channel.__init__(self, *args, **kwargs)
 
-    def calculate_ahead(self):
-        nb = ServerBall(self.env)
-        nb.x = (self.x + self.vx)
-        nb.y = (self.y + self.vy)
-        nb.vx = (self.vx)
-        nb.vy = (self.vy)
-        nb.frame_number
-        return nb
+        self.map = map = shared.MapGen(mapW,mapH)
+        map.Gen(4, 5, 5, 3, 3)
 
-    def update(self):
-        self.x += self.vx
-        self.y += self.vy
-        if self.x > shared.ZONE_WIDTH or self.x < 0: self.vx = -self.vx
-        if self.y > shared.ZONE_HEIGHT or self.y < 0: self.vy = -self.vy
 
-    def get_message(self, calculate_ahead=True):
-        message = shared.BallUpdate()
-        message.ball_id.value = self.ball_id
+        self.x = 0
+        self.y = 0
+        self.pX = 0
+        self.pY = 0
 
-        if calculate_ahead:
-            nb = self.calculate_ahead()
-        else:
-            nb = self
+        randRoom = self.map.rooms[random.randint(0, len(self.map.rooms)-1)]
+        randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
+        randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
+        self.pX = self.x = randX
+        self.pY = self.y = randY
+        self.moveD = 50
+        self.moveW = 0
 
-        message.x.value = nb.x
-        message.y.value = nb.y
-        message.vx.value = nb.vx
-        message.vy.value = nb.vy
-        if calculate_ahead:
-            message.frame_number.value = nb.frame_number + 1
-        else:
-            message.frame_number.value = nb.frame_number
-        return message
+    
+    def Close(self):
+        self._server.DelPlayer(self)
+    
+    ##################################
+    ### Network specific callbacks ###
+    ##################################
+    def IsShaked(self):
+        if self._server.players[self] == GameServer.HANDSHAKED:
+            return True
+        return False
+    def IsAuthed(self):
+        if self._server.players[self] == GameServer.AUTHED:
+            return True
+        return False
 
-"""
-UPDATE_RATE = 1.0
-UPDATES_PER_SECOND = 1.0 / UPDATE_RATE
+    def Network_moveto(self, data):
+        if self.IsAuthed() and (self.moveW > self.moveD):
+            self.moveW = 0
+            prevTime = time.clock()
+            def TimeFunc():
+                curTime = time.clock()
+                return (curTime-prevTime)*1000
+            finder = astar.AStarFinder(self.map.map, mapW, mapH, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
+            found = finder.Find()
 
-class Server(object):
-    def __init__(self):
-        self._server = legume.Server()
-        self._server.OnConnectRequest += self.join_request_handler
-        self._server.OnMessage += self.message_handler
-        self._update_timer = time.time()
-        self.checkup_timer = time.time()
-        self.checkup_framecount = 0
+            if found and len(found) >= 2:
+                cX, cY = found[1][0], found[1][1]
+                self.pX = self.x
+                self.pY = self.y
+                self.x = cX
+                self.y = cY
+                self.Send({'action':'moveto', 'x': cX, 'y': cY})
 
-    def message_handler(self, sender, message):
-        #if message.MessageTypeID == shared.CreateBallCommand.MessageTypeID:
-        #    self.spawn_ball((message.x.value, message.y.value))
-        pass
+    def Network_handshake(self, data):
+        if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
+            self._server.players[self] = GameServer.HANDSHAKED
+            self._server.players[self] = GameServer.AUTHED
+            self.Send({'action':'handshaken'})
 
-    def join_request_handler(self, sender, args):
-        self.send_initial_state(sender)
+    def Network_map(self, data):
+        if self.IsAuthed():
+            self.Send({'action':'map', 'map': self.map.map, 'walls': self.map.walls, 'w': self.map.w, 'h': self.map.h, 'rooms': self.map.rooms, 'x':self.x, 'y':self.y})
 
-    def _send_update(self):
-        self.send_updates(self._server)
+    """
+    def Network_message(self, data):
+        self._server.SendToAll({"action": "message", "message": data['message'], "who": self.nickname})
+    
+    def Network_nickname(self, data):
+        self.nickname = data['nickname']
+        self._server.SendPlayers()
+    """
 
-    def go(self):
-        self._server.listen(('', PORT))
-        print('Listening on port %d' % PORT)
+class GameServer(Server):
+    channelClass = ClientChannel
+    ADDED = 1
+    HANDSHAKED = 2
+    AUTHED = 3
+    def __init__(self, *args, **kwargs):
+        Server.__init__(self, *args, **kwargs)
+        self.players = WeakKeyDictionary()
+        print 'Server launched'
+    
+    def Connected(self, channel, addr):
+        self.players[channel] = self.ADDED
+        channel.Send({"action": "handshake", "msg": "ITEMDIGGERS PING %s" % shared.VERSION})
 
-        """
-        for x in range(1):
-            self.spawn_ball()
-        """
+    def DelPlayer(self, player):
+        #print "Deleting Player" + str(player.addr)
+        del self.players[player]
 
+    """
+        self.AddPlayer(channel)
+    
+    def AddPlayer(self, player):
+        print "New Player" + str(player.addr)
+        self.players[player] = True
+        self.SendPlayers()
+        print "players", [p for p in self.players]
+    
+    def DelPlayer(self, player):
+        print "Deleting Player" + str(player.addr)
+        del self.players[player]
+        self.SendPlayers()
+    
+    def SendPlayers(self):
+        self.SendToAll({"action": "players", "players": [p.nickname for p in self.players]})
+    
+    def SendToAll(self, data):
+        [p.Send(data) for p in self.players]
+    """
+    
+    def Launch(self):
+        clockPrev = time.clock()
+        clockEnd = time.clock()
         while True:
-            """
-            # Physics stuff
-            self._update_balls()
+            tick = (clockEnd-clockPrev)*1000
+            clockPrev = time.clock()
+            time.clock()
+            self.Pump()
 
-            if time.time()-self.checkup_timer >= 3.0:
-                print('Frames:', self.frame_number - self.checkup_framecount,)
-                print('Time:', time.time() - self.checkup_timer)
-                self.checkup_timer = time.time()
-                self.checkup_framecount = self.frame_number
-            """
+            for p in self.players.iterkeys():
+                p.moveW += tick
 
-            # Network stuff
-            if time.time() > self._update_timer + UPDATE_RATE:
-                self._send_update()
-                self._update_timer = time.time()
-            self._server.update()
-            time.sleep(0.0001)
-    """
-    def spawn_ball(self, position=None):
-        if position is None:
-            new_ball = ServerBall(self)
-            self.insert_ball(new_ball)
-        else:
-            new_ball = ServerBall(self)
-            new_ball.x = position[0]
-            new_ball.y = position[1]
-            self.insert_ball(new_ball)
-        print('Spawning ball with ID %s %s' % (new_ball.ball_id, new_ball.debug()))
-    """
-
-    def send_updates(self, server):
-        """
-        for ball in self._balls.itervalues():
-            logging.debug('**** sending update for ball # %s' % ball.ball_id)
-            print('Sending update for ball # %s' % ball.ball_id)
-            server.send_reliable_message_to_all(ball.get_message())
-        """
-        msg = shared.TestPos()
-        msg.name.value = "Test"
-        msg.x.value = 0
-        msg.y.value = 0
-        server.send_reliable_message_to_all(msg)
-
-    def send_initial_state(self, endpoint):
-        """
-        for ball in self._balls.itervalues():
-            endpoint.send_message(ball.get_message(False))
-        """
-
-
+            sleep(0.0001)
+            clockEnd = time.clock()
 
 
 def main():
-    server = Server()
-    server.go()
+    s = GameServer(localaddr=("", int(shared.PORT)))
+    s.Launch()
 
 if __name__ == '__main__':
     import logging
     logging.basicConfig(filename='server.log', level=logging.DEBUG,
         filemode="w",
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
 
     main()

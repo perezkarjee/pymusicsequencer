@@ -11,103 +11,23 @@ from euclid import *
 from pyglet.gl import *
 from pyglet.window import key
 from pyglet.window import mouse
+import sys
+from time import sleep
+from sys import stdin, exit
+
+from PodSixNet.Connection import connection, ConnectionListener
+
+# This example uses Python threads to manage async input from sys.stdin.
+# This is so that I can receive input from the console whilst running the server.
+# Don't ever do this - it's slow and ugly. (I'm doing it for simplicity's sake)
+
 
 LOCALHOST = 'localhost'
-REMOTEHOST = 'aura.psyogenix.co.uk'
+REMOTEHOST = 'jinjuyu.no-ip.org'
 
 VSYNC = True
 
 PORT = 27806
-class BallClient(object):
-    def __init__(self):
-        self.running = True
-        #shared.BallEnvironment.__init__(self)
-        self._client = legume.Client()
-        self._client.OnMessage += self.message_handler
-        self.lastdelta = time.time()
-        self.lock = threading.Lock()
-        self.ball_positions = None
-        self.pX = 0
-        self.pY = 0
-        self.x = 0
-        self.y = 0
-
-    def message_handler(self, sender, args):
-        if legume.messages.message_factory.is_a(args, 'TestPos'):
-            print('Message: %d %d' % (args.x.value, args.y.value))
-        else:
-            print('Message: %s' % args)
-        """
-        if legume.messages.message_factory.is_a(args, 'BallUpdate'):
-            self.load_ball_from_message(args)
-        else:
-            print('Message: %s' % args)
-        """
-
-    def connect(self, host='localhost'):
-        self._client.connect((host, PORT))
-
-    def go(self):
-        while self.running:
-            try:
-                """
-                self._update_balls()
-                """
-                self.lock.acquire()
-                self._client.update()
-                """
-                self.lastdelta = time.time()
-                self.ball_positions = self.get_ball_positions()
-                """
-            except:
-                self.running = False
-                raise
-            finally:
-                self.lock.release()
-            time.sleep(0.0001)
-        print('Exited go')
-
-    def force_resync(self):
-        """
-        for ball in self._balls.itervalues():
-            ball.force_resync = True
-        """
-
-    def load_ball_from_message(self, message):
-        """
-        print('Got status for ball %s' % message.ball_id.value)
-        if message.ball_id.value not in self._balls:
-            print('Creating new ball')
-            new_ball = shared.Ball(self)
-            new_ball.load_from_message(message)
-            self.insert_ball(new_ball)
-        else:
-            self._balls[message.ball_id.value].load_from_message(message)
-        """
-
-        """
-    def spawn_ball(self, endpoint, position):
-        message = shared.CreateBallCommand()
-        message.x.value = position[0]
-        message.y.value = position[1]
-        endpoint.send_message(message)
-        """
-
-    def showlatency(self, dt):
-        print('latency: %3.3f    fps:%3.3f' % (
-            self._client.latency, pyglet.clock.get_fps()))
-
-    def moveTo(self, dX, dY):
-        self.pX = self.x
-        self.pY = self.y
-        self.x = dX
-        self.y = dY
-
-    def move(self, dX, dY):
-        self.pX = self.x
-        self.pY = self.y
-        self.x += dX
-        self.y += dY
 
 W = 800
 H = 600
@@ -124,6 +44,7 @@ def SubImg(img, x,y,w,h):
 
 class State:
     def __init__(self):
+        self.lock = threading.Lock()
         self.lastMouseX = 0
         self.lastMouseY = 0
         self.rButtonDown = False
@@ -131,6 +52,33 @@ class State:
         self.moveWait = 0
         self.prevTick = time.clock()*1000
         self.tick = 0
+        self.clickedMob = None
+        self.pX = 0
+        self.pY = 0
+        self.x = 0
+        self.y = 0
+        self.running = True
+        self.map = None
+
+
+    def moveTo(self, dX, dY):
+        self.pX = self.x
+        self.pY = self.y
+        self.x = dX
+        self.y = dY
+
+    def move(self, dX, dY):
+        self.pX = self.x
+        self.pY = self.y
+        self.x += dX
+        self.y += dY
+
+    def send(self):
+        self.lock.acquire()
+        #msg = shared.GetMap()
+        #msg.none.value = 0
+        #self._client.send_reliable_message(msg)
+        self.lock.release()
 
 
 class FPS:
@@ -169,6 +117,48 @@ def InRect(x,y,w,h, x2, y2):
     else:
         return False
 
+con = connection
+class Client(ConnectionListener):
+    def __init__(self, host, port):
+        self.Connect((host, port))
+    
+    def Loop(self):
+        connection.Pump()
+        self.Pump()
+    
+    def MoveTo(self, x, y):
+        con.Send({'action': 'moveto', 'x': x, 'y': y})
+    
+    #######################################
+    ### Network event/message callbacks ###
+    #######################################
+    def Network_moveto(self, data):
+        StateS.moveTo(data['x'], data['y'])
+    def Network_handshaken(self, data):
+        connection.Send({"action": "map"})
+    def Network_handshake(self, data):
+        if data["msg"] == "ITEMDIGGERS PING %s" % shared.VERSION:
+            self.Send({'action': 'handshake', 'msg': "ITEMDIGGERS PONG %s" % shared.VERSION})
+    def Network_map(self, data):
+        StateS.map = shared.MapGen(mapW,mapH)
+        StateS.map.map = data["map"]
+        StateS.map.rooms = data["rooms"]
+        StateS.map.walls = data["walls"]
+        StateS.map.w = data["w"]
+        StateS.map.h = data["h"]
+        StateS.moveTo(data['x'], data['y'])
+    
+    # built in stuff
+    def Network_connected(self, data):
+        print "You are now connected to the server"
+    
+    def Network_error(self, data):
+        print 'error:', data['error'][1]
+        connection.Close()
+    def Network_disconnected(self, data):
+        print 'Server disconnected'
+        exit()
+
 StateS = None
 MobMgrS = None
 mapW = 20
@@ -179,19 +169,11 @@ tileW = 32
 tileH = 32
 def main():
     global StateS, MobMgrS
-    if "--remote" in sys.argv:
-        host = REMOTEHOST
-    else:
-        host = LOCALHOST
-    print('Using host: %s' % host)
 
-    client = BallClient()
-    client.connect(host)
 
     try:
         # Try and create a window with multisampling (antialiasing)
-        config = Config(sample_buffers=1, samples=4,
-                        depth_size=16, double_buffer=True,)
+        config = Config(depth_size=16, double_buffer=True,)
         w = pyglet.window.Window(vsync=VSYNC,config=config) # "vsync=False" to check the framerate
     except pyglet.window.NoSuchConfigException:
         # Fall back to no multisampling for old hardware
@@ -214,33 +196,32 @@ def main():
     state = State()
     StateS = state
 
+    state.client = Client(REMOTEHOST, shared.PORT)
+
+
     @w.event
     def on_key_press(s, m):
         if s == key.W:
-            client.move(0,1)
+            state.move(0,1)
         if s == key.S:
-            client.move(0,-1)
+            state.move(0,-1)
         if s == key.A:
-            client.move(-1,0)
+            state.move(-1,0)
         if s == key.D:
-            client.move(1,0)
+            state.move(1,0)
         if s == key.ESCAPE:
-            client.running = False
+            state.running = False
             w.close()
-        if s == 114: # "r"
-            client.force_resync()
 
 
     @w.event
     def on_show():
-        client.force_resync()
+        pass
 
     @w.event
     def on_close():
-        client.running = False
+        state.running = False
     
-    map = shared.MapGen(mapW,mapH)
-    map.Gen(4, 5, 5, 3, 3)
 
     
     @w.event
@@ -264,18 +245,54 @@ def main():
     def on_mouse_press(x, y, b, m):
         state.lastMouseX = x
         state.lastMouseY = y
+
+        clickedMobX = state.x+(x-posX+tileW/2)//tileW
+        clickedMobY = state.y+(y-posY+tileH/2)//tileH
+        found = False
+        for mob in MobMgrS.mobs:
+            if mob.x == clickedMobX and mob.y == clickedMobY:
+                state.clickedMob = mob
+                found = True
+                break
+        if not found:
+            state.clickedMob = None
+
         if b == mouse.RIGHT:
             state.rButtonDown = True
-            client.lock.acquire()
-            #client.spawn_ball(client._client, (x*x_ratio, y*y_ratio))
-            client.lock.release()
+            state.lock.acquire()
+            #state.spawn_ball(state._state, (x*x_ratio, y*y_ratio))
+            state.lock.release()
         if b == mouse.MIDDLE:
-            print 'MClicked %d, %d' % (x,y)
+            pass
         if b == mouse.LEFT:
-            print 'LClicked %d, %d' % (x,y)
+            pass
 
+    state.inited = False
     def on_tick():
         # calc tick
+        state.client.Loop()
+
+        if not state.inited:
+            if state.map:
+                state.inited = True
+                # 서버 움직임 완료. 이제 서버 몹 움직임!
+
+                rat = Mob(SubImg(playerImg, 184, 74, 28, 20))
+
+                randRoom = state.map.rooms[random.randint(0, len(state.map.rooms)-1)]
+                randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
+                randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
+                rat.SetPos(randX,randY)
+
+                for y in range(mapH):
+                    for x in range(mapW):
+                        if state.map.map[y*state.map.w + x] == 0:
+                            state.floorSprs += [[pyglet.sprite.Sprite(img=floorTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
+                for y in range(mapH):
+                    for x in range(mapW):
+                        if state.map.walls[y*state.map.w + x] == 1:
+                            state.wallSprs += [[pyglet.sprite.Sprite(img=wallTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
+
         curTick = int(time.clock()*1000)
         tick = state.tick = curTick-state.prevTick
         state.prevTick = curTick
@@ -285,68 +302,61 @@ def main():
 
         if state.rButtonDown and ( (state.moveWait+tick) > state.moveDelay):
             state.moveWait = 0
-            prevTime = time.clock()
-            def TimeFunc():
-                curTime = time.clock()
-                return (curTime-prevTime)*1000
-            finder = astar.AStarFinder(map.map, mapW, mapH, client.x, client.y, client.x+(x-posX)//tileW, client.y+(y-posY)//tileH, TimeFunc, 10)
-            found = finder.Find()
-            if found and len(found) >= 2:
-                cX, cY = found[1][0], found[1][1]
-                client.moveTo(cX, cY)
+            state.client.MoveTo(state.x+(x-posX+tileW/2)//tileW, state.y+(y-posY+tileH/2)//tileH)
         state.moveWait += tick
 
         if MobMgrS.waited+tick > MobMgrS.delay:
             MobMgrS.waited = 0
             MobMgrS.Move()
         MobMgrS.waited += tick
+        #state.send()
 
     """
     이제 움직임을 서버에서 하게 한다.
+    그리고 맵에 모든 몹/프ㅜㄹ레이어의 위치를1로 넣은 후 움직일 때 마다 자신의 위치만 0으로 잡고 움직임 완료 후 1을 넣어주면 된다.
+
+    맵생성을 서버에서 함
+    클라에선 맵을 다운로드 받음
+    클라에서 이동 좌표를 주면 서버에서 길찾기로 이동
+    몹은 모두 서버에서
+    현재 클릭된 몹이 무엇인가를 서버에서 알아야함(클릭된 몹의 id를 서버로 전송)
+    클릭된 몹에 스킬을 사용함
+
+    일단 맵젠만 서버에서 해둠
+    여기서 젠하지 말고 서버에서 다운로드함 - 완료!
+
+    아 다좋은데 legume 너무 구림.
+    PodSixNet이라는 환상적인 라이브러리가 있으니 이걸 쓰자.
     """
 
     playerImg = pyglet.image.load(r'tiles\player.png')
     floorImg = pyglet.image.load(r'tiles\floor.png')
     wallImg = pyglet.image.load(r'tiles\wall.png')
-    #bImg = pyglet.image.load(r'tiles\title_denzi_dragon.png')
+    mainImg = pyglet.image.load(r'tiles\main.png')
     state.batchMap = pyglet.graphics.Batch()
     state.batchStructure = pyglet.graphics.Batch()
-    #state.batchItem = pyglet.graphics.Batch()
-    #state.batchMonsterBG = pyglet.graphics.Batch()
-    #state.batchMonster = pyglet.graphics.Batch()
-    state.batchClothBG = pyglet.graphics.Batch()
-    state.batchChar = pyglet.graphics.Batch()
-    state.batchClothFG = pyglet.graphics.Batch()
-    state.batchWeapon = pyglet.graphics.Batch()
-    #state.batchMagic = pyglet.graphics.Batch()
 
     humanImg = SubImg(playerImg,282,875,22,30)
-    humanSpr = pyglet.sprite.Sprite(img=humanImg, x=posX, y=posY, batch=state.batchChar)
+    humanSpr = pyglet.sprite.Sprite(img=humanImg, x=posX, y=posY)
     cloakImg = SubImg(playerImg,287,906,20,25)
-    cloakSpr = pyglet.sprite.Sprite(img=cloakImg, x=posX, y=posY-3, batch=state.batchClothBG)
+    cloakSpr = pyglet.sprite.Sprite(img=cloakImg, x=posX, y=posY-3)
     robeImg = SubImg(playerImg,320,935,16,21)
-    robeSpr = pyglet.sprite.Sprite(img=robeImg, x=posX, y=posY-3, batch=state.batchClothFG)
+    robeSpr = pyglet.sprite.Sprite(img=robeImg, x=posX, y=posY-3)
     staffImg = SubImg(playerImg,169,985,6,29)
-    staffSpr = pyglet.sprite.Sprite(img=staffImg, x=posX-9, y=posY+2, batch=state.batchWeapon)
-
+    staffSpr = pyglet.sprite.Sprite(img=staffImg, x=posX-9, y=posY+2)
 
     floorTile = SubImg(floorImg, 288, 96, tileW, tileH)
     wallTile = SubImg(wallImg, 416, 64, tileW, tileH)
     state.floorSprs = []
     state.wallSprs = []
 
-    randRoom = map.rooms[random.randint(0, len(map.rooms)-1)]
-    randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
-    randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
-    client.pX = client.x = randX
-    client.pY = client.y = randY
 
 
     class MobManager(object):
         def __init__(self):
             self.mobs = []
             self.waited = 0
-            self.delay = 250
+            self.delay = 2000
 
         def AddMob(self, mob):
             self.mobs += [mob]
@@ -364,13 +374,13 @@ def main():
                 def TimeFunc():
                     curTime = time.clock()
                     return (curTime-prevTime)*1000
-                finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 10)
+                finder = astar.AStarFinder(state.map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
                 found = finder.Find()
                 if found and len(found) >= 2:
                     cX, cY = found[1][0], found[1][1]
                     mob.SetPos(cX,cY)
-    MobMgrS = MobManager()
 
+    MobMgrS = MobManager()
 
     class Mob(object):
         def __init__(self, img, bgImg = None):
@@ -403,72 +413,11 @@ def main():
             self.spr.y = y*tileH+posY
 
 
-    rat = Mob(SubImg(playerImg, 184, 74, 28, 20))
-
-    randRoom = map.rooms[random.randint(0, len(map.rooms)-1)]
-    randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
-    randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
-    rat.SetPos(randX,randY)
-
-    for y in range(mapH):
-        for x in range(mapW):
-            if map.map[y*map.w + x] == 0:
-                state.floorSprs += [[pyglet.sprite.Sprite(img=floorTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
-    for y in range(mapH):
-        for x in range(mapW):
-            if map.walls[y*map.w + x] == 1:
-                state.wallSprs += [[pyglet.sprite.Sprite(img=wallTile, x=(x-0)*tileW+posX, y=(y-0)*tileH+posY, batch=state.batchMap), x,y]]
-
-    """
-    main_batch1 = pyglet.graphics.Batch()
-    main_batch2 = pyglet.graphics.Batch()
-    sprite1 = pyglet.sprite.Sprite(img=aImg, x=0, y=0, batch=main_batch1)
-    sprite2 = pyglet.sprite.Sprite(img=bImg, x=30, y=30, batch=main_batch2)
-    """
-    """
-    fps = FPS()
-        """
     arial = pyglet.font.load('Arial', 12, bold=True, italic=False)
     fps = pyglet.clock.ClockDisplay(font=arial)
     @w.event
     def on_draw():
-        """
-        fps.Start()
-        """
         on_tick()
-        """
-        if client.pX != client.x or client.pY != client.y:
-            # XXX: 모든 타일을 다 업뎃하면 느림. 해결을... 페이징을 해야한다. 음! 이미 있는 타일은 리로드 안하고 없는 타일은 로드 하고
-            # 필요없는 타일은 삭제 하고 싶지만 뱃치에서 삭제하는 게 지원 안함. 그러므로 뱃치를 다시 처음부터 만든다. 
-            client.pX = client.x
-            client.pY = client.y
-            startX = client.x-(W//2)//tileW
-            if startX < 0:
-                startX = 0
-            startY = client.y-(H//2)//tileH-1
-            if startY < 0:
-                startY = 0
-            endX = startX + (W)//tileW
-            if endX >= map.w:
-                endX = map.w
-            endY = startY + (H)//tileH+2
-            if endY >= map.h:
-                endY = map.h
-            state.batchMap = pyglet.graphics.Batch()
-            state.floorSprs = []
-            for y in range(startY, endY):
-                for x in range(startX, endX):
-                    if map.map[y*map.w + x] == 0:
-                        state.floorSprs += [[pyglet.sprite.Sprite(img=floorImg, x=(x-client.x)*tileW+posX, y=(y-client.y)*tileH+posY, batch=state.batchMap), x,y]]
-            state.batchMap = pyglet.graphics.Batch()
-            state.floorSprs = []
-            for y in range(startY, endY):
-                for x in range(startX, endX):
-                    if map.map[y*map.w + x] == 0:
-                        state.floorSprs += [[pyglet.sprite.Sprite(img=floorImg, x=(x-client.x)*tileW+posX, y=(y-client.y)*tileH+posY, batch=state.batchMap), x,y]]
-            # 이제 좀 빨라졌는데 그래도 느리네?
-            # 아이템이랑 몹 더 넣으면 더 느려질텐데...
-        """
         w.clear()
         """
         label = pyglet.text.Label('%d' % fps.GetFPS(),
@@ -479,56 +428,44 @@ def main():
         """
         # Draw Map, Structures, Mobs
         glLoadIdentity()
-        glTranslatef(-float(tileW*client.x), -float(tileH*client.y), 0.0)
+        glTranslatef(-float(tileW*state.x), -float(tileH*state.y), 0.0)
         state.batchMap.draw()
         state.batchStructure.draw()
-        #state.batchItem.draw()
         MobMgrS.Draw()
-        #state.batchMonsterBG.draw()
-        #state.batchMonster.draw()
 
         # Draw Char
         glLoadIdentity()
-        state.batchClothBG.draw()
-        state.batchChar.draw()
-        state.batchClothFG.draw()
-        state.batchWeapon.draw()
+        cloakSpr.draw()
+        humanSpr.draw()
+        robeSpr.draw()
+        staffSpr.draw()
 
         # Draw Magic Effect ETC.
-        glTranslatef(-float(tileW*client.x), -float(tileH*client.y), 0.0)
-        #state.batchMagic.draw()
+        glTranslatef(-float(tileW*state.x), -float(tileH*state.y), 0.0)
 
         glLoadIdentity()
         label.draw()
         fps.draw()
         """
-        fps.End()
-        """
-
-        """
-        main_batch2.draw()
-        main_batch1.draw()
-        """
-        """
-        if client.ball_positions is not None:
-            for x, y in client.ball_positions:
+        if state.ball_positions is not None:
+            for x, y in state.ball_positions:
                 x /= x_ratio
                 y /= y_ratio
                 ball_sprite.set_position(x, y)
                 ball_sprite.draw()
         """
 
-    #pyglet.clock.schedule_interval(client.showlatency, 0.75)
+    #pyglet.clock.schedule_interval(state.showlatency, 0.75)
 
     # keep pyglet draw running regularly.
     def b(dt): pass
     pyglet.clock.schedule(b)
 
-    net_thread = threading.Thread(target=client.go)
-    net_thread.start()
+    #net_thread = threading.Thread(target=state.go)
+    #net_thread.start()
 
     pyglet.app.run()
-    client.running = False
+    state.running = False
 
 if __name__ == '__main__':
     import logging

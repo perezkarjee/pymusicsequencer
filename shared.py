@@ -3,17 +3,9 @@ import legume
 import astar
 import random
 import time
-class TestPos(legume.messages.BaseMessage):
-    MessageTypeID = legume.messages.BASE_MESSAGETYPEID_USER+1
-    MessageValues = {
-        'name' : 'string 128',
-        'x' : 'int',
-        'y' : 'int',
-        }
 
-legume.messages.message_factory.add(TestPos)
-
-
+PORT = 3117
+VERSION = "0.0.1"
 
 def InRect(x,y,w,h, x2, y2):
     if x <= x2 < x+w and y <= y2 < y+h:
@@ -40,6 +32,7 @@ class MapGen(object):
         self.w = w
         self.h = h
         self.rooms = []
+        self.walls = []
 
     def Gen(self, numRooms, roomW=10, roomH=10, roomMinW=4, roomMinH=4):
         """
