@@ -87,7 +87,7 @@ class ClientChannel(Channel):
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
             self._server.players[self] = GameServer.HANDSHAKEN
-            self._server.players[self] = GameServer.AUTHED
+            self._server.players[self] = GameServer.AUTHED # for now
             self.Send({'action':'handshaken'})
 
     def Network_map(self, data):
