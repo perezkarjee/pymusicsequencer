@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#XXX 몹을 일정수준 이상 죽이면 슬롯머신 게이지가 차서 슬롯머신을 돌리면 오브나 레어 유닉등이 떨어진다!
 import legume
 import astar
 import random

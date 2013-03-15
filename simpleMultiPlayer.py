@@ -135,14 +135,28 @@ class Client(ConnectionListener):
     #######################################
     ### Network event/message callbacks ###
     #######################################
-    def Network_moveto(self, data):
-        StateS.moveTo(data['x'], data['y'])
-    def Network_handshaken(self, data):
-        connection.Send({"action": "map"})
-    def Network_handshake(self, data):
+    """
+    몹을 공격하면 몹을 공격중이라는 메시지만 클라에서 서버로 보낸다.
+    공격중이라는 게 True일 때 계속 공격을 서버에서 틱에서 딜레이를 주면서 공격을 하고
+    공격중이란 게 끊기면 더이상 공격을 하지 않는다.
+
+    클라 공격중->서버 공격중 = True
+
+    서버에서는 Tick()
+        if 공격중:
+            공격()
+            공격중 = False
+
+    그러므로 공격중이란 메시지도 빠르게 딜레이 30만 주고 보낸다.
+    """
+    def Network_handshake(self, data): # handshake
         if data["msg"] == "ITEMDIGGERS PING %s" % shared.VERSION:
             self.Send({'action': 'handshake', 'msg': "ITEMDIGGERS PONG %s" % shared.VERSION})
-    def Network_map(self, data):
+
+    def Network_handshaken(self, data): # hand shaken
+        connection.Send({"action": "map"})
+
+    def Network_map(self, data): # map generated
         StateS.map = shared.MapGen(shared.mapW,shared.mapH)
         StateS.map.map = data["map"]
         StateS.map.rooms = data["rooms"]
@@ -150,14 +164,19 @@ class Client(ConnectionListener):
         StateS.map.w = data["w"]
         StateS.map.h = data["h"]
         StateS.moveTo(data['x'], data['y'])
-    def Network_genmob(self, data):
+
+    def Network_genmob(self, data): # mob generated
         mob = shared.Mob(MobMgrS, SubImg(*((playerImg,) + data["imgRect"] + data["imgBGRect"])))
         mob.SetPos(data["x"], data["y"])
         mob.idx = data["idx"]
-    def Network_movemob(self, data):
+
+    def Network_movemob(self, data): # mob move to
         for mob in MobMgrS.mobs:
             if mob.idx == data["idx"]:
                 mob.SetPos(data["x"], data["y"])
+
+    def Network_moveto(self, data): # char move to
+        StateS.moveTo(data['x'], data['y'])
     # built in stuff
     def Network_connected(self, data):
         print "You are now connected to the server"
@@ -909,4 +928,15 @@ pyglet.app.run()
 
 #thats all
 
+
+
+몹을 일정수준 이상 죽이면 슬롯머신 게이지가 차서 슬롯머신을 돌리면 오브나 레어 유닉등이 떨어진다!
+아. 심지어는 이동, 몬스터잡기, 마우스 클릭하기, 마우스 움직이기 등등 유져의 모든 액티비티가 다 포인트로 전환하여 슬롯머신이나 아이템 구입을 할 수 있다ㅐ!
+
+아이템이 없고 몬스터나 포인트로 스탯 및 스킬의 능력치만 올리는 시스템. 스킬도 없고 그냥 공격의 형태만 AOE, 한발용 이렇게 2가지로 하고 직업을 오오라나 힐링 탱킹 버프 등으로 세분화.
+솔플도 가능하도록 한다. 레벨이 없고 포인트만 얻음. 위의 방식으로 포인트를 얻는다. 마우스를 너무 빠르게 움직여서 매크로 하는 걸 막기 위해 제한을 걸어두고
+몬스터 잡는 게 가장 많은 점수를 얻게 한다. 매크로를 돌리겠지만 그것도 능력임. 소스코드를 수정하겠지만 그것도 능력! 이라지만 결국엔 모두가 이렇게 할테니
+
+그냥 접속만 해두면 시간이 흘러도 점수가 오르게 한다. 아이디어는 좋은데 실용성이 없네 하지만 몬스터를 잡으면 경험치도 주지만 몬스터를 잡은 숫자로 포인트를 주는 건
+할만한 듯 하다. 뭔가 돈 대신 잡으면 무조건 주니까 힐해준 포인트나 버프 걸어주는 포인트 등등 얻어맞은 것도 포인트로
 """
