@@ -6,6 +6,7 @@ import astar
 import sys
 from time import sleep, localtime
 from weakref import WeakKeyDictionary
+import euclid
 
 from PodSixNet.Server import Server
 from PodSixNet.Channel import Channel
@@ -43,11 +44,19 @@ class ClientChannel(Channel):
     def Close(self):
         print 'closed'
         self._server.DelPlayer(self)
+    def _IsPlayerInRange(self, mob):
+        vec1 = euclid.Vector2(self.x, self.y)
+        vec2 = euclid.Vector2(mob.x, mob.y)
+        leng = abs(vec1-vec2)
+        if leng < 5:
+            return True
+        return False
     def Tick(self, tick):
-        if self.mobMoveW + tick > self.mobMoveD:
-            self.mobMoveW = 0
-            self.MoveMob()
-        self.mobMoveW += tick
+        if self.IsAuthed():
+            if self.mobMoveW + tick > self.mobMoveD:
+                self.mobMoveW = 0
+                self.DoMob()
+            self.mobMoveW += tick
     def IsShaken(self):
         if self._server.players[self] == GameServer.HANDSHAKEN or self._server.players[self] == GameServer.AUTHED:
             return True
@@ -57,8 +66,9 @@ class ClientChannel(Channel):
             return True
         return False
 
-    def MoveMob(self):
-        poses = self.MobMgr.Move(self.map)
+    def DoMob(self):
+        poses = self.MobMgr.MoveToPlayer(self.map, (self.x,self.y), self._IsPlayerInRange)
+
         for pos in poses:
             x,y,idx = pos
             self.Send({'action':'movemob', 'x':x, 'y':y, 'idx':idx})

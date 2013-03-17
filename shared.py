@@ -43,6 +43,23 @@ class MobManager(object):
         self.serverMobs += [mob]
         return {'action': 'genmob', 'imgRect': mob.imgRect, 'imgBGRect': mob.imgBGRect, 'x': mob.x, 'y': mob.y, 'idx': mob.idx}
 
+    def MoveToPlayer(self, map, playerPos, inRange):
+        newPoses = []
+        for mob in self.serverMobs:
+            prevTime = time.clock()
+            def TimeFunc():
+                curTime = time.clock()
+                return (curTime-prevTime)*1000
+            if inRange(mob):
+                finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, playerPos[0], playerPos[1], TimeFunc, 3)
+            else:
+                finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
+            found = finder.Find()
+            if found and len(found) >= 2:
+                cX, cY = found[1][0], found[1][1]
+                mob.SetPos(cX,cY)
+                newPoses += [(cX,cY,mob.idx)]
+        return newPoses
     def Move(self, map):
         newPoses = []
         for mob in self.serverMobs:
@@ -58,20 +75,25 @@ class MobManager(object):
                 newPoses += [(cX,cY,mob.idx)]
         return newPoses
 
-
-class ServerMob(object):
-    def __init__(self, imgRect, imgBGRect, x, y, idx):
-        self.imgRect = imgRect
-        self.imgBGRect = imgBGRect
+class MobBase(object):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.idx = 0
+
+class ServerMob(MobBase):
+    def __init__(self, imgRect, imgBGRect, x, y, idx):
+        MobBase.__init__(self,x,y)
         self.idx = idx
+        self.imgRect = imgRect
+        self.imgBGRect = imgBGRect
     def SetPos(self, x, y):
         self.x = x
         self.y = y
 
-class Mob(object):
+class Mob(MobBase):
     def __init__(self, MobMgrS, img, bgImg = None):
+        MobBase.__init__(self,0,0)
         self.MobMgrS = MobMgrS
         self.img = img
         self.bgImg = bgImg
@@ -80,10 +102,7 @@ class Mob(object):
         else:
             self.sprBG = None
         self.spr = pyglet.sprite.Sprite(img=img, x=0, y=0)
-        self.x = 0
-        self.y = 0
         self.MobMgrS.AddMob(self)
-        self.idx = 0
 
     
     def Draw(self):
