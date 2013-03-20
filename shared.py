@@ -45,24 +45,39 @@ class MobManager(object):
 
     def MoveToPlayer(self, map, playerPos, inRange):
         newPoses = []
+        newMap = map.map
+        newMap[mapW*playerPos[1]+playerPos[0]] = 1
         for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 1
+        for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 0
             prevTime = time.clock()
             def TimeFunc():
                 curTime = time.clock()
                 return (curTime-prevTime)*1000
             if inRange(mob):
-                finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, playerPos[0], playerPos[1], TimeFunc, 3)
+                finder = astar.AStarFinder(newMap, mapW, mapH, mob.x, mob.y, playerPos[0], playerPos[1], TimeFunc, 3)
             else:
-                finder = astar.AStarFinder(map.map, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
+                finder = astar.AStarFinder(newMap, mapW, mapH, mob.x, mob.y, mob.x+random.randint(-4,4), mob.y+random.randint(-4,4), TimeFunc, 3)
             found = finder.Find()
             if found and len(found) >= 2:
                 cX, cY = found[1][0], found[1][1]
                 mob.SetPos(cX,cY)
                 newPoses += [(cX,cY,mob.idx)]
+            newMap[mapW*mob.y+mob.x] = 1
+
+        for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 0
+        newMap[mapW*playerPos[1]+playerPos[0]] = 0
         return newPoses
     def Move(self, map):
         newPoses = []
+        newMap = map.map
+        newMap[mapW*playerPos[1]+playerPos[0]] = 1
         for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 1
+        for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 0
             prevTime = time.clock()
             def TimeFunc():
                 curTime = time.clock()
@@ -73,6 +88,11 @@ class MobManager(object):
                 cX, cY = found[1][0], found[1][1]
                 mob.SetPos(cX,cY)
                 newPoses += [(cX,cY,mob.idx)]
+            newMap[mapW*mob.y+mob.x] = 1
+
+        for mob in self.serverMobs:
+            newMap[mapW*mob.y+mob.x] = 0
+        newMap[mapW*playerPos[1]+playerPos[0]] = 0
         return newPoses
 
 class MobBase(object):

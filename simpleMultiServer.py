@@ -78,6 +78,8 @@ class ClientChannel(Channel):
     ##################################
     def Network_moveto(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
+            for mob in self.MobMgr.serverMobs:
+                self.map.map[shared.mapW*mob.y+mob.x] = 1
             self.moveW = 0
             prevTime = time.clock()
             def TimeFunc():
@@ -93,6 +95,8 @@ class ClientChannel(Channel):
                 self.x = cX
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
+            for mob in self.MobMgr.serverMobs:
+                self.map.map[shared.mapW*mob.y+mob.x] = 0
 
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:

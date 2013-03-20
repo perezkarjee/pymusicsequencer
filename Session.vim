@@ -104,7 +104,6 @@ set guifont=µ∏øÚ√º:h9:cHANGEUL
 set helplang=En
 set history=50
 set hlsearch
-set imsearch=0
 set incsearch
 set keymodel=startsel,stopsel
 set omnifunc=syntaxcomplete#Complete
@@ -150,10 +149,10 @@ badd +761 CitySim.py
 badd +4272 BattleTank.py
 badd +6690 io_export_ogreDotScene.py
 badd +4363 Synth.py
-badd +351 simpleMultiPlayer.py
-badd +49 simpleMultiServer.py
+badd +350 simpleMultiPlayer.py
+badd +99 simpleMultiServer.py
 badd +8 run.py
-badd +53 shared.py
+badd +319 shared.py
 badd +145 astar.py
 badd +253 soundPlayer.py
 silent! argdel *
@@ -208,8 +207,8 @@ setlocal formatexpr=
 setlocal formatoptions=tcroq
 setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
 setlocal grepprg=
-setlocal iminsert=2
-setlocal imsearch=0
+setlocal iminsert=0
+setlocal imsearch=2
 setlocal include=s*\\(from\\|import\\)
 setlocal includeexpr=substitute(v:fname,'\\.','/','g')
 setlocal indentexpr=GetPythonIndent(v:lnum)
