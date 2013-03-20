@@ -48,6 +48,8 @@ class State:
         self.rButtonDown = False
         self.moveDelay = 30
         self.moveWait = 0
+        self.mobClickDelay = 30
+        self.mobClickWait = 0
         self.prevTick = time.clock()*1000
         self.tick = 0
         self.clickedMob = None
@@ -131,6 +133,8 @@ class Client(ConnectionListener):
     
     def MoveTo(self, x, y):
         con.Send({'action': 'moveto', 'x': x, 'y': y})
+    def MobClicked(self, idx):
+        con.Send({'action': 'mobclick', 'idx': idx})
     
     #######################################
     ### Network event/message callbacks ###
@@ -260,6 +264,7 @@ def main():
 
     @w.event
     def on_mouse_release(x, y, b, m):
+        state.clickedMob = None
         state.lastMouseX = x
         state.lastMouseY = y
         if b == mouse.RIGHT:
@@ -326,6 +331,10 @@ def main():
         # mouse pos
         x, y = state.lastMouseX, state.lastMouseY
 
+        if state.clickedMob and ( (state.mobClickWait+tick) > state.mobClickDelay):
+            state.client.MobClicked(state.clickedMob.idx)
+        state.mobClickWait += tick
+
         if state.rButtonDown and ( (state.moveWait+tick) > state.moveDelay):
             state.moveWait = 0
             state.client.MoveTo(state.x+(x-shared.posX+shared.tileW/2)//shared.tileW, state.y+(y-shared.posY+shared.tileH/2)//shared.tileH)
@@ -347,11 +356,11 @@ def main():
     현재 클릭된 몹이 무엇인가를 서버에서 알아야함(클릭된 몹의 id를 서버로 전송)
     클릭된 몹에 스킬을 사용함
 
-    일단 맵젠만 서버에서 해둠
+    일단 맵젠만 서버에서 해둠 - 완료
     여기서 젠하지 말고 서버에서 다운로드함 - 완료!
     이제 몹을 서버에서 생성/이동 - 완료!
 
-    이제 몹이 이동할 때 겹쳐지지 않게 맵에 1을 넣기!
+    이제 몹이 이동할 때 겹쳐지지 않게 맵에 1을 넣기! - 완료
     """
 
     state.batchMap = pyglet.graphics.Batch()

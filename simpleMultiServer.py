@@ -97,7 +97,14 @@ class ClientChannel(Channel):
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             for mob in self.MobMgr.serverMobs:
                 self.map.map[shared.mapW*mob.y+mob.x] = 0
-
+    def Network_mobclick(self, data):
+        idx = data['idx']
+        foundMob = None
+        for mob in self.MobMgr.serverMobs:
+            if mob.idx == idx:
+                foundMob = mob
+        if foundMob:
+            print mob
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
             self._server.players[self] = GameServer.HANDSHAKEN
