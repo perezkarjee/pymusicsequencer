@@ -11,8 +11,8 @@ VERSION = "0.0.1"
 
 W = 800
 H = 600
-mapW = 20
-mapH = 20
+mapW = 30
+mapH = 30
 posX = W//2
 posY = H//2
 tileW = 32
@@ -101,6 +101,7 @@ class MobBase(object):
         self.y = y
         self.idx = 0
 
+
 class ServerMob(MobBase):
     def __init__(self, imgRect, imgBGRect, x, y, idx):
         MobBase.__init__(self,x,y)
@@ -110,6 +111,8 @@ class ServerMob(MobBase):
     def SetPos(self, x, y):
         self.x = x
         self.y = y
+    def AttackTarget(self, target, skill):
+        pass
 
 class Mob(MobBase):
     def __init__(self, MobMgrS, img, bgImg = None):
@@ -141,6 +144,26 @@ class Mob(MobBase):
         self.spr.x = x*tileW+posX
         self.spr.y = y*tileH+posY
 
+class Skill(object):
+    def __init__(self, name):
+        self.name = name
+        self.idx = 0
+
+class PlayerBase(object):
+    def __init__(self, name):
+        self.name = name
+
+class ServerPlayer(PlayerBase):
+    def __init__(self, name):
+        PlayerBase.__init__(self, name)
+
+    def AttackMob(self, mob, skill):
+        pass
+
+class Player(object):
+    def __init__(self, name):
+        PlayerBase.__init__(self, name)
+
 def InRect(x,y,w,h, x2, y2):
     if x <= x2 < x+w and y <= y2 < y+h:
         return True
@@ -168,7 +191,7 @@ class MapGen(object):
         self.rooms = []
         self.walls = []
 
-    def Gen(self, numRooms, roomW=10, roomH=10, roomMinW=4, roomMinH=4):
+    def Gen(self, numRooms, roomW=10, roomH=10, roomMinW=4, roomMinH=4, numConnection=3):
         """
         사각형의 방을 만든 후 주변의 랜덤한 위치에 길목을 만듬
         각 방들의 길목을 모두 이음
@@ -211,9 +234,8 @@ class MapGen(object):
             y2 = random.randint(rooms[0][1], rooms[0][1]+rooms[0][3]-1)
             self.FillRoad((x,y),(x2,y2))
 
-        """
         conn = []
-        for i in range(4):
+        for i in range(numConnection):
             conn += [(random.randint(0, len(rooms)-1), random.randint(0, len(rooms)-1))]
 
         for con in conn:
@@ -223,7 +245,7 @@ class MapGen(object):
             x2 = rooms[roomB][0]
             y2 = random.randint(rooms[roomB][1], rooms[roomB][1]+rooms[roomB][3]-1)
             self.FillRoad((x,y),(x2,y2))
-        """
+
         walls = [0 for i in range(self.w*self.h)]
         self.walls = walls
         for y in range(1,self.h-1):

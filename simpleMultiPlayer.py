@@ -45,7 +45,7 @@ class State:
         self.lock = threading.Lock()
         self.lastMouseX = 0
         self.lastMouseY = 0
-        self.rButtonDown = False
+        self.moveCommandOn = False
         self.moveDelay = 30
         self.moveWait = 0
         self.mobClickDelay = 30
@@ -59,6 +59,7 @@ class State:
         self.y = 0
         self.running = True
         self.map = None
+        self.usedSkill = shared.Skill("Test")
 
 
     def moveTo(self, dX, dY):
@@ -131,10 +132,12 @@ class Client(ConnectionListener):
         connection.Pump()
         self.Pump()
     
+    def UseSkill(self, x, y, idx, skillidx):
+        con.Send({'action': 'useskill', 'x': x, 'y': y, 'idx':idx, 'skillidx':skillidx})
     def MoveTo(self, x, y):
         con.Send({'action': 'moveto', 'x': x, 'y': y})
-    def MobClicked(self, idx):
-        con.Send({'action': 'mobclick', 'idx': idx})
+    def MobClicked(self, idx, button):
+        con.Send({'action': 'mobclick', 'idx': idx, 'button':button})
     
     #######################################
     ### Network event/message callbacks ###
@@ -161,12 +164,10 @@ class Client(ConnectionListener):
         connection.Send({"action": "map"})
 
     def Network_map(self, data): # map generated
-        StateS.map = shared.MapGen(shared.mapW,shared.mapH)
+        StateS.map = shared.MapGen(data['w'],data['h'])
         StateS.map.map = data["map"]
         StateS.map.rooms = data["rooms"]
         StateS.map.walls = data["walls"]
-        StateS.map.w = data["w"]
-        StateS.map.h = data["h"]
         StateS.moveTo(data['x'], data['y'])
 
     def Network_genmob(self, data): # mob generated
@@ -228,15 +229,39 @@ def main():
 
 
     @w.event
+    def on_key_release(s, m):
+        state.clickedButton = ""
+        state.clickedMob = None
+        state.moveCommandOn = False
+    @w.event
     def on_key_press(s, m):
+        if s in [key.Q, key.W, key.E, key.R, key.T]:
+            x = state.lastMouseX
+            y = state.lastMouseY
+
+            clickedMobX = state.x+(x-shared.posX+shared.tileW/2)//shared.tileW
+            clickedMobY = state.y+(y-shared.posY+shared.tileH/2)//shared.tileH
+            found = False
+            for mob in MobMgrS.mobs:
+                if mob.x == clickedMobX and mob.y == clickedMobY:
+                    state.clickedMob = mob
+                    found = True
+                    break
+            if not found:
+                state.clickedMob = None
+
+            state.moveCommandOn = True
+
+        if s == key.Q:
+            state.clickedButton = "q"
         if s == key.W:
-            state.move(0,1)
-        if s == key.S:
-            state.move(0,-1)
-        if s == key.A:
-            state.move(-1,0)
-        if s == key.D:
-            state.move(1,0)
+            state.clickedButton = "w"
+        if s == key.E:
+            state.clickedButton = "e"
+        if s == key.R:
+            state.clickedButton = "r"
+        if s == key.T:
+            state.clickedButton = "t"
         if s == key.ESCAPE:
             state.running = False
             w.close()
@@ -264,11 +289,11 @@ def main():
 
     @w.event
     def on_mouse_release(x, y, b, m):
+        state.clickedButton = ""
         state.clickedMob = None
         state.lastMouseX = x
         state.lastMouseY = y
-        if b == mouse.RIGHT:
-            state.rButtonDown = False
+        state.moveCommandOn = False
 
     @w.event
     def on_mouse_press(x, y, b, m):
@@ -287,14 +312,17 @@ def main():
             state.clickedMob = None
 
         if b == mouse.RIGHT:
-            state.rButtonDown = True
+            state.clickedButton = "rmb"
+            state.moveCommandOn = True
             state.lock.acquire()
             #state.spawn_ball(state._state, (x*x_ratio, y*y_ratio))
             state.lock.release()
         if b == mouse.MIDDLE:
-            pass
+            state.moveCommandOn = True
+            state.clickedButton = "mmb"
         if b == mouse.LEFT:
-            pass
+            state.moveCommandOn = True
+            state.clickedButton = "lmb"
 
     state.inited = False
     def on_tick():
@@ -315,12 +343,12 @@ def main():
                 rat.SetPos(randX,randY)
                 """
 
-                for y in range(shared.mapH):
-                    for x in range(shared.mapW):
+                for y in range(state.map.h):
+                    for x in range(state.map.w):
                         if state.map.map[y*state.map.w + x] == 0:
                             state.floorSprs += [[pyglet.sprite.Sprite(img=floorTile, x=(x-0)*shared.tileW+shared.posX, y=(y-0)*shared.tileH+shared.posY, batch=state.batchMap), x,y]]
-                for y in range(shared.mapH):
-                    for x in range(shared.mapW):
+                for y in range(state.map.h):
+                    for x in range(state.map.w):
                         if state.map.walls[y*state.map.w + x] == 1:
                             state.wallSprs += [[pyglet.sprite.Sprite(img=wallTile, x=(x-0)*shared.tileW+shared.posX, y=(y-0)*shared.tileH+shared.posY, batch=state.batchMap), x,y]]
 
@@ -332,12 +360,15 @@ def main():
         x, y = state.lastMouseX, state.lastMouseY
 
         if state.clickedMob and ( (state.mobClickWait+tick) > state.mobClickDelay):
-            state.client.MobClicked(state.clickedMob.idx)
+            state.client.MobClicked(state.clickedMob.idx, state.clickedButton)
         state.mobClickWait += tick
 
-        if state.rButtonDown and ( (state.moveWait+tick) > state.moveDelay):
+        if state.moveCommandOn and ( (state.moveWait+tick) > state.moveDelay):
             state.moveWait = 0
-            state.client.MoveTo(state.x+(x-shared.posX+shared.tileW/2)//shared.tileW, state.y+(y-shared.posY+shared.tileH/2)//shared.tileH)
+            if state.clickedMob:
+                state.client.UseSkill(state.clickedMob.x, state.clickedMob.y, state.clickedMob.idx, state.usedSkill.idx)
+            else:
+                state.client.MoveTo(state.x+(x-shared.posX+shared.tileW/2)//shared.tileW, state.y+(y-shared.posY+shared.tileH/2)//shared.tileH)
         state.moveWait += tick
         
         """
@@ -348,19 +379,36 @@ def main():
         """
         #state.send()
 
+    #XXX
     """
-    이제 움직임을 서버에서 하게 한다.
-    그리고 맵에 모든 몹/프ㅜㄹ레이어의 위치를1로 넣은 후 움직일 때 마다 자신의 위치만 0으로 잡고 움직임 완료 후 1을 넣어주면 된다.
-
-    몹은 모두 서버에서
-    현재 클릭된 몹이 무엇인가를 서버에서 알아야함(클릭된 몹의 id를 서버로 전송)
-    클릭된 몹에 스킬을 사용함
-
+    이제 움직임을 서버에서 하게 한다. - 완료
+    그리고 맵에 모든 몹/프ㅜㄹ레이어의 위치를1로 넣은 후 움직일 때 마다 자신의 위치만 0으로 잡고 움직임 완료 후 1을 넣어주면 된다. 완료
+    몹은 모두 서버에서 - 완료
+    현재 클릭된 몹이 무엇인가를 서버에서 알아야함(클릭된 몹의 id를 서버로 전송) - 완료
     일단 맵젠만 서버에서 해둠 - 완료
     여기서 젠하지 말고 서버에서 다운로드함 - 완료!
     이제 몹을 서버에서 생성/이동 - 완료!
-
     이제 몹이 이동할 때 겹쳐지지 않게 맵에 1을 넣기! - 완료
+
+    클릭된 몹에 스킬을 사용함
+    스킬을 만듬
+    주인공 스탯이나 스킬을 만듬
+
+    qwert나 마우스 버튼을 눌렀을 때 몹의 위치까지 움직이는데 그러지 말고 스킬 레인지 안에 들어오면 moveto를 보내도 멈추고 스킬을 쓰게 한다.
+
+    """
+    """
+    몹을 일정수준 이상 죽이면 슬롯머신 게이지가 차서 슬롯머신을 돌리면 오브나 레어 유닉등이 떨어진다!
+
+    아이템이 없고 몬스터나 포인트로 스탯 및 스킬의 능력치만 올리는 시스템. 스킬도 없고 그냥 공격의 형태만 AOE, 한발용 이렇게 2가지로 하고 직업을 오오라나 힐링 탱킹 버프 등으로 세분화.
+    솔플도 가능하도록 한다. 레벨이 없고 포인트만 얻음. 
+
+    그냥 접속만 해두면 시간이 흘러도 점수가 오르게 한다. 아이디어는 좋은데 실용성이 없네 하지만 몬스터를 잡으면 경험치도 주지만 몬스터를 잡은 숫자로 포인트를 주는 건
+    할만한 듯 하다. 힐해준 포인트나 버프 걸어주는 포인트 등등 얻어맞은 것도 포인트로
+    접속만 해둬도 시간이 흐르면서 점수 오르는 건 동접자를 올리고 싶을 때에나 쓸만한 듯 하다.
+    
+    여기서 중점은, 기존에 몹을 잡으면 경험치만 줬지만 포인트를 줌으로 인해 같은 액션으로 더 많은 걸 받아간다는 것. 뭘 해도 전보다 이익이 더 크다!
+
     """
 
     state.batchMap = pyglet.graphics.Batch()
@@ -934,13 +982,4 @@ pyglet.app.run()
 
 
 
-몹을 일정수준 이상 죽이면 슬롯머신 게이지가 차서 슬롯머신을 돌리면 오브나 레어 유닉등이 떨어진다!
-아. 심지어는 이동, 몬스터잡기, 마우스 클릭하기, 마우스 움직이기 등등 유져의 모든 액티비티가 다 포인트로 전환하여 슬롯머신이나 아이템 구입을 할 수 있다ㅐ!
-
-아이템이 없고 몬스터나 포인트로 스탯 및 스킬의 능력치만 올리는 시스템. 스킬도 없고 그냥 공격의 형태만 AOE, 한발용 이렇게 2가지로 하고 직업을 오오라나 힐링 탱킹 버프 등으로 세분화.
-솔플도 가능하도록 한다. 레벨이 없고 포인트만 얻음. 위의 방식으로 포인트를 얻는다. 마우스를 너무 빠르게 움직여서 매크로 하는 걸 막기 위해 제한을 걸어두고
-몬스터 잡는 게 가장 많은 점수를 얻게 한다. 매크로를 돌리겠지만 그것도 능력임. 소스코드를 수정하겠지만 그것도 능력! 이라지만 결국엔 모두가 이렇게 할테니
-
-그냥 접속만 해두면 시간이 흘러도 점수가 오르게 한다. 아이디어는 좋은데 실용성이 없네 하지만 몬스터를 잡으면 경험치도 주지만 몬스터를 잡은 숫자로 포인트를 주는 건
-할만한 듯 하다. 힐해준 포인트나 버프 걸어주는 포인트 등등 얻어맞은 것도 포인트로
 """

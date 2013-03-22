@@ -19,8 +19,8 @@ class ClientChannel(Channel):
         self.account = "anonymous"
         Channel.__init__(self, *args, **kwargs)
 
-        self.map = map = shared.MapGen(shared.mapW,shared.mapH)
-        map.Gen(4, 5, 5, 3, 3)
+        self.map = map = shared.MapGen(30,30)
+        map.Gen(4, 5, 5, 3, 3, 3)
         self.MobMgr = shared.MobManager()
 
 
@@ -39,6 +39,9 @@ class ClientChannel(Channel):
 
         self.mobMoveD = 2000
         self.mobMoveW = 0
+
+
+        self.pl = shared.ServerPlayer("Player")
 
     
     def Close(self):
@@ -76,16 +79,51 @@ class ClientChannel(Channel):
     ##################################
     ### Network specific callbacks ###
     ##################################
-    def Network_moveto(self, data):
+    def Network_useskill(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
             for mob in self.MobMgr.serverMobs:
-                self.map.map[shared.mapW*mob.y+mob.x] = 1
+                self.map.map[self.map.w*mob.y+mob.x] = 1
             self.moveW = 0
             prevTime = time.clock()
             def TimeFunc():
                 curTime = time.clock()
                 return (curTime-prevTime)*1000
-            finder = astar.AStarFinder(self.map.map, shared.mapW, shared.mapH, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
+            finder = astar.AStarFinder(self.map.map, self.map.w, self.map.h, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
+            found = finder.Find()
+            
+            mob = None
+            for mobb in self.MobMgr.serverMobs:
+                if mobb.idx == data['idx']:
+                    mob = mobb
+                    break
+
+            skillRange = 4
+            if mob:
+                vec1 = euclid.Vector2(self.x, self.y)
+                vec2 = euclid.Vector2(mob.x, mob.y)
+                leng = abs(vec1-vec2)
+            else:
+                leng = 0
+
+            if leng > skillRange and found and len(found) >= 2:
+                cX, cY = found[1][0], found[1][1]
+                self.pX = self.x
+                self.pY = self.y
+                self.x = cX
+                self.y = cY
+                self.Send({'action':'moveto', 'x': cX, 'y': cY})
+            for mob in self.MobMgr.serverMobs:
+                self.map.map[self.map.w*mob.y+mob.x] = 0
+    def Network_moveto(self, data):
+        if self.IsAuthed() and (self.moveW > self.moveD):
+            for mob in self.MobMgr.serverMobs:
+                self.map.map[self.map.w*mob.y+mob.x] = 1
+            self.moveW = 0
+            prevTime = time.clock()
+            def TimeFunc():
+                curTime = time.clock()
+                return (curTime-prevTime)*1000
+            finder = astar.AStarFinder(self.map.map, self.map.w, self.map.h, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
             found = finder.Find()
 
             if found and len(found) >= 2:
@@ -96,15 +134,20 @@ class ClientChannel(Channel):
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             for mob in self.MobMgr.serverMobs:
-                self.map.map[shared.mapW*mob.y+mob.x] = 0
+                self.map.map[self.map.w*mob.y+mob.x] = 0
     def Network_mobclick(self, data):
-        idx = data['idx']
-        foundMob = None
-        for mob in self.MobMgr.serverMobs:
-            if mob.idx == idx:
-                foundMob = mob
-        if foundMob:
-            print mob
+        if self.IsAuthed() and (self.moveW > self.moveD):
+            idx = data['idx']
+            print idx
+            button = data['button'] # lmb mmb rmb q w e r t
+            foundMob = None
+            for mob in self.MobMgr.serverMobs:
+                if mob.idx == idx:
+                    foundMob = mob
+                    break
+            if foundMob:
+                self.pl
+                print mob
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
             self._server.players[self] = GameServer.HANDSHAKEN
