@@ -242,9 +242,11 @@ def main():
     s.Launch()
 
 if __name__ == '__main__':
+    """
     import logging
     logging.basicConfig(filename='server.log', level=logging.DEBUG,
         filemode="w",
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    """
 
     main()

@@ -484,8 +484,8 @@ def main():
     state.running = False
 
 if __name__ == '__main__':
-    import logging
-    logging.basicConfig(filename='client.log', level=logging.DEBUG)
+    #import logging
+    #logging.basicConfig(filename='client.log', level=logging.DEBUG)
     main()
 
 
