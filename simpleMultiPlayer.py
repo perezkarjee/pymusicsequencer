@@ -132,8 +132,8 @@ class Client(ConnectionListener):
         connection.Pump()
         self.Pump()
     
-    def UseSkill(self, x, y, idx, skillidx):
-        con.Send({'action': 'useskill', 'x': x, 'y': y, 'idx':idx, 'skillidx':skillidx})
+    def UseSkill(self, idx, skillPlace):
+        con.Send({'action': 'useskill', 'idx':idx, 'skillPlace':skillPlace})
     def MoveTo(self, x, y):
         con.Send({'action': 'moveto', 'x': x, 'y': y})
     def MobClicked(self, idx, button):
@@ -142,20 +142,6 @@ class Client(ConnectionListener):
     #######################################
     ### Network event/message callbacks ###
     #######################################
-    """
-    몹을 공격하면 몹을 공격중이라는 메시지만 클라에서 서버로 보낸다.
-    공격중이라는 게 True일 때 계속 공격을 서버에서 틱에서 딜레이를 주면서 공격을 하고
-    공격중이란 게 끊기면 더이상 공격을 하지 않는다.
-
-    클라 공격중->서버 공격중 = True
-
-    서버에서는 Tick()
-        if 공격중:
-            공격()
-            공격중 = False
-
-    그러므로 공격중이란 메시지도 빠르게 딜레이 30만 주고 보낸다.
-    """
     def Network_handshake(self, data): # handshake
         if data["msg"] == "ITEMDIGGERS PING %s" % shared.VERSION:
             self.Send({'action': 'handshake', 'msg': "ITEMDIGGERS PONG %s" % shared.VERSION})
@@ -359,14 +345,14 @@ def main():
         # mouse pos
         x, y = state.lastMouseX, state.lastMouseY
 
-        if state.clickedMob and ( (state.mobClickWait+tick) > state.mobClickDelay):
-            state.client.MobClicked(state.clickedMob.idx, state.clickedButton)
-        state.mobClickWait += tick
+        #if state.clickedMob and ( (state.mobClickWait+tick) > state.mobClickDelay):
+        #    state.client.MobClicked(state.clickedMob.idx, state.clickedButton)
+        #state.mobClickWait += tick
 
         if state.moveCommandOn and ( (state.moveWait+tick) > state.moveDelay):
             state.moveWait = 0
             if state.clickedMob:
-                state.client.UseSkill(state.clickedMob.x, state.clickedMob.y, state.clickedMob.idx, state.usedSkill.idx)
+                state.client.UseSkill(state.clickedMob.idx, state.clickedButton)
             else:
                 state.client.MoveTo(state.x+(x-shared.posX+shared.tileW/2)//shared.tileW, state.y+(y-shared.posY+shared.tileH/2)//shared.tileH)
         state.moveWait += tick
@@ -408,6 +394,13 @@ def main():
     접속만 해둬도 시간이 흐르면서 점수 오르는 건 동접자를 올리고 싶을 때에나 쓸만한 듯 하다.
     
     여기서 중점은, 기존에 몹을 잡으면 경험치만 줬지만 포인트를 줌으로 인해 같은 액션으로 더 많은 걸 받아간다는 것. 뭘 해도 전보다 이익이 더 크다!
+
+
+
+    땅에다가 스킬쓰는 걸 하려면 좀 더 복잡함 그냥 AOE도 타겟온리로 하고... AOE와 원타겟 온리로 하고 오오라를 만들어서 적이 가까이 오면 오오라로 지지도록 한다.
+
+    오오라는 지속스킬이라 캐스팅이 빨라도 소용없고 AOE는 데미지가 약한 편이고 원타겟은 데미지가 세다.
+    그 외에 속성별 데미지는 없애고(귀찮음) 그냥 드퀘3처럼 평타/마법/AOE 이런식으로 한다.
 
     """
 

@@ -144,10 +144,16 @@ class Mob(MobBase):
         self.spr.x = x*tileW+posX
         self.spr.y = y*tileH+posY
 
+class SkillManager(object):
+    def __init__(self):
+        self.lmbSkill = None
+        self.mmbSkill = None
+        self.rmbSkill = None
+        self.qwert = [None for i in range(5)]
+
 class Skill(object):
     def __init__(self, name):
         self.name = name
-        self.idx = 0
 
 class PlayerBase(object):
     def __init__(self, name):

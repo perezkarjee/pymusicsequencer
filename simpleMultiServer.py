@@ -22,6 +22,7 @@ class ClientChannel(Channel):
         self.map = map = shared.MapGen(30,30)
         map.Gen(4, 5, 5, 3, 3, 3)
         self.MobMgr = shared.MobManager()
+        self.SkillMgr = shared.SkillManager()
 
 
         self.x = 0
@@ -81,29 +82,31 @@ class ClientChannel(Channel):
     ##################################
     def Network_useskill(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
+            mymob = None
+            for mobb in self.MobMgr.serverMobs:
+                if mobb.idx == data['idx']:
+                    mymob = mobb
+                    break
+
+            if not mymob: # 땅에다가 스킬쓰는 걸 하려면 좀 더 복잡함 그냥 AOE도 타겟온리로 하고... AOE와 원타겟 온리로 하고
+                return
+
             for mob in self.MobMgr.serverMobs:
                 self.map.map[self.map.w*mob.y+mob.x] = 1
+
             self.moveW = 0
             prevTime = time.clock()
             def TimeFunc():
                 curTime = time.clock()
                 return (curTime-prevTime)*1000
-            finder = astar.AStarFinder(self.map.map, self.map.w, self.map.h, self.x, self.y, data['x'], data['y'], TimeFunc, 3)
+            finder = astar.AStarFinder(self.map.map, self.map.w, self.map.h, self.x, self.y, mymob.x, mymob.y, TimeFunc, 3)
             found = finder.Find()
             
-            mob = None
-            for mobb in self.MobMgr.serverMobs:
-                if mobb.idx == data['idx']:
-                    mob = mobb
-                    break
-
+            #print data['skillPlace']
             skillRange = 4
-            if mob:
-                vec1 = euclid.Vector2(self.x, self.y)
-                vec2 = euclid.Vector2(mob.x, mob.y)
-                leng = abs(vec1-vec2)
-            else:
-                leng = 0
+            vec1 = euclid.Vector2(self.x, self.y)
+            vec2 = euclid.Vector2(mymob.x, mymob.y)
+            leng = abs(vec1-vec2)
 
             if leng > skillRange and found and len(found) >= 2:
                 cX, cY = found[1][0], found[1][1]
@@ -112,8 +115,13 @@ class ClientChannel(Channel):
                 self.x = cX
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
+            else:
+                pass
+                # use skill here with skill use delay
+                
             for mob in self.MobMgr.serverMobs:
                 self.map.map[self.map.w*mob.y+mob.x] = 0
+
     def Network_moveto(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
             for mob in self.MobMgr.serverMobs:
@@ -135,6 +143,7 @@ class ClientChannel(Channel):
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             for mob in self.MobMgr.serverMobs:
                 self.map.map[self.map.w*mob.y+mob.x] = 0
+    """
     def Network_mobclick(self, data):
         if self.IsAuthed() and (self.moveW > self.moveD):
             idx = data['idx']
@@ -148,6 +157,7 @@ class ClientChannel(Channel):
             if foundMob:
                 self.pl
                 print mob
+    """
     def Network_handshake(self, data):
         if data["msg"] == "ITEMDIGGERS PONG %s" % shared.VERSION:
             self._server.players[self] = GameServer.HANDSHAKEN
