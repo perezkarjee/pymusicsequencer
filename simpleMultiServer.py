@@ -23,6 +23,8 @@ class ClientChannel(Channel):
         map.Gen(4, 5, 5, 3, 3, 3)
         self.MobMgr = shared.MobManager()
         self.SkillMgr = shared.SkillManager()
+        self.SkillMgr.AddSkill(shared.SkillPresets["Fireball"]())
+        self.SkillMgr.lmbSkill = self.SkillMgr.originalSkills[0]
 
 
         self.x = 0
@@ -61,6 +63,8 @@ class ClientChannel(Channel):
                 self.mobMoveW = 0
                 self.DoMob()
             self.mobMoveW += tick
+
+        self.SkillMgr.Tick(tick)
     def IsShaken(self):
         if self._server.players[self] == GameServer.HANDSHAKEN or self._server.players[self] == GameServer.AUTHED:
             return True
@@ -103,7 +107,27 @@ class ClientChannel(Channel):
             found = finder.Find()
             
             #print data['skillPlace']
-            skillRange = 4
+            skillRange = 0
+            skill = None
+            if data["skillPlace"] == 'lmb' and self.SkillMgr.lmbSkill:
+                skill = self.SkillMgr.lmbSkill
+            if data["skillPlace"] == 'mmb' and self.SkillMgr.mmbSkill:
+                skill = self.SkillMgr.mmbSkill
+            if data["skillPlace"] == 'rmb' and self.SkillMgr.rmbSkill:
+                skill = self.SkillMgr.rmbSkill
+            if data["skillPlace"] == 'q' and self.SkillMgr.qwert[0]:
+                skill = self.SkillMgr.qwert[0]
+            if data["skillPlace"] == 'w' and self.SkillMgr.qwert[1]:
+                skill = self.SkillMgr.qwert[1]
+            if data["skillPlace"] == 'e' and self.SkillMgr.qwert[2]:
+                skill = self.SkillMgr.qwert[2]
+            if data["skillPlace"] == 'r' and self.SkillMgr.qwert[3]:
+                skill = self.SkillMgr.qwert[3]
+            if data["skillPlace"] == 't' and self.SkillMgr.qwert[4]:
+                skill = self.SkillMgr.qwert[4]
+
+            if skill and skill.atkType in ["aoe", "single"]:
+                skillRange = skill.range
             vec1 = euclid.Vector2(self.x, self.y)
             vec2 = euclid.Vector2(mymob.x, mymob.y)
             leng = abs(vec1-vec2)
@@ -116,7 +140,38 @@ class ClientChannel(Channel):
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             else:
-                pass
+                if data["skillPlace"] == 'lmb':
+                    if self.SkillMgr.lmbSkill and self.SkillMgr.lmbSkill.IsReady():
+                        self.SkillMgr.lmbSkill.SkillUsed()
+                        print 'lmb'
+                if data["skillPlace"] == 'mmb':
+                    if self.SkillMgr.mmbSkill and self.SkillMgr.mmbSkill.IsReady():
+                        self.SkillMgr.mmbSkill.SkillUsed()
+                        print 'mmb'
+                if data["skillPlace"] == 'rmb':
+                    if self.SkillMgr.rmbSkill and self.SkillMgr.rmbSkill.IsReady():
+                        self.SkillMgr.rmbSkill.SkillUsed()
+                        print 'rmb'
+                if data["skillPlace"] == 'q':
+                    if self.SkillMgr.qwert[0] and self.SkillMgr.qwert[0].IsReady():
+                        self.SkillMgr.qwert[0].SkillUsed()
+                        print 'q'
+                if data["skillPlace"] == 'w':
+                    if self.SkillMgr.qwert[1] and self.SkillMgr.qwert[1].IsReady():
+                        self.SkillMgr.qwert[1].SkillUsed()
+                        print 'w'
+                if data["skillPlace"] == 'e':
+                    if self.SkillMgr.qwert[2] and self.SkillMgr.qwert[2].IsReady():
+                        self.SkillMgr.qwert[2].SkillUsed()
+                        print 'e'
+                if data["skillPlace"] == 'r':
+                    if self.SkillMgr.qwert[3] and self.SkillMgr.qwert[3].IsReady():
+                        self.SkillMgr.qwert[3].SkillUsed()
+                        print 'r'
+                if data["skillPlace"] == 't':
+                    if self.SkillMgr.qwert[4] and self.SkillMgr.qwert[4].IsReady():
+                        self.SkillMgr.qwert[4].SkillUsed()
+                        print 't'
                 # use skill here with skill use delay
                 
             for mob in self.MobMgr.serverMobs:

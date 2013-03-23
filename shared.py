@@ -150,14 +150,91 @@ class SkillManager(object):
         self.mmbSkill = None
         self.rmbSkill = None
         self.qwert = [None for i in range(5)]
+        self.originalSkills = []
+
+    def AddSkill(self, skill):
+        self.originalSkills += [skill]
+
+    def Tick(self, tick):
+        for s in self.originalSkills:
+            s.Tick(tick)
 
 class Skill(object):
-    def __init__(self, name):
+    def __init__(self, name, dmgType, dmg, atkType, range, cost):
         self.name = name
+        self.dmgType = dmgType #"fire" # fire ice electric
+        self.dmg = dmg #10
+        self.dmgMultiplier = 1.8
+        self.atkType = atkType #"single" # single, aoe, aura
+        self.range = range #4
+        self.pointPerLevel = 30
+        self.pointMultiplier = 2.5
+        self.cost = cost
+        self.costMultiplier = 1.2
+        self.curPoint = 0
+        self.level = 1
+        self.wait = 0
+        self.delay = 300
+
+        self.radius = 3 # only if it's aoe
+    def Tick(self, tick):
+        self.wait += tick
+    def IsReady(self):
+        if self.wait > self.delay:
+            return True
+        return False
+    def SkillUsed(self):
+        self.wait = 0
+
+    def GetNextPoint(self, level):
+        next = self.pointPerLevel
+        for i in range(level-1):
+            next += next * self.pointMultiplier
+        return next
+
+    def AddPoint(self, point):
+        self.curPoint += point
+        leveledUp = False
+        while self.curPoint >= self.GetNextPoint(self.level):
+            self.curPoint -= self.GetNextPoint(self.level)
+            self.level += 1
+            leveledUp = True
+        return leveledUp
+
+    def GetDamage(self):
+        next = self.dmg
+        for i in range(self.level):
+            next += next * self.dmgMultiplier
+        return next
+
+    def GetManaCost(self):
+        next = self.cost
+        for i in range(self.level):
+            next += next * self.costMultiplier
+        return next
+
+
+    
+
+SkillPresets = {
+        "Fireball": lambda: Skill("Fireball", "fire", 5, "single", 5, 3),
+        "Snowball": lambda: Skill("Snowball", "ice", 5, "single", 5, 3),
+        "Lightning": lambda: Skill("Lightning", "elec", 5, "single", 5, 3),
+        "Bomb": lambda: Skill("Bomb", "fire", 5, "aoe", 5, 8),
+        "Blizzard": lambda: Skill("Blizzard", "ice", 5, "aoe", 5, 8),
+        "ThunderStorm": lambda: Skill("ThunderStorm", "elec", 5, "aoe", 5, 8),
+        "FireAura": lambda: Skill("FireAura", "fire", 5, "aura", 5, 15),
+        "IceAura": lambda: Skill("IceAura", "ice", 5, "aura", 5, 15),
+        "ElectricAura": lambda: Skill("ElectricAura", "elec", 5, "aura", 5, 15),
+        }
 
 class PlayerBase(object):
     def __init__(self, name):
         self.name = name
+        self.hp = 20
+        self.mp = 20
+        self.maxhp = 20
+        self.maxmp = 20
 
 class ServerPlayer(PlayerBase):
     def __init__(self, name):
