@@ -9,8 +9,8 @@ import pyglet
 PORT = 3117
 VERSION = "0.0.1"
 
-W = 800
-H = 600
+W = 1020
+H = 720
 mapW = 30
 mapH = 30
 posX = W//2

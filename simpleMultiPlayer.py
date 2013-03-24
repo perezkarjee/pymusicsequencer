@@ -25,7 +25,7 @@ from PodSixNet.Connection import connection, ConnectionListener
 LOCALHOST = 'localhost'
 REMOTEHOST = 'jinjuyu.no-ip.org'
 
-VSYNC = True
+VSYNC = False
 
 PORT = 27806
 
@@ -123,6 +123,73 @@ floorImg = pyglet.image.load(r'tiles\floor.png')
 wallImg = pyglet.image.load(r'tiles\wall.png')
 mainImg = pyglet.image.load(r'tiles\main.png')
 
+def DrawQuad(x,y,w,h, color):
+    glColor4ub(*color)
+    pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
+        ('v2i', (x, shared.H-y,
+                x+w, shared.H-y,
+                x+w, shared.H-(y+h),
+                x, shared.H-(y+h)))
+    )
+    
+class Button(object):
+    def __init__(self, x,y,w,h, label, callback):
+        self.rect = [x,y,w,h]
+        self.text = label
+        self.func = callback
+        self.visible = True
+        self.label = pyglet.text.Label(label,
+                            font_name='Verdana',
+                            font_size=10,
+                            x=x+w/2, y=shared.H-(y+h/2),
+                            anchor_x='center', anchor_y='center')
+
+    
+    def SetVisible(self, vis):
+        self.visible = vis
+    def OnLDown(self, x,y):
+        if not self.visible:
+            return
+
+        y = shared.H-y
+        if InRect(*(self.rect+[x,y])):
+            self.func()
+    def Render(self):
+        if not self.visible:
+            return
+        bgcolor = [[42,42,42,255]]
+        borderColor = [255,255,255,255]
+        borderSize = 1
+        x,y,w,h = self.rect
+        DrawQuad(*(self.rect+bgcolor))
+        DrawQuad(x,y,w,borderSize, borderColor)
+        DrawQuad(x,y+h-borderSize,w,borderSize, borderColor)
+        DrawQuad(x,y,borderSize,h, borderColor)
+        DrawQuad(x+w-borderSize,y,borderSize,h, borderColor)
+        self.label.draw()
+
+GUIS = None
+class GUI(object):
+    def __init__(self):
+        global GUIS
+        GUIS = self
+        self.guiGroups = {}
+    def AddGUI(self, group, gui):
+        if group not in self.guiGroups:
+            self.guiGroups[group] = []
+        self.guiGroups[group] += [gui]
+    def SetVisible(self, group, vis):
+        for gui in self.guiGroups[group]:
+            gui.SetVisible(vis)
+    def OnLDown(self, x,y):
+        for guiGroup in self.guiGroups:
+            for gui in self.guiGroups[guiGroup]:
+                if hasattr(gui, "OnLDown"):
+                    gui.OnLDown(x,y)
+    def RenderAll(self):
+        for guiGroup in self.guiGroups:
+            for gui in self.guiGroups[guiGroup]:
+                gui.Render()
 class Client(ConnectionListener):
     def __init__(self, host, port):
         self.Connect((host, port))
@@ -209,6 +276,11 @@ def main():
     state = State()
     StateS = state
     MobMgrS = shared.MobManager()
+    gui = GUI()
+
+    def Test():
+        print "test"
+    gui.AddGUI("Test", Button(0,0,100,20,"Test", Test))
 
     state.client = Client(REMOTEHOST, shared.PORT)
 
@@ -308,6 +380,7 @@ def main():
         if b == mouse.LEFT:
             state.moveCommandOn = True
             state.clickedButton = "lmb"
+            GUIS.OnLDown(x,y)
 
     state.inited = False
     def on_tick():
@@ -384,6 +457,7 @@ def main():
     주인공의 마나를 만들어서 마나가 있을 시에만 스킬이 사용되도록 한다.
     주인공의 모든 스킬/스탯(마나 체력)정보를 클라로 전송하여 클라에 표시되게 한다.
     모든 스킬/스탯의 정보가 서버에서 변경될 때마다 클라로 전송하여 표시되게 한다.
+    그러려면 일단 GUI
 
     qwert나 마우스 버튼을 눌렀을 때 몹의 위치까지 움직이는데 그러지 말고 스킬 레인지 안에 들어오면 moveto를 보내도 멈추고 스킬을 쓰게 한다. - 완료
 
@@ -459,8 +533,9 @@ def main():
         glTranslatef(-float(shared.tileW*state.x), -float(shared.tileH*state.y), 0.0)
 
         glLoadIdentity()
-        label.draw()
+        #label.draw()
         fps.draw()
+        GUIS.RenderAll()
         """
         if state.ball_positions is not None:
             for x, y in state.ball_positions:

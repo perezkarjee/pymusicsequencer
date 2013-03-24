@@ -140,6 +140,9 @@ class ClientChannel(Channel):
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             else:
+                if skill:
+                    skill.SkillUsed()
+                """
                 if data["skillPlace"] == 'lmb':
                     if self.SkillMgr.lmbSkill and self.SkillMgr.lmbSkill.IsReady():
                         self.SkillMgr.lmbSkill.SkillUsed()
@@ -172,6 +175,7 @@ class ClientChannel(Channel):
                     if self.SkillMgr.qwert[4] and self.SkillMgr.qwert[4].IsReady():
                         self.SkillMgr.qwert[4].SkillUsed()
                         print 't'
+                """
                 # use skill here with skill use delay
                 
             for mob in self.MobMgr.serverMobs:
