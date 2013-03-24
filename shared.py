@@ -235,6 +235,10 @@ class PlayerBase(object):
         self.mp = 20
         self.maxhp = 20
         self.maxmp = 20
+        self.str = 10
+        self.dex = 10
+        self.int = 10
+        self.points = 0
 
 class ServerPlayer(PlayerBase):
     def __init__(self, name):
@@ -243,7 +247,7 @@ class ServerPlayer(PlayerBase):
     def AttackMob(self, mob, skill):
         pass
 
-class Player(object):
+class Player(PlayerBase):
     def __init__(self, name):
         PlayerBase.__init__(self, name)
 

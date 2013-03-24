@@ -59,6 +59,7 @@ class State:
         self.y = 0
         self.running = True
         self.map = None
+        self.pl = shared.Player('Player')
 
 
     def moveTo(self, dX, dY):
@@ -132,17 +133,20 @@ def DrawQuad(x,y,w,h, color):
                 x, shared.H-(y+h)))
     )
     
+def DrawQuadWithBorder(x,y,w,h,bgcolor,borderColor, borderSize = 1):
+    DrawQuad(x,y,w,h,bgcolor)
+    DrawQuad(x,y,w,borderSize, borderColor)
+    DrawQuad(x,y+h-borderSize,w,borderSize, borderColor)
+    DrawQuad(x,y,borderSize,h, borderColor)
+    DrawQuad(x+w-borderSize,y,borderSize,h, borderColor)
+
 class Button(object):
     def __init__(self, x,y,w,h, label, callback):
         self.rect = [x,y,w,h]
         self.text = label
         self.func = callback
         self.visible = True
-        self.label = pyglet.text.Label(label,
-                            font_name='Verdana',
-                            font_size=10,
-                            x=x+w/2, y=shared.H-(y+h/2),
-                            anchor_x='center', anchor_y='center')
+        self.label = DrawText(x+w/2, y+h/2, label, 'center', 'center')
 
     
     def SetVisible(self, vis):
@@ -157,16 +161,67 @@ class Button(object):
     def Render(self):
         if not self.visible:
             return
-        bgcolor = [[42,42,42,255]]
-        borderColor = [255,255,255,255]
-        borderSize = 1
         x,y,w,h = self.rect
-        DrawQuad(*(self.rect+bgcolor))
-        DrawQuad(x,y,w,borderSize, borderColor)
-        DrawQuad(x,y+h-borderSize,w,borderSize, borderColor)
-        DrawQuad(x,y,borderSize,h, borderColor)
-        DrawQuad(x+w-borderSize,y,borderSize,h, borderColor)
+        DrawQuadWithBorder(x,y,w,h,[42,42,42,255],[255,255,255,255])
         self.label.draw()
+        
+def DrawText(x,y,text, xalign = 'left', yalign = 'top'):
+    label = pyglet.text.Label(text,
+                        font_name='Verdana',
+                        font_size=10,
+                        x=x, y=shared.H-(y),
+                        anchor_x=xalign, anchor_y=yalign)
+    return label
+
+StatsS = None
+class Stats(object):
+    def __init__(self):
+        global StatsS
+        StatsS = self
+        self.vis = True
+        self.lineHeight = 17
+        self.buttonHeight = 16
+        self.statsY = 100
+        self.nameY = 10
+        self.pointY = 30
+        self.strBut = Button(shared.W/2-50-80, self.statsY, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
+        self.dexBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
+        self.intBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight*2, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
+        self.rect = [0, 0, shared.W/2-50, shared.H-150]
+        self.nameText = DrawText(10,self.nameY,StateS.pl.name)
+        self.pointsText = DrawText(10,self.pointY,"Points: %d" % StateS.pl.points)
+        
+        self.strText = DrawText(10,self.statsY,"Strength: %d" % StateS.pl.str)
+        self.dexText = DrawText(10,self.statsY+self.lineHeight,"Dexterity: %d" % StateS.pl.dex)
+        self.intText = DrawText(10,self.statsY+self.lineHeight*2,"Intelligence: %d" % StateS.pl.int)
+
+    def Init(self):
+        GUIS.AddGUI('Stats', self.strBut)
+        GUIS.AddGUI('Stats', self.dexBut)
+        GUIS.AddGUI('Stats', self.intBut)
+    def OnStrLevelUp(self):
+        pass
+
+    def SetVisible(self, vis):
+        self.vis = vis
+    def Render(self):
+        if not self.vis:
+            return
+        x,y,w,h = self.rect
+        DrawQuadWithBorder(x,y,w,h,[42,42,42,255],[255,255,255,255])
+
+        self.nameText.draw()
+        self.pointsText.draw()
+
+        self.strText.draw()
+        self.dexText.draw()
+        self.intText.draw()
+        
+
+
+
+
+
 
 GUIS = None
 class GUI(object):
@@ -190,6 +245,8 @@ class GUI(object):
         for guiGroup in self.guiGroups:
             for gui in self.guiGroups[guiGroup]:
                 gui.Render()
+
+
 class Client(ConnectionListener):
     def __init__(self, host, port):
         self.Connect((host, port))
@@ -280,10 +337,19 @@ def main():
 
     def Test():
         print "test"
-    gui.AddGUI("Test", Button(0,0,100,20,"Test", Test))
+    #gui.AddGUI("Test", Button(0,0,100,20,"Test", Test))
+    stats = Stats()
+    gui.AddGUI("Stats", stats)
+    stats.Init()
+
 
     state.client = Client(REMOTEHOST, shared.PORT)
 
+    def CheckMoveOn():
+        if not StatsS.vis:
+            state.moveCommandOn = True
+        elif StatsS.vis and not InRect(*(StatsS.rect + [state.lastMouseX,state.lastMouseY])):
+            state.moveCommandOn = True
 
     @w.event
     def on_key_release(s, m):
@@ -306,8 +372,9 @@ def main():
                     break
             if not found:
                 state.clickedMob = None
+            
+            CheckMoveOn()
 
-            state.moveCommandOn = True
 
         if s == key.Q:
             state.clickedButton = "q"
@@ -370,15 +437,15 @@ def main():
 
         if b == mouse.RIGHT:
             state.clickedButton = "rmb"
-            state.moveCommandOn = True
+            CheckMoveOn()
             state.lock.acquire()
             #state.spawn_ball(state._state, (x*x_ratio, y*y_ratio))
             state.lock.release()
         if b == mouse.MIDDLE:
-            state.moveCommandOn = True
+            CheckMoveOn()
             state.clickedButton = "mmb"
         if b == mouse.LEFT:
-            state.moveCommandOn = True
+            CheckMoveOn()
             state.clickedButton = "lmb"
             GUIS.OnLDown(x,y)
 
