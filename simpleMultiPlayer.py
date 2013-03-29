@@ -201,12 +201,14 @@ class Stats(object):
         """
 
     def Init(self):
+        GUIS.AddGUI('Stats', self)
         GUIS.AddGUI('Stats', self.strBut)
         GUIS.AddGUI('Stats', self.dexBut)
         GUIS.AddGUI('Stats', self.intBut)
         GUIS.AddGUI('Stats', self.strUnBut)
         GUIS.AddGUI('Stats', self.dexUnBut)
         GUIS.AddGUI('Stats', self.intUnBut)
+        GUIS.SetVisible("Stats", False)
     def OnStrLevelUp(self):
         pass
     def OnDexLevelUp(self):
@@ -357,7 +359,6 @@ def main():
         print "test"
     #gui.AddGUI("Test", Button(0,0,100,20,"Test", Test))
     stats = Stats()
-    gui.AddGUI("Stats", stats)
     stats.Init()
 
 
@@ -404,6 +405,8 @@ def main():
             state.clickedButton = "r"
         if s == key.T:
             state.clickedButton = "t"
+        if s == key.S:
+            GUIS.SetVisible("Stats", not StatsS.vis)
         if s == key.ESCAPE:
             state.running = False
             w.close()
