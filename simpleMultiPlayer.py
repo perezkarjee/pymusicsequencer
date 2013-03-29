@@ -181,12 +181,15 @@ class Stats(object):
         self.vis = True
         self.lineHeight = 17
         self.buttonHeight = 16
-        self.statsY = 100
+        self.statsY = 50
         self.nameY = 10
         self.pointY = 30
         self.strBut = Button(shared.W/2-50-80, self.statsY, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
-        self.dexBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
-        self.intBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight*2, 70, self.buttonHeight, "Level Up", self.OnStrLevelUp())
+        self.dexBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight, 70, self.buttonHeight, "Level Up", self.OnDexLevelUp())
+        self.intBut = Button(shared.W/2-50-80, self.statsY+self.lineHeight*2, 70, self.buttonHeight, "Level Up", self.OnIntLevelUp())
+        self.strUnBut = Button(shared.W/2-50-80-80, self.statsY, 70, self.buttonHeight, "Refund", self.OnStrRefund())
+        self.dexUnBut = Button(shared.W/2-50-80-80, self.statsY+self.lineHeight, 70, self.buttonHeight, "Refund", self.OnDexRefund())
+        self.intUnBut = Button(shared.W/2-50-80-80, self.statsY+self.lineHeight*2, 70, self.buttonHeight, "Refund", self.OnIntRefund())
         self.rect = [0, 0, shared.W/2-50, shared.H-150]
         self.nameText = DrawText(10,self.nameY,StateS.pl.name)
         self.pointsText = DrawText(10,self.pointY,"Points: %d" % StateS.pl.points)
@@ -194,12 +197,27 @@ class Stats(object):
         self.strText = DrawText(10,self.statsY,"Strength: %d" % StateS.pl.str)
         self.dexText = DrawText(10,self.statsY+self.lineHeight,"Dexterity: %d" % StateS.pl.dex)
         self.intText = DrawText(10,self.statsY+self.lineHeight*2,"Intelligence: %d" % StateS.pl.int)
+        """
+        """
 
     def Init(self):
         GUIS.AddGUI('Stats', self.strBut)
         GUIS.AddGUI('Stats', self.dexBut)
         GUIS.AddGUI('Stats', self.intBut)
+        GUIS.AddGUI('Stats', self.strUnBut)
+        GUIS.AddGUI('Stats', self.dexUnBut)
+        GUIS.AddGUI('Stats', self.intUnBut)
     def OnStrLevelUp(self):
+        pass
+    def OnDexLevelUp(self):
+        pass
+    def OnIntLevelUp(self):
+        pass
+    def OnStrRefund(self):
+        pass
+    def OnDexRefund(self):
+        pass
+    def OnIntRefund(self):
         pass
 
     def SetVisible(self, vis):
