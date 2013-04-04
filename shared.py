@@ -114,6 +114,8 @@ class ServerMob(MobBase):
     def AttackTarget(self, target, skill):
         pass
 
+
+
 class Mob(MobBase):
     def __init__(self, MobMgrS, img, bgImg = None):
         MobBase.__init__(self,0,0)
@@ -227,6 +229,59 @@ SkillPresets = {
         "IceAura": lambda: Skill("IceAura", "ice", 5, "aura", 5, 15),
         "ElectricAura": lambda: Skill("ElectricAura", "elec", 5, "aura", 5, 15),
         }
+
+
+class MissileBase(object):
+    def __init__(self):
+        self.skill = None
+        self.x = 0
+        self.y = 0
+        self.idx = 0
+class ServerMissile(MissileBase):
+    def __init__(self, imgRect):
+        MissileBase.__init__(self)
+        self.imgRect = imgRect
+
+
+class Missile(MissileBase):
+    def __init__(self, Mgr, img):
+        MissileBase.__init__(self)
+        self.Mgr = Mgr
+        self.img = img
+        self.spr = pyglet.sprite.Sprite(img=img, x=0, y=0)
+        self.Mgr.Add(self)
+    
+    def Draw(self):
+        self.spr.draw()
+    def Delete(self):
+        self.Mgr.Remove(self)
+
+    def SetPos(self, x, y):
+        self.x = x
+        self.y = y
+        self.spr.x = x*tileW+posX
+        self.spr.y = y*tileH+posY
+class MissileManager(object):
+    def __init__(self):
+        self.missiles = []
+        self.serverM = []
+        self.curIdx = 0
+
+    def GenIdx(self):
+        self.curIdx += 1
+        return self.curIdx - 1
+
+    def Remove(self, m):
+        del self.missiles[self.missiles.index(m)]
+    def Add(self, m):
+        self.missiles += [m]
+    def Draw(self):
+        for m in self.missiles:
+            m.Draw()
+
+    def GenServer(self, m):
+        self.serverM += [m]
+        return {'action': 'genmissile', 'imgRect': m.imgRect, 'x': m.x, 'y': m.y, 'idx': m.idx}
 
 class PlayerBase(object):
     def __init__(self, name):

@@ -25,6 +25,7 @@ class ClientChannel(Channel):
         self.SkillMgr = shared.SkillManager()
         self.SkillMgr.AddSkill(shared.SkillPresets["Fireball"]())
         self.SkillMgr.lmbSkill = self.SkillMgr.originalSkills[0]
+        self.MissileMgr = shared.MissileManager()
 
 
         self.x = 0
@@ -142,6 +143,17 @@ class ClientChannel(Channel):
             else:
                 if skill:
                     skill.SkillUsed()
+
+                    randX = self.x
+                    randY = self.y
+                    imgRect = (643, 0, 25, 26)
+                    missile = shared.ServerMissile(imgRect)
+                    missile.x = randX
+                    missile.y = randY
+                    missile.idx = self.MobMgr.GenIdx()
+                    packet = self.MissileMgr.GenServer(missile)
+                    self.Send(packet)
+
                 """
                 if data["skillPlace"] == 'lmb':
                     if self.SkillMgr.lmbSkill and self.SkillMgr.lmbSkill.IsReady():

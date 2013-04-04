@@ -120,6 +120,7 @@ def InRect(x,y,w,h, x2, y2):
 
 con = connection
 playerImg = pyglet.image.load(r'tiles\player.png')
+guiImg = pyglet.image.load(r'tiles\gui.png')
 floorImg = pyglet.image.load(r'tiles\floor.png')
 wallImg = pyglet.image.load(r'tiles\wall.png')
 mainImg = pyglet.image.load(r'tiles\main.png')
@@ -324,8 +325,14 @@ class Client(ConnectionListener):
         StateS.map.walls = data["walls"]
         StateS.moveTo(data['x'], data['y'])
 
+    def Network_genmissile(self,data):
+        img = SubImg(*((guiImg,) + data["imgRect"]))
+        missile = shared.Missile(MissileMgrS, img)
+        missile.SetPos(data["x"], data["y"])
+        missile.idx = data["idx"]
+
     def Network_genmob(self, data): # mob generated
-        mob = shared.Mob(MobMgrS, SubImg(*((playerImg,) + data["imgRect"] + data["imgBGRect"])))
+        mob = shared.Mob(MobMgrS, SubImg(*((playerImg,) + data["imgRect"])))
         mob.SetPos(data["x"], data["y"])
         mob.idx = data["idx"]
 
@@ -349,8 +356,9 @@ class Client(ConnectionListener):
 
 StateS = None
 MobMgrS = None
+MissileMgrS = None
 def main():
-    global StateS, MobMgrS
+    global StateS, MobMgrS, MissileMgrS
 
 
     try:
@@ -378,6 +386,7 @@ def main():
     state = State()
     StateS = state
     MobMgrS = shared.MobManager()
+    MissileMgrS = shared.MissileManager()
     gui = GUI()
 
     def Test():
@@ -636,6 +645,7 @@ def main():
         state.batchMap.draw()
         state.batchStructure.draw()
         MobMgrS.Draw()
+        MissileMgrS.Draw()
 
         # Draw Char
         glLoadIdentity()
@@ -658,7 +668,7 @@ def main():
                 ball_sprite.set_position(x, y)
                 ball_sprite.draw()
         """
-        glTranslatef(0, shared.H-25, 0.0)
+        glTranslatef(0, shared.H-35, 0.0)
         fps.draw()
 
     #pyglet.clock.schedule_interval(state.showlatency, 0.75)
