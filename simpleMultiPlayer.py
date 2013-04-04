@@ -173,6 +173,31 @@ def DrawText(x,y,text, xalign = 'left', yalign = 'top'):
                         anchor_x=xalign, anchor_y=yalign)
     return label
 
+
+BBarS = None
+class BottomBar(object):
+    def __init__(self):
+        global BBarS
+        BBarS = self
+        self.vis = True
+        self.rect = 0, shared.H-100, shared.W, 100
+        self.hpY = shared.H-100+5
+        self.hpText = DrawText(5,self.hpY,"HP: %d/%d" % (100,100))
+        self.mpText = DrawText(5,self.hpY+15,"MP: %d/%d" % (100,100))
+
+    def Init(self):
+        GUIS.AddGUI('BBar', self)
+
+    def Render(self):
+        if not self.vis:
+            return
+        x,y,w,h = self.rect
+        DrawQuadWithBorder(x,y,w,h,[42,42,42,255],[255,255,255,255])
+        self.hpText.text = "HP: 20/20"
+        self.hpText.draw()
+        self.mpText.draw()
+
+
 StatsS = None
 class Stats(object):
     def __init__(self):
@@ -190,7 +215,7 @@ class Stats(object):
         self.strUnBut = Button(shared.W/2-50-80-80, self.statsY, 70, self.buttonHeight, "Refund", self.OnStrRefund())
         self.dexUnBut = Button(shared.W/2-50-80-80, self.statsY+self.lineHeight, 70, self.buttonHeight, "Refund", self.OnDexRefund())
         self.intUnBut = Button(shared.W/2-50-80-80, self.statsY+self.lineHeight*2, 70, self.buttonHeight, "Refund", self.OnIntRefund())
-        self.rect = [0, 0, shared.W/2-50, shared.H-150]
+        self.rect = [0, 0, shared.W/2-50, shared.H-100]
         self.nameText = DrawText(10,self.nameY,StateS.pl.name)
         self.pointsText = DrawText(10,self.pointY,"Points: %d" % StateS.pl.points)
         
@@ -360,6 +385,8 @@ def main():
     #gui.AddGUI("Test", Button(0,0,100,20,"Test", Test))
     stats = Stats()
     stats.Init()
+    bbar = BottomBar()
+    bbar.Init()
 
 
     state.client = Client(REMOTEHOST, shared.PORT)
@@ -622,7 +649,6 @@ def main():
 
         glLoadIdentity()
         #label.draw()
-        fps.draw()
         GUIS.RenderAll()
         """
         if state.ball_positions is not None:
@@ -632,6 +658,8 @@ def main():
                 ball_sprite.set_position(x, y)
                 ball_sprite.draw()
         """
+        glTranslatef(0, shared.H-25, 0.0)
+        fps.draw()
 
     #pyglet.clock.schedule_interval(state.showlatency, 0.75)
 
