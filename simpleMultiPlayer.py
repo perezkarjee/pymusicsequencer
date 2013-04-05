@@ -355,6 +355,7 @@ class Client(ConnectionListener):
         missile = shared.Missile(MissileMgrS, img)
         missile.SetPos(data["x"], data["y"])
         missile.idx = data["idx"]
+        castSnd()
 
     def Network_genmob(self, data): # mob generated
         mob = shared.Mob(MobMgrS, SubImg(*((playerImg,) + data["imgRect"])))
@@ -382,6 +383,46 @@ class Client(ConnectionListener):
 StateS = None
 MobMgrS = None
 MissileMgrS = None
+
+def OpenSound(fn):
+    media = open(fn, "rb")
+    import StringIO
+    source = StringIO.StringIO(media.read())
+    media.close()
+    def func():
+        import soundPlayer
+        player = soundPlayer.Player()
+        player.add_data(source, fn)
+        player.start()
+        player.repeat = False
+        player.play()
+        print 'a'
+    return func
+# we change the volume to 50%
+    """player.volume = 0.5
+
+# we pause player
+    player.pause()
+
+# we resume player
+    player.resume()
+    or
+    player.play()
+
+# we loop player
+    player.change_repeat(True)
+    or
+    player.repeat = True
+
+# we end the playback
+    player.stop()
+    """
+
+castSnd = OpenSound("multisnd/Cast.wav")
+#castSnd = OpenSound("a.mp3")
+
+
+
 def main():
     global StateS, MobMgrS, MissileMgrS
 
