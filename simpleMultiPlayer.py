@@ -339,6 +339,16 @@ class Client(ConnectionListener):
         if mi:
             MissileMgrS.Remove(mi)
 
+    def Network_delmob(self, data):
+        m = None
+        for mob in MobMgrS.mobs:
+            if mob.idx == data["idx"]:
+                m = mob
+                break
+
+        if m:
+            MobMgrS.RemoveMob(m)
+
 
     def Network_genmissile(self,data):
         img = SubImg(*((guiImg,) + data["imgRect"]))
@@ -400,7 +410,7 @@ def main():
 
     state = State()
     StateS = state
-    MobMgrS = shared.MobManager()
+    MobMgrS = shared.MobManager(None)
     MissileMgrS = shared.MissileManager()
     gui = GUI()
 

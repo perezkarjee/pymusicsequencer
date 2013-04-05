@@ -19,12 +19,13 @@ tileW = 32
 tileH = 32
 
 class MobManager(object):
-    def __init__(self):
+    def __init__(self, Channel):
         self.mobs = []
         self.waited = 0
         self.delay = 2000
         self.serverMobs = []
         self.curIdx = 0
+        self.Channel = Channel
 
     def GenIdx(self):
         self.curIdx += 1
@@ -102,11 +103,15 @@ class MobBase(object):
         self.x = x
         self.y = y
         self.idx = 0
+        self.hp = 100
+        self.mp = 100
+        self.dead = False
 
 
 class ServerMob(MobBase):
-    def __init__(self, imgRect, imgBGRect, x, y, idx):
+    def __init__(self, MobMgr, imgRect, imgBGRect, x, y, idx):
         MobBase.__init__(self,x,y)
+        self.MobMgr = MobMgr
         self.idx = idx
         self.imgRect = imgRect
         self.imgBGRect = imgBGRect
@@ -115,6 +120,15 @@ class ServerMob(MobBase):
         self.y = y
     def AttackTarget(self, target, skill):
         pass
+    def DecreaseHP(self, amt):
+        self.hp -= amt
+        if self.hp <= 0 and not self.dead:
+            self.Die()
+    def Die(self):
+        self.dead = True
+        self.MobMgr.RemoveMobServer(self)
+        self.MobMgr.Channel.Send({"action": "delmob", "idx": self.idx})
+
 
 
 
@@ -251,7 +265,8 @@ class ServerMissile(MissileBase):
         self.x = x
         self.y = y
     def AttackTarget(self):
-        pass
+        if not self.isTargetPlayer and self.targetMob:
+            self.targetMob.DecreaseHP(30)
 
 
 class Missile(MissileBase):

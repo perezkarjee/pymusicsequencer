@@ -21,7 +21,7 @@ class ClientChannel(Channel):
 
         self.map = map = shared.MapGen(30,30)
         map.Gen(4, 5, 5, 3, 3, 3)
-        self.MobMgr = shared.MobManager()
+        self.MobMgr = shared.MobManager(self)
         self.SkillMgr = shared.SkillManager()
         self.SkillMgr.AddSkill(shared.SkillPresets["Fireball"]())
         self.SkillMgr.lmbSkill = self.SkillMgr.originalSkills[0]
@@ -264,7 +264,7 @@ class ClientChannel(Channel):
                 randRoom = self.map.rooms[random.randint(0, len(self.map.rooms)-1)]
                 randX = random.randint(randRoom[0], randRoom[0]+randRoom[2]-1)
                 randY = random.randint(randRoom[1], randRoom[1]+randRoom[3]-1)
-                mob = shared.ServerMob((184, 74, 28, 20), tuple(), randX, randY, self.MobMgr.GenIdx())
+                mob = shared.ServerMob(self.MobMgr, (184, 74, 28, 20), tuple(), randX, randY, self.MobMgr.GenIdx())
                 packet = self.MobMgr.GenServer(mob)
                 self.Send(packet)
 

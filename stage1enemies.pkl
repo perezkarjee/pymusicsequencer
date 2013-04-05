@@ -69,7 +69,7 @@ sg11
 (lp22
 I1024
 aI576
-asbs(I1088
+asbs(I768
 I576
 tp23
 (i__main__
@@ -88,7 +88,7 @@ sg10
 I0
 sg11
 (lp27
-I1088
+I768
 aI576
 asbs(I960
 I576
@@ -132,7 +132,7 @@ sg11
 (lp37
 I832
 aI576
-asbs(I768
+asbs(I1088
 I576
 tp38
 (i__main__
@@ -151,6 +151,6 @@ sg10
 I0
 sg11
 (lp42
-I768
+I1088
 aI576
 asbs.
