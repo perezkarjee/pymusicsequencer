@@ -32,6 +32,8 @@ class MobManager(object):
     def AddMob(self, mob):
         self.mobs += [mob]
 
+    def RemoveMobServer(self, mob):
+        del self.serverMobs[self.serverMobs.index(mob)]
     def RemoveMob(self, mob):
         del self.mobs[self.mobs.index(mob)]
 
@@ -161,6 +163,7 @@ class SkillManager(object):
         for s in self.originalSkills:
             s.Tick(tick)
 
+
 class Skill(object):
     def __init__(self, name, dmgType, dmg, atkType, range, cost):
         self.name = name
@@ -237,10 +240,18 @@ class MissileBase(object):
         self.x = 0
         self.y = 0
         self.idx = 0
+
 class ServerMissile(MissileBase):
     def __init__(self, imgRect):
         MissileBase.__init__(self)
         self.imgRect = imgRect
+        self.targetMob = None
+        self.isTargetPlayer = False
+    def SetPos(self, x, y):
+        self.x = x
+        self.y = y
+    def AttackTarget(self):
+        pass
 
 
 class Missile(MissileBase):
@@ -266,11 +277,26 @@ class MissileManager(object):
         self.missiles = []
         self.serverM = []
         self.curIdx = 0
+    def MoveToTarget(self, map, missile, targetPos):
+        newMap = map.map
+
+        prevTime = time.clock()
+        def TimeFunc():
+            curTime = time.clock()
+            return (curTime-prevTime)*1000
+
+        finder = astar.AStarFinder(newMap, mapW, mapH, missile.x, missile.y, targetPos[0], targetPos[1], TimeFunc, 3)
+        found = finder.Find()
+        if found and len(found) >= 2:
+            cX, cY = found[1][0], found[1][1]
+            missile.SetPos(cX,cY)
 
     def GenIdx(self):
         self.curIdx += 1
         return self.curIdx - 1
 
+    def RemoveServer(self, m):
+        del self.serverM[self.serverM.index(m)]
     def Remove(self, m):
         del self.missiles[self.missiles.index(m)]
     def Add(self, m):

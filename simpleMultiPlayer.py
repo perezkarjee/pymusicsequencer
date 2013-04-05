@@ -325,6 +325,21 @@ class Client(ConnectionListener):
         StateS.map.walls = data["walls"]
         StateS.moveTo(data['x'], data['y'])
 
+    def Network_movemissile(self,data):
+        for m in MissileMgrS.missiles:
+            if m.idx == data["idx"]:
+                m.SetPos(data["x"], data["y"])
+
+    def Network_delmissile(self, data):
+        mi = None
+        for m in MissileMgrS.missiles:
+            if m.idx == data["idx"]:
+                mi = m
+                break
+        if mi:
+            MissileMgrS.Remove(mi)
+
+
     def Network_genmissile(self,data):
         img = SubImg(*((guiImg,) + data["imgRect"]))
         missile = shared.Missile(MissileMgrS, img)

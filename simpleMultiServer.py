@@ -44,6 +44,9 @@ class ClientChannel(Channel):
         self.mobMoveD = 2000
         self.mobMoveW = 0
 
+        self.misMoveD = 300
+        self.misMoveW = 0
+
 
         self.pl = shared.ServerPlayer("Player")
 
@@ -65,6 +68,12 @@ class ClientChannel(Channel):
                 self.DoMob()
             self.mobMoveW += tick
 
+            if self.misMoveW + tick > self.misMoveD:
+                self.misMoveW = 0
+                self.DoMissile()
+            self.misMoveW += tick
+
+
         self.SkillMgr.Tick(tick)
     def IsShaken(self):
         if self._server.players[self] == GameServer.HANDSHAKEN or self._server.players[self] == GameServer.AUTHED:
@@ -75,6 +84,16 @@ class ClientChannel(Channel):
             return True
         return False
 
+    def DoMissile(self):
+        for m in self.MissileMgr.serverM:
+            if not m.isTargetPlayer:
+                self.MissileMgr.MoveToTarget(self.map, m, (m.targetMob.x, m.targetMob.y))
+                if m.x == m.targetMob.x and m.y == m.targetMob.y:
+                    m.AttackTarget()
+                    self.MissileMgr.RemoveServer(m)
+                    self.Send({'action':'delmissile', 'idx':m.idx})
+                else:
+                    self.Send({'action':'movemissile', 'x':m.x, 'y':m.y, 'idx':m.idx})
     def DoMob(self):
         poses = self.MobMgr.MoveToPlayer(self.map, (self.x,self.y), self._IsPlayerInRange)
 
@@ -151,6 +170,8 @@ class ClientChannel(Channel):
                     missile.x = randX
                     missile.y = randY
                     missile.idx = self.MobMgr.GenIdx()
+                    missile.isTargetPlayer = False
+                    missile.targetMob = mymob
                     packet = self.MissileMgr.GenServer(missile)
                     self.Send(packet)
 
