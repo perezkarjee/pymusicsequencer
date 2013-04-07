@@ -98,14 +98,34 @@ class MobManager(object):
         newMap[mapW*playerPos[1]+playerPos[0]] = 0
         return newPoses
 
-class MobBase(object):
+
+class StatBase(object):
+    def __init__(self):
+        self.hp = 100
+        self.mp = 100
+        self.str = 5
+        self.dex = 5
+        self.int = 5
+        self.dead = False
+    def CalcMaxHP(self):
+        return self.str*20
+    def CalcDefense(self):
+        return self.dex*2
+    def CalcMaxMP(self):
+        return self.int*20
+    def CalcMagicDmg(self):
+        return self.int*3
+    def DecreaseHP(self, amt):
+        self.hp -= amt
+        if self.hp <= 0 and not self.dead:
+            self.Die()
+
+class MobBase(StatBase):
     def __init__(self, x, y):
+        StatBase.__init__(self)
         self.x = x
         self.y = y
         self.idx = 0
-        self.hp = 100
-        self.mp = 100
-        self.dead = False
 
 
 class ServerMob(MobBase):
@@ -115,15 +135,13 @@ class ServerMob(MobBase):
         self.idx = idx
         self.imgRect = imgRect
         self.imgBGRect = imgBGRect
+        self.atkWait = 0
+        self.atkDelay = 1000
     def SetPos(self, x, y):
         self.x = x
         self.y = y
     def AttackTarget(self, target, skill):
         pass
-    def DecreaseHP(self, amt):
-        self.hp -= amt
-        if self.hp <= 0 and not self.dead:
-            self.Die()
     def Die(self):
         self.dead = True
         self.MobMgr.RemoveMobServer(self)
@@ -261,11 +279,15 @@ class ServerMissile(MissileBase):
         self.imgRect = imgRect
         self.targetMob = None
         self.isTargetPlayer = False
+        self.count = 0
+        self.range = 6
     def SetPos(self, x, y):
         self.x = x
         self.y = y
     def AttackTarget(self):
         if not self.isTargetPlayer and self.targetMob:
+            self.targetMob.DecreaseHP(30)
+        else:
             self.targetMob.DecreaseHP(30)
 
 
@@ -324,17 +346,12 @@ class MissileManager(object):
         self.serverM += [m]
         return {'action': 'genmissile', 'imgRect': m.imgRect, 'x': m.x, 'y': m.y, 'idx': m.idx}
 
-class PlayerBase(object):
+class PlayerBase(StatBase):
     def __init__(self, name):
+        StatBase.__init__(self)
         self.name = name
-        self.hp = 20
-        self.mp = 20
-        self.maxhp = 20
-        self.maxmp = 20
-        self.str = 10
-        self.dex = 10
-        self.int = 10
         self.points = 0
+
 
 class ServerPlayer(PlayerBase):
     def __init__(self, name):
@@ -342,6 +359,12 @@ class ServerPlayer(PlayerBase):
 
     def AttackMob(self, mob, skill):
         pass
+    def Die(self):
+        self.dead = True
+        print 'PlayerDead'
+        #self.MobMgr.RemoveMobServer(self)
+        #self.MobMgr.Channel.Send({"action": "delmob", "idx": self.idx})
+
 
 class Player(PlayerBase):
     def __init__(self, name):

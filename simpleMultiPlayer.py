@@ -183,9 +183,12 @@ class BottomBar(object):
         self.vis = True
         self.rect = 0, shared.H-100, shared.W, 100
         self.hpY = shared.H-100+5
-        self.hpText = DrawText(5,self.hpY,"HP: %d/%d" % (100,100))
-        self.mpText = DrawText(5,self.hpY+15,"MP: %d/%d" % (100,100))
+        self.hpText = DrawText(5,self.hpY,"HP: %d/%d" % (0,0))
+        self.mpText = DrawText(5,self.hpY+15,"MP: %d/%d" % (0,0))
 
+    def Refresh(self):
+        self.hpText.text = "HP: %d/%d" % (StateS.pl.hp, StateS.pl.CalcMaxHP())
+        self.mpText.text = "MP: %d/%d" % (StateS.pl.mp, StateS.pl.CalcMaxMP())
     def Init(self):
         GUIS.AddGUI('BBar', self)
 
@@ -194,7 +197,6 @@ class BottomBar(object):
             return
         x,y,w,h = self.rect
         DrawQuadWithBorder(x,y,w,h,[42,42,42,255],[255,255,255,255])
-        self.hpText.text = "HP: 20/20"
         self.hpText.draw()
         self.mpText.draw()
 
@@ -369,6 +371,32 @@ class Client(ConnectionListener):
 
     def Network_moveto(self, data): # char move to
         StateS.moveTo(data['x'], data['y'])
+    def Network_sendstats(self, data): # char move to
+        if data["valname"] == 'str':
+            StateS.pl.str = data['val']
+        if data["valname"] == 'dex':
+            StateS.pl.dex = data['val']
+        if data["valname"] == 'int':
+            StateS.pl.int = data['val']
+        if data["valname"] == 'hp':
+            StateS.pl.hp = data['val']
+        if data["valname"] == 'mp':
+            StateS.pl.mp = data['val']
+
+        BBarS.Refresh()
+
+        """
+        self.Send({'action':'sendstats', 'valname':'str', 'val': self.pl.str})
+        self.Send({'action':'sendstats', 'valname':'dex', 'val': self.pl.dex})
+        self.Send({'action':'sendstats', 'valname':'int', 'val': self.pl.int})
+        self.Send({'action':'sendstats', 'valname':'hp', 'val': self.pl.hp})
+        self.Send({'action':'sendstats', 'valname':'maxhp', 'val': self.pl.CalcMaxHP()})
+        self.Send({'action':'sendstats', 'valname':'mp', 'val': self.pl.mp})
+        self.Send({'action':'sendstats', 'valname':'maxmp', 'val': self.pl.CalcMaxMP()})
+        self.Send({'action':'sendstats', 'valname':'magicdmg', 'val': self.pl.CalcMagicDmg()})
+        self.Send({'action':'sendstats', 'valname':'def', 'val': self.pl.CalcDefense()})
+        """
+
     # built in stuff
     def Network_connected(self, data):
         print "You are now connected to the server"
@@ -396,7 +424,6 @@ def OpenSound(fn):
         player.start()
         player.repeat = False
         player.play()
-        print 'a'
     return func
 # we change the volume to 50%
     """player.volume = 0.5
@@ -711,7 +738,6 @@ def main():
         state.batchMap.draw()
         state.batchStructure.draw()
         MobMgrS.Draw()
-        MissileMgrS.Draw()
 
         # Draw Char
         glLoadIdentity()
@@ -722,6 +748,7 @@ def main():
 
         # Draw Magic Effect ETC.
         glTranslatef(-float(shared.tileW*state.x), -float(shared.tileH*state.y), 0.0)
+        MissileMgrS.Draw()
 
         glLoadIdentity()
         #label.draw()

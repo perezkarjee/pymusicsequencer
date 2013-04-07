@@ -44,8 +44,11 @@ class ClientChannel(Channel):
         self.mobMoveD = 2000
         self.mobMoveW = 0
 
-        self.misMoveD = 300
+        self.misMoveD = 100
         self.misMoveW = 0
+
+        self.skillD = 300
+        self.skillW = 0
 
 
         self.pl = shared.ServerPlayer("Player")
@@ -63,10 +66,7 @@ class ClientChannel(Channel):
         return False
     def Tick(self, tick):
         if self.IsAuthed():
-            if self.mobMoveW + tick > self.mobMoveD:
-                self.mobMoveW = 0
-                self.DoMob()
-            self.mobMoveW += tick
+            self.DoMob(tick)
 
             if self.misMoveW + tick > self.misMoveD:
                 self.misMoveW = 0
@@ -88,18 +88,59 @@ class ClientChannel(Channel):
         for m in self.MissileMgr.serverM:
             if not m.isTargetPlayer:
                 self.MissileMgr.MoveToTarget(self.map, m, (m.targetMob.x, m.targetMob.y))
-                if m.x == m.targetMob.x and m.y == m.targetMob.y:
+                if (m.x == m.targetMob.x and m.y == m.targetMob.y) or m.count > m.range:
                     m.AttackTarget()
                     self.MissileMgr.RemoveServer(m)
                     self.Send({'action':'delmissile', 'idx':m.idx})
                 else:
+                    m.count += 1
                     self.Send({'action':'movemissile', 'x':m.x, 'y':m.y, 'idx':m.idx})
-    def DoMob(self):
-        poses = self.MobMgr.MoveToPlayer(self.map, (self.x,self.y), self._IsPlayerInRange)
+            else:
+                self.MissileMgr.MoveToTarget(self.map, m, (self.x, self.y))
+                if (m.x == self.x and m.y == self.y) or m.count > m.range:
+                    m.AttackTarget()
+                    self.Send({'action':'sendstats', 'valname':'hp', 'val': self.pl.hp})
+                    self.Send({'action':'sendstats', 'valname':'mp', 'val': self.pl.mp})
+                    self.MissileMgr.RemoveServer(m)
+                    self.Send({'action':'delmissile', 'idx':m.idx})
+                else:
+                    m.count += 1
+                    self.Send({'action':'movemissile', 'x':m.x, 'y':m.y, 'idx':m.idx})
 
-        for pos in poses:
-            x,y,idx = pos
-            self.Send({'action':'movemob', 'x':x, 'y':y, 'idx':idx})
+    def DoMob(self, tick):
+        if self.mobMoveW + tick > self.mobMoveD:
+            self.mobMoveW = 0
+            poses = self.MobMgr.MoveToPlayer(self.map, (self.x,self.y), self._IsPlayerInRange)
+            for pos in poses:
+                x,y,idx = pos
+                self.Send({'action':'movemob', 'x':x, 'y':y, 'idx':idx})
+
+        self.mobMoveW += tick
+
+        for mob in self.MobMgr.serverMobs:
+            # 이제 여기서 몹이 플레이어를 공격하게 만든다.
+            
+            if self._IsPlayerInRange(mob) and mob.atkWait >= mob.atkDelay:
+                mob.atkWait = 0
+
+                imgRect = (643, 0, 25, 26)
+                missile = shared.ServerMissile(imgRect)
+                missile.x = mob.x
+                missile.y = mob.y
+                missile.idx = self.MissileMgr.GenIdx()
+                missile.isTargetPlayer = True
+                missile.targetMob = self.pl
+                packet = self.MissileMgr.GenServer(missile)
+                self.Send(packet)
+
+            mob.atkWait += tick
+
+    def SendStats(self):
+        self.Send({'action':'sendstats', 'valname':'str', 'val': self.pl.str})
+        self.Send({'action':'sendstats', 'valname':'dex', 'val': self.pl.dex})
+        self.Send({'action':'sendstats', 'valname':'int', 'val': self.pl.int})
+        self.Send({'action':'sendstats', 'valname':'hp', 'val': self.pl.hp})
+        self.Send({'action':'sendstats', 'valname':'mp', 'val': self.pl.mp})
 
     ##################################
     ### Network specific callbacks ###
@@ -160,7 +201,8 @@ class ClientChannel(Channel):
                 self.y = cY
                 self.Send({'action':'moveto', 'x': cX, 'y': cY})
             else:
-                if skill:
+                if skill and self.skillW >= self.skillD:
+                    self.skillW = 0
                     skill.SkillUsed()
 
                     randX = self.x
@@ -169,7 +211,7 @@ class ClientChannel(Channel):
                     missile = shared.ServerMissile(imgRect)
                     missile.x = randX
                     missile.y = randY
-                    missile.idx = self.MobMgr.GenIdx()
+                    missile.idx = self.MissileMgr.GenIdx()
                     missile.isTargetPlayer = False
                     missile.targetMob = mymob
                     packet = self.MissileMgr.GenServer(missile)
@@ -267,6 +309,8 @@ class ClientChannel(Channel):
                 mob = shared.ServerMob(self.MobMgr, (184, 74, 28, 20), tuple(), randX, randY, self.MobMgr.GenIdx())
                 packet = self.MobMgr.GenServer(mob)
                 self.Send(packet)
+            self.SendStats()
+
 
     """
     def Network_message(self, data):
@@ -334,6 +378,7 @@ class GameServer(Server):
 
             for p in self.players.iterkeys():
                 p.moveW += tick
+                p.skillW += tick
 
             sleep(0.001)
             clockEnd = time.clock()
