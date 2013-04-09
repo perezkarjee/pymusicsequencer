@@ -57,6 +57,7 @@ class ClientChannel(Channel):
     def Close(self):
         print 'closed'
         self._server.DelPlayer(self)
+        self._server.done = True
     def _IsPlayerInRange(self, mob):
         vec1 = euclid.Vector2(self.x, self.y)
         vec2 = euclid.Vector2(mob.x, mob.y)
