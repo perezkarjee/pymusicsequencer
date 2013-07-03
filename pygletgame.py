@@ -120,14 +120,21 @@ def InRect(x,y,w,h, x2, y2):
     else:
         return False
 
-def DrawText(x,y,text, xalign = 'left', yalign = 'top', color=(0,0,0,255)):
+def DrawText(x,y,text, xalign = 'left', yalign = 'top', color=(0,0,0,255),size=10):
     label = pyglet.text.Label(text,
                         font_name='Verdana',
-                        font_size=10,
+                        font_size=size,
                         x=x, y=shared.H-(y),
                         color = color,
                         anchor_x=xalign, anchor_y=yalign)
     return label
+
+def DrawHTMLText(x,y,w,text, size=10):
+    text = pyglet.text.HTMLLabel(text,
+                        width=w,
+                        x=x, y=H-(y),multiline=False)
+    text.font_size = size
+    return text
 
 
 class OutputWindow(object):
@@ -139,13 +146,13 @@ class OutputWindow(object):
         self.h = h
         self.rect = x,y,w,h
         self.lastY = 0
-        self.lineH = 13
+        self.lineH = 15
 
     def AddText(self, txt, color=(0,0,0,255)):
-        self.texts += [DrawText(self.x+10, self.y+self.lastY+5, txt, 'left', 'top', color=color)]
+        self.texts += [DrawHTMLText(self.x, self.y+self.lastY, self.w,txt, size=9)]
         self.lastY += self.lineH
 
-        if len(self.texts)*self.lineH > self.h-10:
+        if len(self.texts)*self.lineH > self.h:
             self.lastY -= self.lineH
             del self.texts[0]
             for text in self.texts:
@@ -183,11 +190,14 @@ class MyGameWindow(pyglet.window.Window):
 
         self.SetRoom("home")
 
-        self.output = OutputWindow(0, H-self.bottomMenuH-self.midMenuH, W-self.sideMenuW, self.midMenuH)
-        a = 0
-        while a < 40:
-            self.output.AddText("aaa")
-            a+=1
+        self.output = OutputWindow(10, 20+H-self.bottomMenuH-self.midMenuH, W-self.sideMenuW-20, self.midMenuH-20)
+        self.DoSysOutput(u"TextAdventure에 오신 것을 환영합ㅂㅂㅂ")
+        self.DoSysOutput(u"이 게임은 만들다 말았음zz")
+
+    def DoSysOutput(self, txt):
+        self.DoOutput(u"""<font color="#57701D">시스템==> </font><font color="#161F00">%s</font>""" % txt)
+    def DoOutput(self, txt, color=(0,0,0,255)):
+        self.output.AddText(txt, color)
     def SetRoom(self, room):
         self.curRoom = room
         marginX = 10
@@ -421,5 +431,6 @@ if __name__ == "__main__":
 
 
 
-일단 콘솔창
+일단 콘솔창 -- 완료
+적의 공격 딜레이에 랜덤 베리에이션을 준다. 이용자의 공격 딜레이에도 준다?
 """
