@@ -84,7 +84,12 @@ class Room(object):
         global G_rooms
         self.ident = ident
         self.title = title
-        self.desc = desc
+
+        header = u"""<font color="white" face="Dotum" size="2"><b>"""
+        footer = u"""</b></font>"""
+        texts = desc.split("\n")
+        text = '<br/>'.join(texts)
+        self.desc = header + text + footer
         self.connected = []
         self.safeZone = isSafe
         self.people = []
@@ -95,21 +100,37 @@ class Room(object):
 def GetRooms():
     global G_rooms
     home = Room("home", u"아늑한 나의 집", u"""\
-<font color="white" face="Verdana" size="2">
-당신의 집이다. <br/>
-<br/>
-당신은 당신의 허름한 침대에 앉아있다. 작은 창으로 햇빛이 들어온다. <br/>
-어제 잡은 몬스터들에게서 수집한 아이템들이 여기저기 지저분하게 널려있다.<br/>
-몬스터들의 피 냄새도 난다. 거지 소굴이 따로 없다.<br/>
-</font>""", True)
+당신의 집이다.
+
+당신은 당신의 허름한 침대에 앉아있다. 작은 창으로 햇빛이 들어온다.
+어제 잡은 몬스터들에게서 수집한 아이템들이 여기저기 지저분하게 널려있다.
+몬스터들의 피 냄새도 난다. 거지 소굴이 따로 없다.
+""", True)
+    home.people += [Shop(u"창고", u"창고", u"인벤토리")]
+
+
     town = Room("town", u"마을", u"""\
-<font color="white" face="Verdana" size="2">
-당신이 살고있는 마을이다.</br>
-매우 작고 간소한 마을이지만 갖출 건 다 갖추었다.<br/>
-<br/>
-하지만 당신의 집은 그 중에서도 가장 구석진 곳에 떨어진 가장 허름한 집이다.<br/>
-</font>""", True)
+당신이 살고있는 마을이다.
+매우 작고 간소한 마을이지만 갖출 건 다 갖추었다.
+
+하지만 당신의 집은 그 중에서도 가장 구석진 곳에 떨어진 가장 허름한 집이다.
+""", True)
+    town.people += [WeaponShop(u"무기상인", u"무기 상점", u"인벤토리")]
+    town.people += [Shop(u"잡화상인", u"잡화 상점", u"인벤토리")]
+    town.people += [Shop(u"던젼맵상인", u"던젼 맵 상점", u"인벤토리")]
+
     ConnectRooms(home, town)
+
+    dungeon = Room("dungeon", u"던젼입구", u"""\
+던젼의 입구이다.
+
+이곳에서 던젼 맵을 사용하면 된다.
+
+하지만 여기서도 멀리 보이는 당신의 집은 굉장히도 허름하게 보인다.
+""", True)
+
+    ConnectRooms(town, dungeon)
+
 
     return G_rooms
 
@@ -120,10 +141,11 @@ def InRect(x,y,w,h, x2, y2):
     else:
         return False
 
-def DrawText(x,y,text, xalign = 'left', yalign = 'top', color=(0,0,0,255),size=10):
+def DrawText(x,y,text, xalign = 'left', yalign = 'top', color=(0,0,0,255),size=10,bold=True):
     label = pyglet.text.Label(text,
-                        font_name='Verdana',
+                        font_name='Dotum',
                         font_size=size,
+                        bold=bold,
                         x=x, y=shared.H-(y),
                         color = color,
                         anchor_x=xalign, anchor_y=yalign)
@@ -161,8 +183,230 @@ class OutputWindow(object):
     def Render(self):
         for text in self.texts:
             text.draw()
+
+
+
+class Shop(Button):
+    def __init__(self, name, leftname,rightname,x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Button.__init__(self, x,y,100,25, name, self.OnClick)
+        self.label = DrawText(x+100/2, y+25/2, name, 'center', 'center', color=(80,51,62,255))
+        self.menuVisible = False
+
+        w = W-GameWSt.sideMenuW+10
+        self.text1 = DrawText(10, 10, leftname, 'left', 'top', color=(0,0,0,255))
+        self.text2 = DrawText(w/2+5, 10, rightname, 'left', 'top', color=(0,0,0,255))
+        self.text3 = DrawText(w-22, 5, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
+
+    def OnLDown(self, x,y):
+        if not self.visible:
+            return
+
+        y = shared.H-y
+        if InRect(*(self.rect+[x,y])):
+            self.func()
+
+
+        if not self.menuVisible:
+            return
+        
+        w = W-GameWSt.sideMenuW+10
+        if InRect(w-30,0,25,25,x,y):
+            self.OffMenu()
+
+    def OffMenu(self):
+        GameWSt.menuVis = False
+        GameWSt.menu = None
+        self.menuVisible = False
+    def OnMenu(self):
+        GameWSt.menuVis = True
+        GameWSt.menu = self
+        self.menuVisible = True
+
+    def OnClick(self):
+        self.menuVisible = not self.menuVisible
+        if self.menuVisible:
+            self.OnMenu()
+        else:
+            self.OffMenu()
+    def Render(self):
+        if not self.visible:
+            return
+        x,y,w,h = self.rect
+        DrawQuadWithBorder(x,y,w,h,[223,185,200,255],[120,0,48,255], 3)
+        glColor4ub(0,46,116,255)
+        self.label.draw()
+
+        if not self.menuVisible:
+            return
+        w = W-GameWSt.sideMenuW+10
+        DrawQuadWithBorder(0,0,w/2,H-GameWSt.bottomMenuH+5-GameWSt.qSlotH+5,[0, 196,166,255],GameWSt.bgColor, 5)
+        DrawQuadWithBorder(w/2-5,0,w/2,H-GameWSt.bottomMenuH+5-GameWSt.qSlotH+5,[0, 196,166,255],GameWSt.bgColor, 5)
+        DrawQuadWithBorder(w-30,0,25,25,[66, 236,180,255],GameWSt.bgColor, 5)
+        self.text1.draw()
+        self.text2.draw()
+        self.text3.draw()
+
+
+        for item in GameWSt.inventory:
+            item.Render()
+
+
+
+class WeaponShop(Shop):
+    def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Shop.__init__(self, name, leftname, rightname, 0,0)
+
+    def OnLDown(self, x,y):
+        Shop.OnLDown(self,x,y)
+
+    def Render(self):
+        Shop.Render(self)
+
+        if not self.menuVisible:
+            return
+        for item in GameWSt.weaponShop:
+            item.Render()
+
+def IsJong(chr):
+    chr = ord(chr)
+    c = chr - 0xAC00
+    a = c / (21 * 28)
+    c = c % (21 * 28)
+    b = c / 28
+    c = c % 28
+    if c != 0:
+        return True
+    else:
+        return False
+def IsRieul(chr):
+    chr = ord(chr)
+    c = chr - 0xAC00
+    a = c / (21 * 28)
+    c = c % (21 * 28)
+    b = c / 28
+    c = c % 28
+    if c == 8:
+        return True
+    else:
+        return False
+
+
+class Skill(object):
+    def __init__(self, shortTitle, title, desc):
+        self.txt = shortTitle
+        self.title = title
+        self.desc = desc
+        self.point = 0
+
+    def Use(self, target1, target2, targets):
+        pass
+    def OnLDown(self):
+        pass
+    def CalcManaCost(self):
+        return 0
+
+
+class HealPotion(Skill):
+    def __init__(self):
+        Skill.__init__(self, u"힐포", u"힐링 포션", u"마시면 체력을 완전히 회복한다.")
+    def Use(self, target1, target2, targets):
+        healAmountNeeded = target1.CalcMaxHP()-target1.hp
+        target1.hppotion -= healAmountNeeded
+        if target1.hppotion < 0:
+            healAmountNeeded += target1.hppotion
+            target1.hppotion = 0
+        target1.hp += healAmountNeeded
+
+    def OnLDown(self):
+        self.Use(GameWSt.char, None, [])
+class ManaPotion(Skill):
+    def __init__(self):
+        Skill.__init__(self, u"마포", u"마나 포션", u"마시면 마력을 완전히 회복한다.")
+    def Use(self, target1, target2, targets):
+        healAmountNeeded = target1.CalcMaxMP()-target1.mp
+        target1.mppotion -= healAmountNeeded
+        if target1.mppotion < 0:
+            healAmountNeeded += target1.mppotion
+            target1.mppotion = 0
+        target1.mp += healAmountNeeded
+
+    def OnLDown(self):
+        self.Use(GameWSt.char, None, [])
+class SuperAttack(Skill):
+    def __init__(self):
+        Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적을 후려친다.")
+    def Use(self, target1, target2, targets):
+        pass
+
+    def OnLDown(self):
+        self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+
+
+class Item(object):
+    def __init__(self, short, title, desc, x,y, isEmpty=False):
+        self.short = short
+        self.title = title
+        self.desc = desc
+        x,y,w,h = x, y, GameWSt.itemW, GameWSt.itemH
+        self.label = DrawText(x+w/2, y+h/2, short, 'center', 'center', size=9)
+
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+        self.isEmpty = isEmpty
+
+    def Render(self):
+        DrawQuad(self.x+5, self.y+5, self.w-10, self.h-10, (144, 244, 229, 255))
+        if not self.isEmpty:
+            self.label.draw()
+
+
+class QuickSlot(object):
+    def __init__(self, pos, skill):
+        x,y,w,h = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.label = DrawText(x+w/2, y+h/2, skill.txt, 'center', 'center', size=9)
+        self.skill = skill
+
+    def Render(self):
+        self.label.draw()
+
+    def OnLDown(self,x,y):
+        if InRect(self.x,self.y,self.w,self.h,x,H-y):
+            self.skill.OnLDown()
+GameWSt = None
+
+class Character(object):
+    def __init__(self):
+        self.hpPoint = 0
+        self.mpPoint = 0
+        self.hp = 100
+        self.mp = 100
+
+
+        self.hppotionPoint = 0
+        self.hppotion = 3000
+        self.mppotionPoint = 0
+        self.mppotion = 3000
+
+    def CalcMaxHP(self):
+        return 100
+    def CalcMaxMP(self):
+        return 100
+    def CalcHPPotion(self):
+        return 3000
+    def CalcMPPotion(self):
+        return 3000
+
 class MyGameWindow(pyglet.window.Window):
     def __init__(self):
+        global GameWSt
+        GameWSt = self
         config = Config(depth_size=16, double_buffer=True,)
 
         pyglet.window.Window.__init__(self, vsync=VSYNC,config=config)
@@ -174,28 +418,94 @@ class MyGameWindow(pyglet.window.Window):
         icon1 = pyglet.image.load('pygletgame/icons/icon16x16.png')
         icon2 = pyglet.image.load('pygletgame/icons/icon32x32.png')
         self.set_icon(icon1, icon2)
+        
 
 
         self.label = pyglet.text.Label(u"안녕세상",
-                        font_name='Verdana',
+                        font_name='Dotum',
+                        bold = True,
                         font_size=10,)
 
         self.sideMenuW = 240
         self.bottomMenuH = 200
-        self.midMenuH = 335
+        self.midMenuH = 300
+        self.qSlotH = 40
         self.posMenuH = 190
         self.safeColor = (0,0,0,255)
         self.unsafeColor = (61,24,0,255)
+
+        self.char = Character()
+        self.curTarget = None
+        self.mobs = []
+
+        w = W-self.sideMenuW+10
+        self.invX = w/2
+        self.invY = 25
+        self.leftX = 5
+        self.itemW = self.qSlotH+3
+        self.itemH = self.qSlotH
+        self.inventory = []
+        self.itemShop = []
+        self.weaponShop = []
+        self.stash = []
+        for yy in range(13):
+            for xx in range(10):
+                self.inventory += [Item(u"없음", u"없음", u"빈 아이템", self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+
+        for yy in range(13):
+            for xx in range(10):
+                self.itemShop += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+
+        for yy in range(13):
+            for xx in range(10):
+                self.weaponShop += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+
+        for yy in range(13):
+            for xx in range(10):
+                self.stash += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+
+
         self.rooms = GetRooms()
 
-        self.SetRoom("home")
-
-        self.output = OutputWindow(10, 20+H-self.bottomMenuH-self.midMenuH, W-self.sideMenuW-20, self.midMenuH-20)
+        self.output = OutputWindow(10, 20+H-self.bottomMenuH-self.midMenuH-self.qSlotH+5, W-self.sideMenuW-20, self.midMenuH-20)
         self.DoSysOutput(u"TextAdventure에 오신 것을 환영합ㅂㅂㅂ")
         self.DoSysOutput(u"이 게임은 만들다 말았음zz")
 
+        self.SetRoom("home")
+
+        self.qSlot = [
+                QuickSlot(0, HealPotion()),
+                QuickSlot(1, ManaPotion()),
+                QuickSlot(2, SuperAttack()),
+                QuickSlot(3, HealPotion()),
+                QuickSlot(4, HealPotion()),
+                QuickSlot(5, HealPotion()),
+                QuickSlot(6, HealPotion()),
+                QuickSlot(7, HealPotion()),
+                QuickSlot(8, HealPotion()),
+                QuickSlot(9, HealPotion()),
+                QuickSlot(10, HealPotion()),
+                QuickSlot(11, HealPotion()),
+                QuickSlot(12, HealPotion()),
+                QuickSlot(13, HealPotion()),
+                QuickSlot(14, HealPotion()),
+                QuickSlot(15, HealPotion()),
+                QuickSlot(16, HealPotion()),
+                QuickSlot(17, HealPotion()),
+                QuickSlot(18, HealPotion()),
+                QuickSlot(19, HealPotion()),
+                ]
+
+        GameWSt.menuVis = False
+        GameWSt.menu = None
+        self.lastMouseDown = {"l":[0,0], "r":[0,0], "m":[0,0]}
+
+
+
     def DoSysOutput(self, txt):
-        self.DoOutput(u"""<font color="#57701D">시스템==> </font><font color="#161F00">%s</font>""" % txt)
+        self.DoOutput(u"""<b><font color="#57701D">시스템==> </font><font color="#161F00">%s</font></b>""" % txt)
+    def DoMsg(self,txt):
+        self.DoOutput(u"""<b><font color="#161F00">%s</font></b>""" % txt)
     def DoOutput(self, txt, color=(0,0,0,255)):
         self.output.AddText(txt, color)
     def SetRoom(self, room):
@@ -210,8 +520,8 @@ class MyGameWindow(pyglet.window.Window):
             x += marginX
             y += marginY
             text = pyglet.text.Label(txt,
-                            font_name='Verdana',
-                            font_size=12,
+                            font_name='Dotum',
+                            font_size=12,bold = True,
                             x=x, y=H-(y),)
             self.texts += [text]
             return text
@@ -245,6 +555,30 @@ class MyGameWindow(pyglet.window.Window):
             self.zoneButtons += [ZoneButton(W-self.sideMenuW+10, y+10, self.sideMenuW-20, 30, room.title, lambda : self.MoveRoom(room.ident))]
             y += 35
 
+        xbase = 10
+        ybase = H-self.bottomMenuH+10
+        x = xbase
+        y = ybase
+        self.npcs = []
+        for people in self.rooms[self.curRoom].people[:]:
+            people.rect[0] = x
+            people.rect[1] = y
+            people.label.x = x+100/2
+            people.label.y = H-(y+25/2)
+            x += 105
+            if x+105 > H-self.sideMenuW:
+                x = xbase
+                y += 30
+            self.npcs += [people]
+
+        title = self.rooms[self.curRoom].title
+        if IsJong(title[-1]) and not IsRieul(title[-1]):
+            jong = u"으로"
+        else:
+            jong = u"로"
+
+        self.DoMsg(u"%s%s 이동하였다." % (title, jong))
+
     def MoveRoom(self, roomName):
         self.SetRoom(roomName)
         
@@ -267,7 +601,9 @@ class MyGameWindow(pyglet.window.Window):
         """
     def on_key_press(self, s, m):
         if s == key.ESCAPE:
-            self.Exit()
+            if self.menuVis:
+                self.menu.OffMenu()
+            #self.Exit()
 
         """
         if s in [key.Q, key.W, key.E, key.R, key.T]:
@@ -312,7 +648,12 @@ class MyGameWindow(pyglet.window.Window):
         DrawQuadWithBorder(W-self.sideMenuW, 0, self.sideMenuW, self.posMenuH, (0, 78, 196, 255), self.bgColor, 5) # zone menu
         DrawQuadWithBorder(W-self.sideMenuW, self.posMenuH-5, self.sideMenuW, H-self.posMenuH+5, (153, 210, 0, 255), self.bgColor, 5) # char menu
         DrawQuadWithBorder(0, H-self.bottomMenuH, W-self.sideMenuW+5, self.bottomMenuH, (196, 0, 78, 255), self.bgColor, 5) # mobs, npc, interactive object menu
-        DrawQuadWithBorder(0, H-self.bottomMenuH-self.midMenuH, W-self.sideMenuW+5, self.midMenuH+5, (227, 155, 0, 255), self.bgColor, 5)
+        DrawQuadWithBorder(0, H-self.bottomMenuH-self.midMenuH-(self.qSlotH-5), W-self.sideMenuW+5, self.midMenuH+5, (227, 155, 0, 255), self.bgColor, 5)
+
+        x = 0
+        for i in range(20):
+            DrawQuadWithBorder(x, H-self.bottomMenuH-self.qSlotH+5, self.qSlotH+4, self.qSlotH, (196, 166, 0, 255), self.bgColor, 5)
+            x += self.qSlotH-5+4
 
         self.output.Render()
 
@@ -320,8 +661,13 @@ class MyGameWindow(pyglet.window.Window):
         for txt in self.texts:
             txt.draw()
 
+        for slot in self.qSlot:
+            slot.Render()
+
 
         for button in self.zoneButtons:
+            button.Render()
+        for button in self.npcs:
             button.Render()
 
 
@@ -358,6 +704,17 @@ class MyGameWindow(pyglet.window.Window):
         if b == mouse.LEFT:
             for button in self.zoneButtons:
                 button.OnLDown(x,y)
+            for button in self.npcs:
+                button.OnLDown(x,y)
+            for slot in self.qSlot:
+                slot.OnLDown(x,y)
+
+            self.lastMouseDown["l"] = [x,y]
+        if b == mouse.MIDDLE:
+            self.lastMouseDown["m"] = [x,y]
+        if b == mouse.RIGHT:
+            self.lastMouseDown["r"] = [x,y]
+
         """
         state.lastMouseX = x
         state.lastMouseY = y
@@ -392,13 +749,14 @@ class MyGameWindow(pyglet.window.Window):
         tick = pyglet.clock.tick() # time passed since previous frame
         self.label.text = u"안녕세상" + `tick`
 
+def MakeDrawCallConstant():
+    def b(dt): sleep(0.001)
+    pyglet.clock.schedule(b)
 
 
 def main():
     w = MyGameWindow()
-    def b(dt): pass
-    pyglet.clock.schedule(b)
-
+    MakeDrawCallConstant()
     pyglet.app.run()
 
 if __name__ == "__main__":
@@ -429,8 +787,22 @@ if __name__ == "__main__":
 장비중에 특수한 게 있어서 스킬이나 스탯 포인트의 효율을 높여주는 장비들이 희귀아이템
 스킬은 초반부터 아무 스킬이나 다 쓸 수 있다.
 
+적의 공격 딜레이에 랜덤 베리에이션을 준다. 이용자의 공격 딜레이에도 준다?
 
 
 일단 콘솔창 -- 완료
-적의 공격 딜레이에 랜덤 베리에이션을 준다. 이용자의 공격 딜레이에도 준다?
+이제 상인과 몹
+
+몹을 죽이면 현재 방의 목록에서 사라진다. 하지만 다른 방으로 갔다오면 다시 생긴다.
+몹을 클릭한 후에 스킬을 쓰면 가장 마지막에 클릭한 몹에게 스킬이 시전된다.
+
+
+
+스킬 자체를 캐릭터마다 20개만 만들어서 미리 퀵바에 지정해 두고 그걸 쓰게 한다.
+퀵바는 커스터마이즈가 불가능하도록 하자.
+
+
+무기상인은 무기를 잡화상인은 아이템 부스트나 인챈트 보석 룬등을 판다.
+
+포션 충전은 마을에 오면 자동으로 되며 필드에서도 충전이 된다. 가만 있어도 차고 적을 잡으면 더 빨리 찬다.
 """
