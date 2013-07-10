@@ -18,8 +18,6 @@ W = 1020
 H = 720
 VSYNC = True
 
-
-
 def DrawQuad(x,y,w,h, color):
     glColor4ub(*color)
     pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
@@ -44,7 +42,6 @@ class Button(object):
         self.visible = True
         self.label = DrawText(x+w/2, y+h/2, label, 'center', 'center')
 
-    
     def SetVisible(self, vis):
         self.visible = vis
     def OnLDown(self, x,y):
@@ -134,7 +131,6 @@ def GetRooms():
 
     return G_rooms
 
-
 def InRect(x,y,w,h, x2, y2):
     if x <= x2 < x+w and y <= y2 < y+h:
         return True
@@ -157,7 +153,6 @@ def DrawHTMLText(x,y,w,text, size=10):
                         x=x, y=H-(y),multiline=False)
     text.font_size = size
     return text
-
 
 class OutputWindow(object):
     def __init__(self, x, y, w, h):
@@ -184,8 +179,6 @@ class OutputWindow(object):
         for text in self.texts:
             text.draw()
 
-
-
 class Shop(Button):
     def __init__(self, name, leftname,rightname,x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Button.__init__(self, x,y,100,25, name, self.OnClick)
@@ -195,7 +188,7 @@ class Shop(Button):
         w = W-GameWSt.sideMenuW+10
         self.text1 = DrawText(10, 10, leftname, 'left', 'top', color=(0,0,0,255))
         self.text2 = DrawText(w/2+5, 10, rightname, 'left', 'top', color=(0,0,0,255))
-        self.text3 = DrawText(w-22, 5, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
+        self.text3 = DrawText(w-22-1, 5+1, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
 
     def OnLDown(self, x,y):
         if not self.visible:
@@ -218,6 +211,8 @@ class Shop(Button):
         GameWSt.menu = None
         self.menuVisible = False
     def OnMenu(self):
+        if GameWSt.menu:
+            GameWSt.menu.OffMenu()
         GameWSt.menuVis = True
         GameWSt.menu = self
         self.menuVisible = True
@@ -246,11 +241,8 @@ class Shop(Button):
         self.text2.draw()
         self.text3.draw()
 
-
         for item in GameWSt.inventory:
             item.Render()
-
-
 
 class WeaponShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
@@ -290,7 +282,6 @@ def IsRieul(chr):
     else:
         return False
 
-
 class Skill(object):
     def __init__(self, shortTitle, title, desc):
         self.txt = shortTitle
@@ -300,15 +291,17 @@ class Skill(object):
 
     def Use(self, target1, target2, targets):
         pass
+
     def OnLDown(self):
         pass
+
     def CalcManaCost(self):
         return 0
-
 
 class HealPotion(Skill):
     def __init__(self):
         Skill.__init__(self, u"힐포", u"힐링 포션", u"마시면 체력을 완전히 회복한다.")
+
     def Use(self, target1, target2, targets):
         healAmountNeeded = target1.CalcMaxHP()-target1.hp
         target1.hppotion -= healAmountNeeded
@@ -319,9 +312,11 @@ class HealPotion(Skill):
 
     def OnLDown(self):
         self.Use(GameWSt.char, None, [])
+
 class ManaPotion(Skill):
     def __init__(self):
         Skill.__init__(self, u"마포", u"마나 포션", u"마시면 마력을 완전히 회복한다.")
+
     def Use(self, target1, target2, targets):
         healAmountNeeded = target1.CalcMaxMP()-target1.mp
         target1.mppotion -= healAmountNeeded
@@ -335,12 +330,12 @@ class ManaPotion(Skill):
 class SuperAttack(Skill):
     def __init__(self):
         Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적을 후려친다.")
+
     def Use(self, target1, target2, targets):
         pass
 
     def OnLDown(self):
         self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
-
 
 class Item(object):
     def __init__(self, short, title, desc, x,y, isEmpty=False):
@@ -362,7 +357,6 @@ class Item(object):
         if not self.isEmpty:
             self.label.draw()
 
-
 class QuickSlot(object):
     def __init__(self, pos, skill):
         x,y,w,h = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
@@ -381,13 +375,38 @@ class QuickSlot(object):
             self.skill.OnLDown()
 GameWSt = None
 
+
+class PopupWindow(object):
+    def __init__(self, title, desc, x,y, ident):
+        self.x = x
+        self.y = y
+        self.w = 300
+        self.h = 400
+        header = u"""<font color="black" face="Dotum" size="2">%s<br/><br/><b>""" % title
+        footer = u"""</b></font>"""
+        texts = desc.split("\n")
+        text = '<br/>'.join(texts)
+        self.desc = header + text + footer
+
+        margin = 10
+        self.margin = margin
+        self.text = pyglet.text.HTMLLabel(self.desc,
+                        width=self.w-margin*2,
+                        x=x+margin, y=H-(y+margin+13),multiline=True)
+        self.text.font_size = 9
+
+        self.ident = ident
+
+    def Render(self):
+        DrawQuadWithBorder(self.x, self.y, self.w, self.h, (200, 200, 200, 150), (30,30,30,150), 0) # zone menu
+        self.text.draw()
+
 class Character(object):
     def __init__(self):
         self.hpPoint = 0
         self.mpPoint = 0
         self.hp = 100
         self.mp = 100
-
 
         self.hppotionPoint = 0
         self.hppotion = 3000
@@ -419,8 +438,6 @@ class MyGameWindow(pyglet.window.Window):
         icon2 = pyglet.image.load('pygletgame/icons/icon32x32.png')
         self.set_icon(icon1, icon2)
         
-
-
         self.label = pyglet.text.Label(u"안녕세상",
                         font_name='Dotum',
                         bold = True,
@@ -444,6 +461,19 @@ class MyGameWindow(pyglet.window.Window):
         self.leftX = 5
         self.itemW = self.qSlotH+3
         self.itemH = self.qSlotH
+
+
+
+
+        idx = 40
+        idxX = idx%10
+        idxY = (idx-idxX)/10
+        newItem = Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.invX+idxX*(self.itemW-5), self.invY+idxY*(self.itemH-5))
+        newItem2 = Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.leftX+idxX*(self.itemW-5), self.invY+idxY*(self.itemH-5))
+
+
+
+
         self.inventory = []
         self.itemShop = []
         self.weaponShop = []
@@ -451,6 +481,7 @@ class MyGameWindow(pyglet.window.Window):
         for yy in range(13):
             for xx in range(10):
                 self.inventory += [Item(u"없음", u"없음", u"빈 아이템", self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+        self.inventory[idx] = newItem
 
         for yy in range(13):
             for xx in range(10):
@@ -459,10 +490,12 @@ class MyGameWindow(pyglet.window.Window):
         for yy in range(13):
             for xx in range(10):
                 self.weaponShop += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+        self.weaponShop[idx] = newItem2
 
         for yy in range(13):
             for xx in range(10):
                 self.stash += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+
 
 
         self.rooms = GetRooms()
@@ -501,6 +534,7 @@ class MyGameWindow(pyglet.window.Window):
         self.lastMouseDown = {"l":[0,0], "r":[0,0], "m":[0,0]}
 
 
+        self.popupWindow = None
 
     def DoSysOutput(self, txt):
         self.DoOutput(u"""<b><font color="#57701D">시스템==> </font><font color="#161F00">%s</font></b>""" % txt)
@@ -512,7 +546,6 @@ class MyGameWindow(pyglet.window.Window):
         self.curRoom = room
         marginX = 10
         marginY = 25
-
 
         self.texts = []
         def NewText(args):
@@ -536,8 +569,6 @@ class MyGameWindow(pyglet.window.Window):
             text.font_size = 9
             self.texts += [text]
             return text
-
-
 
         args = [self.rooms[self.curRoom].title, 0, 0]
         self.roomTitle = NewText(args)
@@ -643,6 +674,8 @@ class MyGameWindow(pyglet.window.Window):
 
     def on_draw(self):
         self.on_tick()
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(self.bgColor[0]/255.0, self.bgColor[1]/255.0, self.bgColor[2]/255.0, 1.0)
         self.clear()
         DrawQuadWithBorder(W-self.sideMenuW, 0, self.sideMenuW, self.posMenuH, (0, 78, 196, 255), self.bgColor, 5) # zone menu
@@ -672,6 +705,11 @@ class MyGameWindow(pyglet.window.Window):
 
 
 
+        if self.popupWindow:
+            self.popupWindow.Render()
+
+
+
     def on_show(self):
         pass
     def on_close(self):
@@ -680,10 +718,77 @@ class MyGameWindow(pyglet.window.Window):
         print 'Good Bye !'
         pyglet.app.exit()
     def on_mouse_motion(self, x, y, b, m):
-        """
-        state.lastMouseX = x
-        state.lastMouseY = y
-        """
+        found = False
+        for pos in range(20):
+            xx,yy,ww,hh = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
+            if InRect(xx,yy,ww,hh,x,H-y):
+                if not (self.popupWindow and self.popupWindow.ident == self.qSlot[pos]):
+                    self.popupWindow = PopupWindow(self.qSlot[pos].skill.title, self.qSlot[pos].skill.desc, x, H-y, self.qSlot[pos])
+                elif self.popupWindow:
+                    self.popupWindow.x = x
+                    self.popupWindow.y = H-y
+                    self.popupWindow.text.x = x+self.popupWindow.margin
+                    self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                    
+                found = True
+                break
+
+        container = None
+        if isinstance(self.menu, WeaponShop):
+            container = self.weaponShop
+
+        if container:
+            for yy in range(13):
+                for xx in range(10):
+                    xxx,yyy,www,hhh = self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
+                    item = container[yy*10+xx]
+                    if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
+                        if not (self.popupWindow and self.popupWindow.ident == item):
+                            self.popupWindow = PopupWindow(item.title, item.desc, x, H-y, item)
+                        elif self.popupWindow:
+                            self.popupWindow.x = x
+                            self.popupWindow.y = H-y
+                            self.popupWindow.text.x = x+self.popupWindow.margin
+                            self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                            
+                        found = True
+                        break
+                if found:
+                    break
+
+        container = self.inventory
+        if self.menuVis:
+            for yy in range(13):
+                for xx in range(10):
+                    xxx,yyy,www,hhh = self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
+                    item = container[yy*10+xx]
+                    if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
+                        if not (self.popupWindow and self.popupWindow.ident == item):
+                            self.popupWindow = PopupWindow(item.title, item.desc, x, H-y, item)
+                        elif self.popupWindow:
+                            self.popupWindow.x = x
+                            self.popupWindow.y = H-y
+                            self.popupWindow.text.x = x+self.popupWindow.margin
+                            self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                            
+                        found = True
+                        break
+                if found:
+                    break
+
+
+
+
+        if not found:
+            self.popupWindow = None
+
+        if self.popupWindow: # fix overflown popup window
+            if ((H-y)+self.popupWindow.h) > H:
+                self.popupWindow.y = H-self.popupWindow.h
+                self.popupWindow.text.y = self.popupWindow.h-self.popupWindow.margin-13
+            if x+self.popupWindow.w > W:
+                self.popupWindow.x = W-self.popupWindow.w
+                self.popupWindow.text.x = self.popupWindow.x+self.popupWindow.margin
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """
@@ -750,7 +855,7 @@ class MyGameWindow(pyglet.window.Window):
         self.label.text = u"안녕세상" + `tick`
 
 def MakeDrawCallConstant():
-    def b(dt): sleep(0.001)
+    def b(dt): pass
     pyglet.clock.schedule(b)
 
 
@@ -805,4 +910,13 @@ if __name__ == "__main__":
 무기상인은 무기를 잡화상인은 아이템 부스트나 인챈트 보석 룬등을 판다.
 
 포션 충전은 마을에 오면 자동으로 되며 필드에서도 충전이 된다. 가만 있어도 차고 적을 잡으면 더 빨리 찬다.
+
+
+
+흠 경험치가 없고 포인트만 있으면 상점에선 뭘 파나?
+기본 마을 상점에선 싸구려만 팔고, 난이도를 포인트를 소비하여 높일 수 있고 난이도를 높이면 마을 상점이 점점 업글?
+아 상점을 포인트로 업글하도록 한다.
+
+
+아이템 설명 보여주는 팝업 윈도우를 만든다.
 """
