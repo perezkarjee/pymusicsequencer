@@ -297,6 +297,8 @@ class Skill(object):
 
     def CalcManaCost(self):
         return 0
+    def GetDesc(self):
+        return self.desc
 
 class HealPotion(Skill):
     def __init__(self):
@@ -356,6 +358,9 @@ class Item(object):
         DrawQuad(self.x+5, self.y+5, self.w-10, self.h-10, (144, 244, 229, 255))
         if not self.isEmpty:
             self.label.draw()
+
+    def GetDesc(self):
+        return self.desc
 
 class QuickSlot(object):
     def __init__(self, pos, skill):
@@ -611,6 +616,8 @@ class MyGameWindow(pyglet.window.Window):
         self.DoMsg(u"%s%s 이동하였다." % (title, jong))
 
     def MoveRoom(self, roomName):
+        if self.menu:
+            self.menu.OffMenu()
         self.SetRoom(roomName)
         
     def SetRoomTitle(self, txt):
@@ -723,7 +730,7 @@ class MyGameWindow(pyglet.window.Window):
             xx,yy,ww,hh = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
             if InRect(xx,yy,ww,hh,x,H-y):
                 if not (self.popupWindow and self.popupWindow.ident == self.qSlot[pos]):
-                    self.popupWindow = PopupWindow(self.qSlot[pos].skill.title, self.qSlot[pos].skill.desc, x, H-y, self.qSlot[pos])
+                    self.popupWindow = PopupWindow(self.qSlot[pos].skill.title, self.qSlot[pos].skill.GetDesc(), x, H-y, self.qSlot[pos])
                 elif self.popupWindow:
                     self.popupWindow.x = x
                     self.popupWindow.y = H-y
@@ -744,7 +751,7 @@ class MyGameWindow(pyglet.window.Window):
                     item = container[yy*10+xx]
                     if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
                         if not (self.popupWindow and self.popupWindow.ident == item):
-                            self.popupWindow = PopupWindow(item.title, item.desc, x, H-y, item)
+                            self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
                         elif self.popupWindow:
                             self.popupWindow.x = x
                             self.popupWindow.y = H-y
@@ -764,7 +771,7 @@ class MyGameWindow(pyglet.window.Window):
                     item = container[yy*10+xx]
                     if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
                         if not (self.popupWindow and self.popupWindow.ident == item):
-                            self.popupWindow = PopupWindow(item.title, item.desc, x, H-y, item)
+                            self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
                         elif self.popupWindow:
                             self.popupWindow.x = x
                             self.popupWindow.y = H-y
