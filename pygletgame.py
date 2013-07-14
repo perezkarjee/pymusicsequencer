@@ -663,26 +663,97 @@ class PopupWindow(object):
         DrawQuadWithBorder(self.x, self.y, self.w, self.h, (200, 200, 200, 150), (30,30,30,150), 0) # zone menu
         self.text.draw()
 
+class Element(object): # 아이템의 속성
+    # 아이템 레벨이 오르면 자동으로 값이 올라가게 하려면?
+    # min max 사이의 값이 랜덤하게 아이템에 붙는 거니까
+    # min max값을 레벨에 따라 올라가게 만든 후에
+    # 그 올라간 값을 아이템에 붙인다.
+    # min*minMod*level
+    # max*maxMod*level이 최종 min max값이 된다.
+    #
+    # 4 4 3 = 48
+    # 8 10 3 = 240
+    # 이러면 48~240사이의 값이 아이템에 붙는다.
+    ATK = "atk"
+    DFN = "dfn"
+    MAXHP = "maxhp"
+    MAXMP = "maxmp"
+    HPPOTION = "hppotion"
+    MPPOTION = "mppotion"
+    POWATKLVL = "powerattacklvl"
+
+    def __init__(self, name, min, max, minMod, maxMod, level):
+        self.name = name # ATK, DFN, etc
+        self.min = min
+        self.max = max
+        self.level = level
+        self.minMod = minMod
+        self.maxMod = maxMod
+
 class Character(object):
     def __init__(self):
+        self.totalPoint = 0
+
         self.hpPoint = 0
         self.mpPoint = 0
-        self.hp = 100
-        self.mp = 100
+        self.hp = 5
+        self.mp = 5
+        self.curHP = self.CalcMaxHP()
+        self.curMP = self.CalcMaxMP()
+
+        self.atkPoint = 0
+        self.dfnPoint = 0
+        self.atk = 3
+        self.dfn = 2
 
         self.hppotionPoint = 0
-        self.hppotion = 3000
+        self.hppotion = 20
         self.mppotionPoint = 0
-        self.mppotion = 3000
+        self.mppotion = 20
+
+        self.texts = []
+        y = 0
+        self.txtPoint = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Points: %d" % (self.totalPoint,), 'left', 'top')
+        self.texts += [self.txtPoint]
+        y += 20
+        self.txtHP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"HP: %d/%d" % (self.curHP, self.CalcMaxHP()), 'left', 'top')
+        self.texts += [self.txtHP]
+        y += 20
+        self.txtMP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"MP: %d/%d" % (self.curMP, self.CalcMaxMP()), 'left', 'top')
+        self.texts += [self.txtMP]
+        y += 20
+        self.txtHPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"HP Potion: %d" % (self.CalcHPPotion()), 'left', 'top')
+        self.texts += [self.txtHPPo]
+        y += 20
+        self.txtMPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"MP Potion: %d" % (self.CalcMPPotion()), 'left', 'top')
+        self.texts += [self.txtMPPo]
+        y += 20
+        self.txtAtk = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Atk: %d" % (self.CalcAtk()), 'left', 'top')
+        self.texts += [self.txtAtk]
+        y += 20
+        self.txtDfn = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Dfn: %d" % (self.CalcDfn()), 'left', 'top')
+        self.texts += [self.txtDfn]
 
     def CalcMaxHP(self):
-        return 100
+        return ((self.hpPoint/2)+1) * self.hp
     def CalcMaxMP(self):
-        return 100
+        return ((self.mpPoint/2)+1) * self.mp
     def CalcHPPotion(self):
-        return 3000
+        return ((self.hppotionPoint/2)+1) * self.hppotion
     def CalcMPPotion(self):
-        return 3000
+        return ((self.mppotionPoint/2)+1) * self.mppotion
+    def CalcAtk(self):
+        return ((self.atkPoint/2)+1) * self.atk
+    def CalcDfn(self):
+        return ((self.dfnPoint/2)+1) * self.dfn
+
+    def SetHP(self, hp):
+        self.curHP = hp
+        self.txtHP.text = u"HP: %d/%d" % (self.curHP, self.CalcMaxHP())
+
+    def Render(self):
+        for text in self.texts:
+            text.draw()
 
 class MyGameWindow(pyglet.window.Window):
     def __init__(self):
@@ -991,6 +1062,9 @@ class MyGameWindow(pyglet.window.Window):
             self.draggingItem.Render()
 
 
+        self.char.Render()
+
+
 
     def on_show(self):
         pass
@@ -1213,12 +1287,26 @@ if __name__ == "__main__":
 
 
 
+
 아이템 드래그 드랍! 클릭 앤 드랍이지만.
 이제 포인트를 만든다.
 포인트를 표시하고 상점에서 아이템 구입 판매를 하게 한다.
 아이템을 구입하면 상점의 빈 자리에 새로운 아이템을 스폰해야 한다.(OnDrop에서 buy에 성공하면 새로운 아이템 스폰을 하게 한다.)
 아이템에 CalcPrice를 넣는다.
 
+일단 플레이어 속성을 만들자.
+체력 마력 공격력 방어력
+다른 속성은 복잡하므로 넣지 말자. 스킬에도 속성이 없고 공격력이 간접적으로 적용된다.
+아이템을 만드는데 아이템에 들어갈 수 있는 속성들의 리스트와 그 속성의 숫자 범위를 정의해 두고 랜덤하게 나오게 한다.
+또한 아이템의 레벨에 따라 숫자의 범위가 점점 커진다.
+아이템의 속성은 일반 아이템은 속성 1개, 매직 아이템은 속성 2개, 레어 아이템은 속성 4개, 유니크 아이템은 속성이 5개가 들어갈 수 있다.
+인챈트 스크롤이 있어 아이템을 인챈트할 때마다 그 인챈트 스크롤에 붙은 옵션이 1개씩 늘어난다.
+일반 아이템은 1번 인챈트 가능
+매직 아이템은 2번 인챈트 가능
+레어 아이템은 4번 인챈트 가능
+유니크 아이템은 5번 인챈트가 가능하다.
+
+즉 유니크의 경우 속성이 10개가 붙을 수 있다.
 
 이제 적을 만든다.
 """
