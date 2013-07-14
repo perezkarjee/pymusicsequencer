@@ -103,7 +103,7 @@ def GetRooms():
 어제 잡은 몬스터들에게서 수집한 아이템들이 여기저기 지저분하게 널려있다.
 몬스터들의 피 냄새도 난다. 거지 소굴이 따로 없다.
 """, True)
-    home.people += [Shop(u"창고", u"창고", u"인벤토리")]
+    home.people += [Stash(u"창고", u"창고", u"인벤토리")]
 
 
     town = Room("town", u"마을", u"""\
@@ -113,8 +113,8 @@ def GetRooms():
 하지만 당신의 집은 그 중에서도 가장 구석진 곳에 떨어진 가장 허름한 집이다.
 """, True)
     town.people += [WeaponShop(u"무기상인", u"무기 상점", u"인벤토리")]
-    town.people += [Shop(u"잡화상인", u"잡화 상점", u"인벤토리")]
-    town.people += [Shop(u"던젼맵상인", u"던젼 맵 상점", u"인벤토리")]
+    town.people += [ItemShop(u"잡화상인", u"잡화 상점", u"인벤토리")]
+    town.people += [MapShop(u"던젼맵상인", u"던젼 맵 상점", u"인벤토리")]
 
     ConnectRooms(home, town)
 
@@ -190,6 +190,9 @@ class Shop(Button):
         self.text2 = DrawText(w/2+5, 10, rightname, 'left', 'top', color=(0,0,0,255))
         self.text3 = DrawText(w-22-1, 5+1, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
 
+        self.left = False
+        self.idx = -1
+
     def OnLDown(self, x,y):
         if not self.visible:
             return
@@ -206,7 +209,37 @@ class Shop(Button):
         if InRect(w-30,0,25,25,x,y):
             self.OffMenu()
 
+
+
+        # left part of shop
+        self.left = False
+        self.idx = -1
+        idx = 0
+        for yy in range(13):
+            for xx in range(10):
+                if InRect(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5), GameWSt.itemW, GameWSt.itemH, x, y):
+                    self.left = True
+                    self.idx = idx
+                idx += 1
+
+        # right part of sho
+        idx = 0
+        for yy in range(13):
+            for xx in range(10):
+                if InRect(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5), GameWSt.itemW, GameWSt.itemH, x, y):
+                    self.left = False
+                    self.idx = idx
+                idx += 1
+
+
+
+
     def OffMenu(self):
+        if GameWSt.draggingIdx != -1:
+            GameWSt.draggingContainer[GameWSt.draggingIdx] = GameWSt.draggingItem
+            GameWSt.draggingContainer = None
+            GameWSt.draggingIdx = -1
+            GameWSt.draggingItem = None
         GameWSt.menuVis = False
         GameWSt.menu = None
         self.menuVisible = False
@@ -244,12 +277,66 @@ class Shop(Button):
         for item in GameWSt.inventory:
             item.Render()
 
+    def OnDragStart(self, container, idx):
+        pass
+
+    def OnDrop(self, targetC, targetIdx, sourceC, sourceIdx, draggingItem):
+        pass
+    def OnItemClick(self, container, idx):
+        if GameWSt.draggingIdx == -1:
+            self.OnDragStart(container, idx)
+        else:
+            self.OnDrop(container, idx, GameWSt.draggingContainer, GameWSt.draggingIdx, GameWSt.draggingItem)
+
+class ItemShop(Shop):
+    def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Shop.__init__(self, name, leftname, rightname, 0,0)
+
+    def OnLDown(self, x,y):
+        Shop.OnLDown(self,x,y)
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.itemShop, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(self.inventory, idx)
+
+    def Render(self):
+        Shop.Render(self)
+
+        if not self.menuVisible:
+            return
+        for item in GameWSt.itemShop:
+            item.Render()
+
+class MapShop(Shop):
+    def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Shop.__init__(self, name, leftname, rightname, 0,0)
+
+    def OnLDown(self, x,y):
+        Shop.OnLDown(self,x,y)
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.mapShop, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(self.inventory, idx)
+
+
+    def Render(self):
+        Shop.Render(self)
+
+        if not self.menuVisible:
+            return
+        for item in GameWSt.mapShop:
+            item.Render()
+
 class WeaponShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Shop.__init__(self, name, leftname, rightname, 0,0)
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.weaponShop, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(self.inventory, idx)
 
     def Render(self):
         Shop.Render(self)
@@ -257,6 +344,25 @@ class WeaponShop(Shop):
         if not self.menuVisible:
             return
         for item in GameWSt.weaponShop:
+            item.Render()
+
+class Stash(Shop):
+    def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Shop.__init__(self, name, leftname, rightname, 0,0)
+
+    def OnLDown(self, x,y):
+        Shop.OnLDown(self,x,y)
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.stash, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(self.inventory, idx)
+
+    def Render(self):
+        Shop.Render(self)
+
+        if not self.menuVisible:
+            return
+        for item in GameWSt.stash:
             item.Render()
 
 def IsJong(chr):
@@ -481,29 +587,38 @@ class MyGameWindow(pyglet.window.Window):
 
         self.inventory = []
         self.itemShop = []
+        self.mapShop = []
         self.weaponShop = []
         self.stash = []
         for yy in range(13):
             for xx in range(10):
-                self.inventory += [Item(u"없음", u"없음", u"빈 아이템", self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+                self.inventory += [self.NewEmptyItem(self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
         self.inventory[idx] = newItem
 
         for yy in range(13):
             for xx in range(10):
-                self.itemShop += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+                self.itemShop += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
 
         for yy in range(13):
             for xx in range(10):
-                self.weaponShop += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+                self.weaponShop += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
         self.weaponShop[idx] = newItem2
 
         for yy in range(13):
             for xx in range(10):
-                self.stash += [Item(u"없음", u"없음", u"빈 아이템", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), isEmpty=True)]
+                self.stash += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+
+        for yy in range(13):
+            for xx in range(10):
+                self.mapShop += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+        self.draggingItem = None
+        self.draggingIdx = -1
+        self.draggingContainer = None
 
 
 
         self.rooms = GetRooms()
+        self.dungeons = {}
 
         self.output = OutputWindow(10, 20+H-self.bottomMenuH-self.midMenuH-self.qSlotH+5, W-self.sideMenuW-20, self.midMenuH-20)
         self.DoSysOutput(u"TextAdventure에 오신 것을 환영합ㅂㅂㅂ")
@@ -541,6 +656,8 @@ class MyGameWindow(pyglet.window.Window):
 
         self.popupWindow = None
 
+    def NewEmptyItem(self, x, y):
+        return Item(u"없음", u"없음", u"빈 아이템", x,y, isEmpty=True)
     def DoSysOutput(self, txt):
         self.DoOutput(u"""<b><font color="#57701D">시스템==> </font><font color="#161F00">%s</font></b>""" % txt)
     def DoMsg(self,txt):
@@ -743,6 +860,12 @@ class MyGameWindow(pyglet.window.Window):
         container = None
         if isinstance(self.menu, WeaponShop):
             container = self.weaponShop
+        if isinstance(self.menu, MapShop):
+            container = self.mapShop
+        if isinstance(self.menu, ItemShop):
+            container = self.itemShop
+        if isinstance(self.menu, Stash):
+            container = self.stash
 
         if container:
             for yy in range(13):
@@ -926,4 +1049,9 @@ if __name__ == "__main__":
 
 
 아이템 설명 보여주는 팝업 윈도우를 만든다.
+
+
+
+아이템 드래그 드랍! 클릭 앤 드랍이지만.
+이제 적을 만든다.
 """
