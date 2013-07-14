@@ -3,7 +3,6 @@ import threading
 import time
 import pyglet
 import sys
-import shared
 import random
 from euclid import *
 from pyglet.gl import *
@@ -48,7 +47,7 @@ class Button(object):
         if not self.visible:
             return
 
-        y = shared.H-y
+        y = H-y
         if InRect(*(self.rect+[x,y])):
             self.func()
     def Render(self):
@@ -142,7 +141,7 @@ def DrawText(x,y,text, xalign = 'left', yalign = 'top', color=(0,0,0,255),size=1
                         font_name='Dotum',
                         font_size=size,
                         bold=bold,
-                        x=x, y=shared.H-(y),
+                        x=x, y=H-(y),
                         color = color,
                         anchor_x=xalign, anchor_y=yalign)
     return label
@@ -197,7 +196,7 @@ class Shop(Button):
         if not self.visible:
             return
 
-        y = shared.H-y
+        y = H-y
         if InRect(*(self.rect+[x,y])):
             self.func()
 
@@ -236,7 +235,38 @@ class Shop(Button):
 
     def OffMenu(self):
         if GameWSt.draggingIdx != -1:
+            GameWSt.draggingItem.isDragging = False
             GameWSt.draggingContainer[GameWSt.draggingIdx] = GameWSt.draggingItem
+
+            idx = targetIdx = GameWSt.draggingIdx
+            targetC = GameWSt.draggingContainer
+            if targetC == GameWSt.inventory:
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+            else:
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+
+
+
             GameWSt.draggingContainer = None
             GameWSt.draggingIdx = -1
             GameWSt.draggingItem = None
@@ -278,15 +308,91 @@ class Shop(Button):
             item.Render()
 
     def OnDragStart(self, container, idx):
-        pass
+        itemToDrag = container[idx]
+        if itemToDrag.isEmpty:
+            return
+
+        if container == GameWSt.inventory:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        container[idx] = GameWSt.NewEmptyItem(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+        else:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        container[idx] = GameWSt.NewEmptyItem(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+
+        GameWSt.draggingItem = itemToDrag
+        GameWSt.draggingItem.isDragging = True
+        GameWSt.draggingIdx = idx
+        GameWSt.draggingContainer = container
 
     def OnDrop(self, targetC, targetIdx, sourceC, sourceIdx, draggingItem):
-        pass
+        toDrag = targetC[targetIdx]
+        targetC[targetIdx] = draggingItem
+        targetC[targetIdx].isDragging = False
+
+        idx = targetIdx
+        if targetC == GameWSt.inventory:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        targetC[targetIdx].SetPos(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+        else:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+
+
+
+
+        if toDrag.isEmpty:
+            GameWSt.draggingIdx = -1
+            GameWSt.draggingContainer = None
+            GameWSt.draggingItem = None
+        else:
+            GameWSt.draggingItem = toDrag
+            GameWSt.draggingItem.isDragging = True
     def OnItemClick(self, container, idx):
         if GameWSt.draggingIdx == -1:
             self.OnDragStart(container, idx)
         else:
             self.OnDrop(container, idx, GameWSt.draggingContainer, GameWSt.draggingIdx, GameWSt.draggingItem)
+
+        if GameWSt.draggingItem:
+            x, y = GameWSt.lastMouseDown['l']
+            GameWSt.draggingItem.SetPos(x-GameWSt.itemW/2,H-(y+GameWSt.itemH/2))
+
 
 class ItemShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
@@ -294,10 +400,11 @@ class ItemShop(Shop):
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
+        idx = self.idx
         if self.left and self.idx != -1:
-            self.OnItemClick(self.itemShop, idx)
+            self.OnItemClick(GameWSt.itemShop, idx)
         if not self.left and self.idx != -1:
-            self.OnItemClick(self.inventory, idx)
+            self.OnItemClick(GameWSt.inventory, idx)
 
     def Render(self):
         Shop.Render(self)
@@ -313,10 +420,11 @@ class MapShop(Shop):
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
+        idx = self.idx
         if self.left and self.idx != -1:
-            self.OnItemClick(self.mapShop, idx)
+            self.OnItemClick(GameWSt.mapShop, idx)
         if not self.left and self.idx != -1:
-            self.OnItemClick(self.inventory, idx)
+            self.OnItemClick(GameWSt.inventory, idx)
 
 
     def Render(self):
@@ -333,10 +441,11 @@ class WeaponShop(Shop):
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
+        idx = self.idx
         if self.left and self.idx != -1:
-            self.OnItemClick(self.weaponShop, idx)
+            self.OnItemClick(GameWSt.weaponShop, idx)
         if not self.left and self.idx != -1:
-            self.OnItemClick(self.inventory, idx)
+            self.OnItemClick(GameWSt.inventory, idx)
 
     def Render(self):
         Shop.Render(self)
@@ -352,10 +461,11 @@ class Stash(Shop):
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
+        idx = self.idx
         if self.left and self.idx != -1:
-            self.OnItemClick(self.stash, idx)
+            self.OnItemClick(GameWSt.stash, idx)
         if not self.left and self.idx != -1:
-            self.OnItemClick(self.inventory, idx)
+            self.OnItemClick(GameWSt.inventory, idx)
 
     def Render(self):
         Shop.Render(self)
@@ -459,9 +569,18 @@ class Item(object):
         self.h = h
 
         self.isEmpty = isEmpty
+        self.isDragging = False
 
+    def SetPos(self, x, y):
+        self.x = x
+        self.y = y#H-y-self.h
+        self.label.x = x+self.w/2
+        self.label.y = H-(y+self.h/2)
     def Render(self):
-        DrawQuad(self.x+5, self.y+5, self.w-10, self.h-10, (144, 244, 229, 255))
+        if not self.isDragging:
+            DrawQuad(self.x+5, self.y+5, self.w-10, self.h-10, (144, 244, 229, 255))
+        else:
+            DrawQuadWithBorder(self.x+5, self.y+5, self.w-10, self.h-10, (144, 244, 229, 255), (0,0,0,255), 1)
         if not self.isEmpty:
             self.label.draw()
 
@@ -580,7 +699,7 @@ class MyGameWindow(pyglet.window.Window):
         idxX = idx%10
         idxY = (idx-idxX)/10
         newItem = Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.invX+idxX*(self.itemW-5), self.invY+idxY*(self.itemH-5))
-        newItem2 = Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.leftX+idxX*(self.itemW-5), self.invY+idxY*(self.itemH-5))
+        newItem2 = Item(u"단도2", u"단도2", u"짧고 날카로운 칼이다.", self.leftX+idxX*(self.itemW-5), self.invY+idxY*(self.itemH-5))
 
 
 
@@ -765,8 +884,8 @@ class MyGameWindow(pyglet.window.Window):
             x = state.lastMouseX
             y = state.lastMouseY
 
-            clickedMobX = state.x+(x-shared.posX+shared.tileW/2)//shared.tileW
-            clickedMobY = state.y+(y-shared.posY+shared.tileH/2)//shared.tileH
+            clickedMobX = state.x+(x-posX+tileW/2)//tileW
+            clickedMobY = state.y+(y-posY+tileH/2)//tileH
             found = False
             for mob in MobMgrS.mobs:
                 if mob.x == clickedMobX and mob.y == clickedMobY:
@@ -831,6 +950,8 @@ class MyGameWindow(pyglet.window.Window):
 
         if self.popupWindow:
             self.popupWindow.Render()
+        if self.draggingItem:
+            self.draggingItem.Render()
 
 
 
@@ -911,6 +1032,9 @@ class MyGameWindow(pyglet.window.Window):
 
         if not found:
             self.popupWindow = None
+        if self.draggingIdx != -1:
+            self.popupWindow = None
+            self.draggingItem.SetPos(x-self.itemW/2,H-(y+self.itemH/2))
 
         if self.popupWindow: # fix overflown popup window
             if ((H-y)+self.popupWindow.h) > H:
@@ -937,6 +1061,7 @@ class MyGameWindow(pyglet.window.Window):
 
     def on_mouse_press(self, x, y, b, m):
         if b == mouse.LEFT:
+            self.lastMouseDown["l"] = [x,y]
             for button in self.zoneButtons:
                 button.OnLDown(x,y)
             for button in self.npcs:
@@ -944,7 +1069,6 @@ class MyGameWindow(pyglet.window.Window):
             for slot in self.qSlot:
                 slot.OnLDown(x,y)
 
-            self.lastMouseDown["l"] = [x,y]
         if b == mouse.MIDDLE:
             self.lastMouseDown["m"] = [x,y]
         if b == mouse.RIGHT:
@@ -954,8 +1078,8 @@ class MyGameWindow(pyglet.window.Window):
         state.lastMouseX = x
         state.lastMouseY = y
 
-        clickedMobX = state.x+(x-shared.posX+shared.tileW/2)//shared.tileW
-        clickedMobY = state.y+(y-shared.posY+shared.tileH/2)//shared.tileH
+        clickedMobX = state.x+(x-posX+tileW/2)//tileW
+        clickedMobY = state.y+(y-posY+tileH/2)//tileH
         found = False
         for mob in MobMgrS.mobs:
             if mob.x == clickedMobX and mob.y == clickedMobY:
