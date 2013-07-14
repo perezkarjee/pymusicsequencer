@@ -58,10 +58,13 @@ class Button(object):
         self.label.draw()
 
 class ZoneButton(Button):
-    def __init__(self, x,y,w,h, label, callback):
-        Button.__init__(self, x,y,w,h, label, callback)
+    def __init__(self, x,y,w,h, label, ident):
+        Button.__init__(self, x,y,w,h, label, self.Move)
+        self.ident = ident
         self.label = DrawText(x+w/2, y+h/2, label, 'center', 'center', color=(0,46,116,255))
 
+    def Move(self):
+        GameWSt.MoveRoom(self.ident)
     def Render(self):
         if not self.visible:
             return
@@ -265,8 +268,6 @@ class Shop(Button):
                     if found:
                         break
 
-
-
             GameWSt.draggingContainer = None
             GameWSt.draggingIdx = -1
             GameWSt.draggingItem = None
@@ -344,11 +345,35 @@ class Shop(Button):
 
     def OnDrop(self, targetC, targetIdx, sourceC, sourceIdx, draggingItem):
         toDrag = targetC[targetIdx]
-        targetC[targetIdx] = draggingItem
-        targetC[targetIdx].isDragging = False
 
         idx = targetIdx
         if targetC == GameWSt.inventory:
+            # buy if has enough point else place draggingitem into original source
+            if self.buySell and not GameWSt.BuyItem(draggingItem):
+                GameWSt.draggingItem.isDragging = False
+                GameWSt.draggingContainer[GameWSt.draggingIdx] = GameWSt.draggingItem
+
+                idx = targetIdx = GameWSt.draggingIdx
+                targetC = GameWSt.draggingContainer
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+
+                GameWSt.draggingContainer = None
+                GameWSt.draggingIdx = -1
+                GameWSt.draggingItem = None
+                return
+
+            targetC[targetIdx] = draggingItem
+            targetC[targetIdx].isDragging = False
             idx2 = 0
             found = False
             for yy in range(13):
@@ -361,22 +386,28 @@ class Shop(Button):
                 if found:
                     break
         else:
-            idx2 = 0
-            found = False
-            for yy in range(13):
-                for xx in range(10):
-                    if idx == idx2:
-                        targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
-                        found = True
+            # sell right now and don't pick it up again
+            if not self.buySell:
+                targetC[targetIdx] = draggingItem
+                targetC[targetIdx].isDragging = False
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
                         break
-                    idx2 += 1
-                if found:
-                    break
+            else:
+                GameWSt.SellItem(draggingItem)
 
 
 
 
-        if toDrag.isEmpty:
+        if toDrag.isEmpty or self.buySell: # don't pick it up again if buySell
             GameWSt.draggingIdx = -1
             GameWSt.draggingContainer = None
             GameWSt.draggingItem = None
@@ -393,18 +424,26 @@ class Shop(Button):
             x, y = GameWSt.lastMouseDown['l']
             GameWSt.draggingItem.SetPos(x-GameWSt.itemW/2,H-(y+GameWSt.itemH/2))
 
+    def OnLDown2(self,x,y):
+        if not self.menuVisible or not self.visible:
+            return
+        idx = self.idx
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.container, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(GameWSt.inventory, idx)
+
+
 
 class ItemShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Shop.__init__(self, name, leftname, rightname, 0,0)
+        self.container = GameWSt.itemShop
+        self.buySell = True
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
-        idx = self.idx
-        if self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.itemShop, idx)
-        if not self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.inventory, idx)
+        Shop.OnLDown2(self,x,y)
 
     def Render(self):
         Shop.Render(self)
@@ -417,15 +456,12 @@ class ItemShop(Shop):
 class MapShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Shop.__init__(self, name, leftname, rightname, 0,0)
+        self.container = GameWSt.mapShop
+        self.buySell = True
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
-        idx = self.idx
-        if self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.mapShop, idx)
-        if not self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.inventory, idx)
-
+        Shop.OnLDown2(self,x,y)
 
     def Render(self):
         Shop.Render(self)
@@ -438,14 +474,12 @@ class MapShop(Shop):
 class WeaponShop(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Shop.__init__(self, name, leftname, rightname, 0,0)
+        self.container = GameWSt.weaponShop
+        self.buySell = True
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
-        idx = self.idx
-        if self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.weaponShop, idx)
-        if not self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.inventory, idx)
+        Shop.OnLDown2(self,x,y)
 
     def Render(self):
         Shop.Render(self)
@@ -458,14 +492,12 @@ class WeaponShop(Shop):
 class Stash(Shop):
     def __init__(self, name, leftname, rightname, x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Shop.__init__(self, name, leftname, rightname, 0,0)
+        self.container = GameWSt.stash
+        self.buySell = False
 
     def OnLDown(self, x,y):
         Shop.OnLDown(self,x,y)
-        idx = self.idx
-        if self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.stash, idx)
-        if not self.left and self.idx != -1:
-            self.OnItemClick(GameWSt.inventory, idx)
+        Shop.OnLDown2(self,x,y)
 
     def Render(self):
         Shop.Render(self)
@@ -775,6 +807,11 @@ class MyGameWindow(pyglet.window.Window):
 
         self.popupWindow = None
 
+    def BuyItem(self, item):
+        self.DoMsg(u"아이템을 샀습니다.")
+        return True
+    def SellItem(self, item):
+        pass
     def NewEmptyItem(self, x, y):
         return Item(u"없음", u"없음", u"빈 아이템", x,y, isEmpty=True)
     def DoSysOutput(self, txt):
@@ -824,7 +861,7 @@ class MyGameWindow(pyglet.window.Window):
 
         y = 0
         for room in self.rooms[self.curRoom].connected:
-            self.zoneButtons += [ZoneButton(W-self.sideMenuW+10, y+10, self.sideMenuW-20, 30, room.title, lambda : self.MoveRoom(room.ident))]
+            self.zoneButtons += [ZoneButton(W-self.sideMenuW+10, y+10, self.sideMenuW-20, 30, room.title, room.ident)]
             y += 35
 
         xbase = 10
