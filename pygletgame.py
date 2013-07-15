@@ -531,18 +531,32 @@ def IsRieul(chr):
         return False
 
 class Skill(object):
-    def __init__(self, shortTitle, title, desc):
+    def __init__(self, shortTitle, title, desc, cost, delay):
         self.txt = shortTitle
         self.title = title
         self.desc = desc
+        self.descOrg = desc
         self.point = 0
+        self.cost = cost
+        self.wait = 0
+        self.delay = delay
 
+    def SetDesc(self):
+        self.SetFooter()
+        self.desc = self.descOrg + u"\n\n" + self.footer
+    def OnTick(self, tick):
+        self.wait += tick
     def Use(self, target1, target2, targets):
         pass
 
     def OnLDown(self):
         pass
-
+    def Ready(self):
+        if self.wait > self.delay:
+            self.wait = 0
+            return True
+        else:
+            return False
     def CalcManaCost(self):
         return 0
     def GetDesc(self):
@@ -550,7 +564,10 @@ class Skill(object):
 
 class HealPotion(Skill):
     def __init__(self):
-        Skill.__init__(self, u"힐포", u"힐링 포션", u"마시면 체력을 완전히 회복한다.")
+        Skill.__init__(self, u"힐포", u"힐링 포션", u"마시면 체력을 완전히 회복한다.", 0, 0)
+        self.SetDesc()
+    def SetFooter(self):
+        self.footer = u"현재 포인트: %d\n쿨타임: %.2f초" % (self.point, self.delay/1000.0)
 
     def Use(self, target1, target2, targets):
         healAmountNeeded = target1.CalcMaxHP()-target1.hp
@@ -561,11 +578,19 @@ class HealPotion(Skill):
         target1.hp += healAmountNeeded
 
     def OnLDown(self):
-        self.Use(GameWSt.char, None, [])
+        if self.Ready():
+            self.Use(GameWSt.char, None, [])
+    def AddPoint(self, amt):
+        self.point += amt
+        self.SetDesc()
 
 class ManaPotion(Skill):
     def __init__(self):
-        Skill.__init__(self, u"마포", u"마나 포션", u"마시면 마력을 완전히 회복한다.")
+        Skill.__init__(self, u"마포", u"마나 포션", u"마시면 마력을 완전히 회복한다.", 0, 0)
+        self.SetDesc()
+
+    def SetFooter(self):
+        self.footer = u"현재 포인트: %d\n쿨타임: %.2f초" % (self.point, self.delay/1000.0)
 
     def Use(self, target1, target2, targets):
         healAmountNeeded = target1.CalcMaxMP()-target1.mp
@@ -574,18 +599,53 @@ class ManaPotion(Skill):
             healAmountNeeded += target1.mppotion
             target1.mppotion = 0
         target1.mp += healAmountNeeded
+    def AddPoint(self, amt):
+        self.point += amt
+        self.SetDesc()
 
     def OnLDown(self):
-        self.Use(GameWSt.char, None, [])
+        if self.Ready():
+            self.Use(GameWSt.char, None, [])
+
 class SuperAttack(Skill):
-    def __init__(self):
-        Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적을 후려친다.")
+    def __init__(self, player):
+        Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적 하나를 후려친다.", 5, 2000)
+        self.player = player
+        self.SetDesc()
 
+    def SetFooter(self):
+        self.footer = u"현재 포인트: %d\n데미지: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
+
+    def AddPoint(self, amt):
+        self.point += amt
+        self.SetDesc()
+    def CalcManaCost(self):
+        return self.cost * (self.point+1)
+    def CalcDmg(self):
+        return int(self.player.CalcAtk()*1.3*(self.point+1))
     def Use(self, target1, target2, targets):
-        pass
+        target2.TakeDmg(self.CalcDmg(target1))
 
     def OnLDown(self):
-        self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+        if self.Ready():
+            self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+
+class BetterSuperAttack(SuperAttack):
+    def __init__(self, player):
+        SuperAttack.__init__(self, player)
+        self.txt = u"힘차"
+        self.title = u"힘차게 후려치기"
+        self.descOrg = u"현재 공격중인 적 하나를 힘차게 후려친다."
+        self.cost = 10
+        self.delay = 2000
+
+        self.SetDesc()
+    def CalcManaCost(self):
+        return self.cost * (self.point+1)
+    def CalcDmg(self):
+        return int(self.player.CalcAtk()*2.3*(self.point+1))
+    def SetFooter(self):
+        self.footer = u"현재 포인트: %d\n데미지: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
 
 class Item(object):
     def __init__(self, short, title, desc, x,y, isEmpty=False):
@@ -690,6 +750,10 @@ class Element(object): # 아이템의 속성
         self.minMod = minMod
         self.maxMod = maxMod
 
+def GetElements():
+    ele = {}
+    return ele
+
 class Character(object):
     def __init__(self):
         self.totalPoint = 0
@@ -713,25 +777,25 @@ class Character(object):
 
         self.texts = []
         y = 0
-        self.txtPoint = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Points: %d" % (self.totalPoint,), 'left', 'top')
+        self.txtPoint = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"포인트: %d" % (self.totalPoint,), 'left', 'top')
         self.texts += [self.txtPoint]
         y += 20
-        self.txtHP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"HP: %d/%d" % (self.curHP, self.CalcMaxHP()), 'left', 'top')
+        self.txtHP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"체력: %d/%d" % (self.curHP, self.CalcMaxHP()), 'left', 'top')
         self.texts += [self.txtHP]
         y += 20
-        self.txtMP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"MP: %d/%d" % (self.curMP, self.CalcMaxMP()), 'left', 'top')
+        self.txtMP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"마력: %d/%d" % (self.curMP, self.CalcMaxMP()), 'left', 'top')
         self.texts += [self.txtMP]
         y += 20
-        self.txtHPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"HP Potion: %d" % (self.CalcHPPotion()), 'left', 'top')
+        self.txtHPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"체력포션: %d" % (self.CalcHPPotion()), 'left', 'top')
         self.texts += [self.txtHPPo]
         y += 20
-        self.txtMPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"MP Potion: %d" % (self.CalcMPPotion()), 'left', 'top')
+        self.txtMPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"마력포션: %d" % (self.CalcMPPotion()), 'left', 'top')
         self.texts += [self.txtMPPo]
         y += 20
-        self.txtAtk = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Atk: %d" % (self.CalcAtk()), 'left', 'top')
+        self.txtAtk = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"공격력: %d" % (self.CalcAtk()), 'left', 'top')
         self.texts += [self.txtAtk]
         y += 20
-        self.txtDfn = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"Dfn: %d" % (self.CalcDfn()), 'left', 'top')
+        self.txtDfn = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"방어력: %d" % (self.CalcDfn()), 'left', 'top')
         self.texts += [self.txtDfn]
 
     def CalcMaxHP(self):
@@ -750,6 +814,21 @@ class Character(object):
     def SetHP(self, hp):
         self.curHP = hp
         self.txtHP.text = u"HP: %d/%d" % (self.curHP, self.CalcMaxHP())
+
+    def SetMP(self, mp):
+        self.curMP = mp
+        self.txtMP.text = u"MP: %d/%d" % (self.curMP, self.CalcMaxMP())
+
+    def TakeDmg(self, dmg):
+        dmg -= self.CalcDfn()
+        if dmg < 1:
+            dmg = 1
+        self.curHP -= dmg
+        if self.curHP <= 0:
+            self.Die()
+
+    def Die(self):
+        pass
 
     def Render(self):
         for text in self.texts:
@@ -851,8 +930,8 @@ class MyGameWindow(pyglet.window.Window):
         self.qSlot = [
                 QuickSlot(0, HealPotion()),
                 QuickSlot(1, ManaPotion()),
-                QuickSlot(2, SuperAttack()),
-                QuickSlot(3, HealPotion()),
+                QuickSlot(2, SuperAttack(self.char)),
+                QuickSlot(3, BetterSuperAttack(self.char)),
                 QuickSlot(4, HealPotion()),
                 QuickSlot(5, HealPotion()),
                 QuickSlot(6, HealPotion()),
@@ -1309,4 +1388,8 @@ if __name__ == "__main__":
 즉 유니크의 경우 속성이 10개가 붙을 수 있다.
 
 이제 적을 만든다.
+
+쿨다운 중에 아이콘에 오버레이를 씌워서 점점 게이지가 올라차고 끝나면 게이지가 사라져서 쿨다운중임을 알린다.
+마나가 부족하면 배경이 회색으로 되어 사용할 수 없음을 알린다.
+
 """
