@@ -17,6 +17,7 @@ W = 1020
 H = 720
 VSYNC = True
 
+G_vbo = [] # 나중엔 vbo로 하게 한다.
 def DrawQuad(x,y,w,h, color):
     glColor4ub(*color)
     pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
@@ -774,8 +775,8 @@ class PopupWindow(object):
     def __init__(self, title, desc, x,y, ident):
         self.x = x
         self.y = y
-        self.w = 300
-        self.h = 400
+        self.w = 200
+        self.h = 300
         header = u"""<font color="black" face="Dotum" size="2">%s<br/><br/><b>""" % title
         footer = u"""</b></font>"""
         texts = desc.split("\n")
@@ -787,13 +788,31 @@ class PopupWindow(object):
         self.text = pyglet.text.HTMLLabel(self.desc,
                         width=self.w-margin*2,
                         x=x+margin, y=H-(y+margin+13),multiline=True)
-        self.text.font_size = 9
+        self.text.font_size = 10
 
         self.ident = ident
 
     def Render(self):
-        DrawQuadWithBorder(self.x, self.y, self.w, self.h, (200, 200, 200, 150), (30,30,30,150), 0) # zone menu
+        DrawQuadWithBorder(self.x, self.y, self.w, self.h, (200, 200, 200, 230), (30,30,30,150), 0) # zone menu
         self.text.draw()
+'''
+G_popupWindow = PopupWindowClass(u"", u"", 0, 0, None)
+def PopupWindow(title, desc, x, y, ident):
+    global G_popupWindow
+    G_popupWindow.x = x
+    G_popupWindow.y = y
+    header = u"""<font color="black" face="Dotum" size="2">%s<br/><br/><b>""" % title
+    footer = u"""</b></font>"""
+    texts = desc.split("\n")
+    text = '<br/>'.join(texts)
+    G_popupWindow.desc = header + text + footer
+    G_popupWindow.ident = ident
+    G_popupWindow.text.text = G_popupWindow.desc
+    G_popupWindow.x = x+G_popupWindow.margin
+    G_popupWindow.y = H-(y+G_popupWindow.margin+13)
+    return G_popupWindow
+'''
+
 
 class Element(object): # 아이템의 속성
     # 아이템 레벨이 오르면 자동으로 값이 올라가게 하려면?
@@ -994,7 +1013,8 @@ class MyGameWindow(pyglet.window.Window):
         self.stash = []
         for yy in range(13):
             for xx in range(10):
-                self.inventory += [self.NewEmptyItem(self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+                #self.inventory += [self.NewEmptyItem(self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+                self.inventory += [Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
         self.inventory[idx] = newItem
 
         for yy in range(13):
@@ -1008,7 +1028,8 @@ class MyGameWindow(pyglet.window.Window):
 
         for yy in range(13):
             for xx in range(10):
-                self.stash += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+                #self.stash += [self.NewEmptyItem(self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
+                self.stash += [Item(u"단도", u"단도", u"짧고 날카로운 칼이다.", self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5))]
 
         for yy in range(13):
             for xx in range(10):
@@ -1261,75 +1282,77 @@ class MyGameWindow(pyglet.window.Window):
         print 'Good Bye !'
         pyglet.app.exit()
     def on_mouse_motion(self, x, y, b, m):
-        found = False
-        for pos in range(20):
-            xx,yy,ww,hh = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
-            if InRect(xx,yy,ww,hh,x,H-y):
-                if not (self.popupWindow and self.popupWindow.ident == self.qSlot[pos]):
-                    self.popupWindow = PopupWindow(self.qSlot[pos].skill.title, self.qSlot[pos].skill.GetDesc(), x, H-y, self.qSlot[pos])
-                elif self.popupWindow:
-                    self.popupWindow.x = x
-                    self.popupWindow.y = H-y
-                    self.popupWindow.text.x = x+self.popupWindow.margin
-                    self.popupWindow.text.y = (y-self.popupWindow.margin-13)
-                    
-                found = True
-                break
-
-        container = None
-        if isinstance(self.menu, WeaponShop):
-            container = self.weaponShop
-        if isinstance(self.menu, MapShop):
-            container = self.mapShop
-        if isinstance(self.menu, ItemShop):
-            container = self.itemShop
-        if isinstance(self.menu, Stash):
-            container = self.stash
-
-        if container:
-            for yy in range(13):
-                for xx in range(10):
-                    xxx,yyy,www,hhh = self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
-                    item = container[yy*10+xx]
-                    if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
-                        if not (self.popupWindow and self.popupWindow.ident == item):
-                            self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
-                        elif self.popupWindow:
-                            self.popupWindow.x = x
-                            self.popupWindow.y = H-y
-                            self.popupWindow.text.x = x+self.popupWindow.margin
-                            self.popupWindow.text.y = (y-self.popupWindow.margin-13)
-                            
-                        found = True
-                        break
-                if found:
+        if self.draggingIdx == -1:
+            found = False
+            for pos in range(20):
+                xx,yy,ww,hh = pos*(GameWSt.qSlotH+4-5), H-GameWSt.bottomMenuH-GameWSt.qSlotH+5, GameWSt.qSlotH+4, GameWSt.qSlotH
+                if InRect(xx,yy,ww,hh,x,H-y):
+                    if not (self.popupWindow and self.popupWindow.ident == self.qSlot[pos]):
+                        self.popupWindow = PopupWindow(self.qSlot[pos].skill.title, self.qSlot[pos].skill.GetDesc(), x, H-y, self.qSlot[pos])
+                    elif self.popupWindow:
+                        self.popupWindow.x = x
+                        self.popupWindow.y = H-y
+                        self.popupWindow.text.x = x+self.popupWindow.margin
+                        self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                        
+                    found = True
                     break
 
-        container = self.inventory
-        if self.menuVis:
-            for yy in range(13):
-                for xx in range(10):
-                    xxx,yyy,www,hhh = self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
-                    item = container[yy*10+xx]
-                    if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
-                        if not (self.popupWindow and self.popupWindow.ident == item):
-                            self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
-                        elif self.popupWindow:
-                            self.popupWindow.x = x
-                            self.popupWindow.y = H-y
-                            self.popupWindow.text.x = x+self.popupWindow.margin
-                            self.popupWindow.text.y = (y-self.popupWindow.margin-13)
-                            
-                        found = True
+            container = None
+            if isinstance(self.menu, WeaponShop):
+                container = self.weaponShop
+            if isinstance(self.menu, MapShop):
+                container = self.mapShop
+            if isinstance(self.menu, ItemShop):
+                container = self.itemShop
+            if isinstance(self.menu, Stash):
+                container = self.stash
+
+            if container:
+                for yy in range(13):
+                    for xx in range(10):
+                        xxx,yyy,www,hhh = self.leftX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
+                        item = container[yy*10+xx]
+                        if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
+                            if not (self.popupWindow and self.popupWindow.ident == item):
+                                self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
+                            elif self.popupWindow:
+                                self.popupWindow.x = x
+                                self.popupWindow.y = H-y
+                                self.popupWindow.text.x = x+self.popupWindow.margin
+                                self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                                
+                            found = True
+                            break
+                    if found:
                         break
-                if found:
-                    break
+
+            container = self.inventory
+            if self.menuVis:
+                for yy in range(13):
+                    for xx in range(10):
+                        xxx,yyy,www,hhh = self.invX+xx*(self.itemW-5), self.invY+yy*(self.itemH-5), self.itemW, self.itemH
+                        item = container[yy*10+xx]
+                        if InRect(xxx,yyy,www,hhh,x,H-y) and not container[yy*10+xx].isEmpty:
+                            if not (self.popupWindow and self.popupWindow.ident == item):
+                                self.popupWindow = PopupWindow(item.title, item.GetDesc(), x, H-y, item)
+                            elif self.popupWindow:
+                                self.popupWindow.x = x
+                                self.popupWindow.y = H-y
+                                self.popupWindow.text.x = x+self.popupWindow.margin
+                                self.popupWindow.text.y = (y-self.popupWindow.margin-13)
+                                
+                            found = True
+                            break
+                    if found:
+                        break
 
 
 
 
-        if not found:
-            self.popupWindow = None
+            if not found:
+                self.popupWindow = None
+
         if self.draggingIdx != -1:
             self.popupWindow = None
             self.draggingItem.SetPos(x-self.itemW/2,H-(y+self.itemH/2))
