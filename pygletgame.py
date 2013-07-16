@@ -546,8 +546,14 @@ class Skill(object):
         self.desc = self.descOrg + u"\n\n" + self.footer
     def OnTick(self, tick):
         self.wait += tick
+        if self.wait > self.delay:
+            self.wait = self.delay+10
     def Use(self, target1, target2, targets):
-        pass
+        if IsJong(self.title[-1]):
+            jong = u"을"
+        else:
+            jong = u"를"
+        GameWSt.DoMsg(u"%s%s 사용했습니다." % (self.title, jong))
 
     def OnLDown(self):
         pass
@@ -570,15 +576,16 @@ class HealPotion(Skill):
         self.footer = u"현재 포인트: %d\n쿨타임: %.2f초" % (self.point, self.delay/1000.0)
 
     def Use(self, target1, target2, targets):
-        healAmountNeeded = target1.CalcMaxHP()-target1.hp
-        target1.hppotion -= healAmountNeeded
-        if target1.hppotion < 0:
-            healAmountNeeded += target1.hppotion
-            target1.hppotion = 0
-        target1.hp += healAmountNeeded
+        Skill.Use(self,target1,target2,targets)
+        healAmountNeeded = target1.CalcMaxHP()-target1.curHP
+        target1.SetHPPo(target1.curHPPo - healAmountNeeded)
+        if target1.curHPPo < 0:
+            healAmountNeeded += target1.curHPPo
+            target1.SetHPPo(0)
+        target1.SetHP(target1.curHP + healAmountNeeded)
 
     def OnLDown(self):
-        if self.Ready():
+        if self.Ready() and GameWSt.char.curHP < GameWSt.char.CalcMaxHP():
             self.Use(GameWSt.char, None, [])
     def AddPoint(self, amt):
         self.point += amt
@@ -593,18 +600,19 @@ class ManaPotion(Skill):
         self.footer = u"현재 포인트: %d\n쿨타임: %.2f초" % (self.point, self.delay/1000.0)
 
     def Use(self, target1, target2, targets):
-        healAmountNeeded = target1.CalcMaxMP()-target1.mp
-        target1.mppotion -= healAmountNeeded
-        if target1.mppotion < 0:
-            healAmountNeeded += target1.mppotion
-            target1.mppotion = 0
-        target1.mp += healAmountNeeded
+        Skill.Use(self,target1,target2,targets)
+        healAmountNeeded = target1.CalcMaxMP()-target1.curMP
+        target1.SetMPPo(target1.curMPPo - healAmountNeeded)
+        if target1.curMPPo < 0:
+            healAmountNeeded += target1.curMPPo
+            target1.SetMPPo(0)
+        target1.SetMP(target1.curMP + healAmountNeeded)
     def AddPoint(self, amt):
         self.point += amt
         self.SetDesc()
 
     def OnLDown(self):
-        if self.Ready():
+        if self.Ready() and GameWSt.char.curMP < GameWSt.char.CalcMaxMP():
             self.Use(GameWSt.char, None, [])
 
 class Stun(Skill):
@@ -632,10 +640,11 @@ class Stun(Skill):
             dur = 60000
         return dur
     def Use(self, target1, target2, targets):
+        Skill.Use(self,target1,target2,targets)
         target2.Stun(self.CalcDmg())
 
     def OnLDown(self):
-        if self.Ready():
+        if self.Ready() and GameWSt.curTarget:
             self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
 
 class SuperAttack(Skill):
@@ -655,10 +664,11 @@ class SuperAttack(Skill):
     def CalcDmg(self):
         return int(self.player.CalcAtk()*1.3*(self.point+1))
     def Use(self, target1, target2, targets):
+        Skill.Use(self,target1,target2,targets)
         target2.TakeDmg(self.CalcDmg())
 
     def OnLDown(self):
-        if self.Ready():
+        if self.Ready() and GameWSt.curTarget:
             self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
 
 class BetterSuperAttack(SuperAttack):
@@ -793,8 +803,8 @@ class Character(object):
         self.mpPoint = 0
         self.hp = 5
         self.mp = 5
-        self.curHP = self.CalcMaxHP()
-        self.curMP = self.CalcMaxMP()
+        self.curHP = 1#self.CalcMaxHP()
+        self.curMP = 1#self.CalcMaxMP()
 
         self.atkPoint = 0
         self.dfnPoint = 0
@@ -803,8 +813,10 @@ class Character(object):
 
         self.hppotionPoint = 0
         self.hppotion = 20
+        self.curHPPo = self.CalcHPPotion()
         self.mppotionPoint = 0
         self.mppotion = 20
+        self.curMPPo = self.CalcMPPotion()
 
         self.texts = []
         y = 0
@@ -817,10 +829,10 @@ class Character(object):
         self.txtMP = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"마력: %d/%d" % (self.curMP, self.CalcMaxMP()), 'left', 'top')
         self.texts += [self.txtMP]
         y += 20
-        self.txtHPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"체력포션: %d" % (self.CalcHPPotion()), 'left', 'top')
+        self.txtHPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"체력포션: %d/%d" % (self.curHPPo, self.CalcHPPotion()), 'left', 'top')
         self.texts += [self.txtHPPo]
         y += 20
-        self.txtMPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"마력포션: %d" % (self.CalcMPPotion()), 'left', 'top')
+        self.txtMPPo = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"마력포션: %d/%d" % (self.curMPPo, self.CalcMPPotion()), 'left', 'top')
         self.texts += [self.txtMPPo]
         y += 20
         self.txtAtk = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"공격력: %d" % (self.CalcAtk()), 'left', 'top')
@@ -828,6 +840,11 @@ class Character(object):
         y += 20
         self.txtDfn = DrawText(W-GameWSt.sideMenuW+10, GameWSt.posMenuH+10 + y, u"방어력: %d" % (self.CalcDfn()), 'left', 'top')
         self.texts += [self.txtDfn]
+
+
+        self.stunned = False
+        self.stunWait = 0
+        self.stunDur = 0
 
     def CalcMaxHP(self):
         return ((self.hpPoint/2)+1) * self.hp
@@ -843,15 +860,25 @@ class Character(object):
         return ((self.dfnPoint/2)+1) * self.dfn
 
     def Stun(self, dur):
+        self.stunned = True
+        self.stunWait = 0
+        self.stunDur = dur
         pass
 
+    def SetHPPo(self, hp):
+        self.curHPPo = hp
+        self.txtHPPo.text = u"체력포션: %d/%d" % (self.curHPPo, self.CalcHPPotion())
+
+    def SetMPPo(self, mp):
+        self.curMPPo = mp
+        self.txtMPPo.text = u"마력포션: %d/%d" % (self.curMPPo, self.CalcMPPotion())
     def SetHP(self, hp):
         self.curHP = hp
-        self.txtHP.text = u"HP: %d/%d" % (self.curHP, self.CalcMaxHP())
+        self.txtHP.text = u"체력: %d/%d" % (self.curHP, self.CalcMaxHP())
 
     def SetMP(self, mp):
         self.curMP = mp
-        self.txtMP.text = u"MP: %d/%d" % (self.curMP, self.CalcMaxMP())
+        self.txtMP.text = u"마력: %d/%d" % (self.curMP, self.CalcMaxMP())
 
     def TakeDmg(self, dmg):
         dmg -= self.CalcDfn()
@@ -864,6 +891,9 @@ class Character(object):
 
     def Die(self):
         pass
+
+    def Tick(self, tick):
+        self.stunWait += tick
 
     def Render(self):
         for text in self.texts:
@@ -1332,6 +1362,10 @@ class MyGameWindow(pyglet.window.Window):
     def on_tick(self):
         tick = pyglet.clock.tick() # time passed since previous frame
         self.label.text = u"안녕세상" + `tick`
+
+        for slot in self.qSlot:
+            slot.skill.OnTick(tick*100000)
+        self.char.Tick(tick*100000)
 
 def MakeDrawCallConstant():
     def b(dt): pass
