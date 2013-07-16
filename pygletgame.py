@@ -641,7 +641,9 @@ class Stun(Skill):
         return dur
     def Use(self, target1, target2, targets):
         Skill.Use(self,target1,target2,targets)
-        target2.Stun(self.CalcDmg())
+        if self.player.curMP >= self.CalcManaCost():
+            self.player.SetMP(self.player.curMP-self.CalcManaCost())
+            target2.Stun(self.CalcDmg())
 
     def OnLDown(self):
         if self.Ready() and GameWSt.curTarget:
@@ -665,7 +667,9 @@ class SuperAttack(Skill):
         return int(self.player.CalcAtk()*1.3*(self.point+1))
     def Use(self, target1, target2, targets):
         Skill.Use(self,target1,target2,targets)
-        target2.TakeDmg(self.CalcDmg())
+        if self.player.curMP >= self.CalcManaCost():
+            self.player.SetMP(self.player.curMP-self.CalcManaCost())
+            target2.TakeDmg(self.CalcDmg())
 
     def OnLDown(self):
         if self.Ready() and GameWSt.curTarget:
