@@ -607,9 +607,40 @@ class ManaPotion(Skill):
         if self.Ready():
             self.Use(GameWSt.char, None, [])
 
+class Stun(Skill):
+    def __init__(self, player):
+        Skill.__init__(self, u"기절", u"기절시키기", u"현재 공격중인 적 하나를 기절시킨다.", 50, 2000)
+        self.player = player
+        self.duration = 5000
+        self.SetDesc()
+
+    def SetFooter(self):
+        self.footer = u"현재 포인트: %d\n지속시간: %.3f초 (최대 지속시간: 60초)\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg()/1000.0, self.CalcManaCost(), self.delay/1000.0)
+
+    def AddPoint(self, amt):
+        self.point += amt
+        self.SetDesc()
+    def CalcManaCost(self):
+        return self.cost
+    def CalcDmg(self):
+        dur = 1000+(self.point+1)*1
+        if dur > 5000:
+            dur = 5000+((self.point+1)/10.0)
+        if dur > 30000:
+            dur = 30000+((self.point+1)/30.0)
+        if dur > 60000:
+            dur = 60000
+        return dur
+    def Use(self, target1, target2, targets):
+        target2.Stun(self.CalcDmg())
+
+    def OnLDown(self):
+        if self.Ready():
+            self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+
 class SuperAttack(Skill):
     def __init__(self, player):
-        Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적 하나를 후려친다.", 5, 2000)
+        Skill.__init__(self, u"후려", u"후려치기", u"현재 공격중인 적 하나를 후려친다.", 5, 500)
         self.player = player
         self.SetDesc()
 
@@ -624,7 +655,7 @@ class SuperAttack(Skill):
     def CalcDmg(self):
         return int(self.player.CalcAtk()*1.3*(self.point+1))
     def Use(self, target1, target2, targets):
-        target2.TakeDmg(self.CalcDmg(target1))
+        target2.TakeDmg(self.CalcDmg())
 
     def OnLDown(self):
         if self.Ready():
@@ -637,7 +668,7 @@ class BetterSuperAttack(SuperAttack):
         self.title = u"힘차게 후려치기"
         self.descOrg = u"현재 공격중인 적 하나를 힘차게 후려친다."
         self.cost = 10
-        self.delay = 2000
+        self.delay = 500
 
         self.SetDesc()
     def CalcManaCost(self):
@@ -811,6 +842,9 @@ class Character(object):
     def CalcDfn(self):
         return ((self.dfnPoint/2)+1) * self.dfn
 
+    def Stun(self, dur):
+        pass
+
     def SetHP(self, hp):
         self.curHP = hp
         self.txtHP.text = u"HP: %d/%d" % (self.curHP, self.CalcMaxHP())
@@ -823,8 +857,9 @@ class Character(object):
         dmg -= self.CalcDfn()
         if dmg < 1:
             dmg = 1
-        self.curHP -= dmg
+        self.SetHP(self.curHP - dmg)
         if self.curHP <= 0:
+            self.SetHP(0)
             self.Die()
 
     def Die(self):
@@ -932,7 +967,7 @@ class MyGameWindow(pyglet.window.Window):
                 QuickSlot(1, ManaPotion()),
                 QuickSlot(2, SuperAttack(self.char)),
                 QuickSlot(3, BetterSuperAttack(self.char)),
-                QuickSlot(4, HealPotion()),
+                QuickSlot(4, Stun(self.char)),
                 QuickSlot(5, HealPotion()),
                 QuickSlot(6, HealPotion()),
                 QuickSlot(7, HealPotion()),
