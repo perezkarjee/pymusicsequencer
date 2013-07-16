@@ -538,7 +538,7 @@ class Skill(object):
         self.descOrg = desc
         self.point = 0
         self.cost = cost
-        self.wait = 0
+        self.wait = 99999999999
         self.delay = delay
 
     def SetDesc(self):
@@ -549,6 +549,7 @@ class Skill(object):
         if self.wait > self.delay:
             self.wait = self.delay+10
     def Use(self, target1, target2, targets):
+        self.wait = 0
         if IsJong(self.title[-1]):
             jong = u"을"
         else:
@@ -557,9 +558,8 @@ class Skill(object):
 
     def OnLDown(self):
         pass
-    def Ready(self):
+    def IsReady(self):
         if self.wait > self.delay:
-            self.wait = 0
             return True
         else:
             return False
@@ -567,6 +567,13 @@ class Skill(object):
         return 0
     def GetDesc(self):
         return self.desc
+    def NotReady(self):
+        GameWSt.DoMsg(u"아직 준비가 되지 않았습니다.")
+    def NotEnoughMana(self):
+        GameWSt.DoMsg(u"마나가 부족합니다.")
+    def NoTarget(self):
+        GameWSt.DoMsg(u"현재 전투중이 아닙니다.")
+
 
 class HealPotion(Skill):
     def __init__(self):
@@ -585,8 +592,12 @@ class HealPotion(Skill):
         target1.SetHP(target1.curHP + healAmountNeeded)
 
     def OnLDown(self):
-        if self.Ready() and GameWSt.char.curHP < GameWSt.char.CalcMaxHP():
+        if self.IsReady() and GameWSt.char.curHP < GameWSt.char.CalcMaxHP():
             self.Use(GameWSt.char, None, [])
+        elif not self.IsReady():
+            self.NotReady()
+        elif GameWSt.char.curHP == GameWSt.char.CalcMaxHP():
+            GameWSt.DoMsg(u"체력이 이미 꽉 찼습니다.")
     def AddPoint(self, amt):
         self.point += amt
         self.SetDesc()
@@ -612,42 +623,52 @@ class ManaPotion(Skill):
         self.SetDesc()
 
     def OnLDown(self):
-        if self.Ready() and GameWSt.char.curMP < GameWSt.char.CalcMaxMP():
+        if self.IsReady() and GameWSt.char.curMP < GameWSt.char.CalcMaxMP():
             self.Use(GameWSt.char, None, [])
+        elif not self.IsReady():
+            self.NotReady()
+        elif GameWSt.char.curMP == GameWSt.char.CalcMaxMP():
+            GameWSt.DoMsg(u"마나가 이미 꽉 찼습니다.")
 
 class Stun(Skill):
     def __init__(self, player):
-        Skill.__init__(self, u"기절", u"기절시키기", u"현재 공격중인 적 하나를 기절시킨다.", 50, 2000)
+        # XXX: 스턴은 20초 이상은 기절시키지 못하도록 포인트를 넣을 수 있는 것에 제한을 둔다.
+        Skill.__init__(self, u"기절", u"기절시키기", u"현재 공격중인 적 하나를 기절시킨다.", 50, 30000)
         self.player = player
-        self.duration = 5000
         self.SetDesc()
 
     def SetFooter(self):
-        self.footer = u"현재 포인트: %d\n지속시간: %.3f초 (최대 지속시간: 60초)\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg()/1000.0, self.CalcManaCost(), self.delay/1000.0)
+        self.footer = u"현재 포인트: %d\n지속시간: %.3f초\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg()/1000.0, self.CalcManaCost(), self.delay/1000.0)
 
     def AddPoint(self, amt):
         self.point += amt
         self.SetDesc()
     def CalcManaCost(self):
-        return self.cost
+        return 100
     def CalcDmg(self):
-        dur = 1000+(self.point+1)*1
+        dur = 1000+(self.point)*1
         if dur > 5000:
-            dur = 5000+((self.point+1)/10.0)
-        if dur > 30000:
-            dur = 30000+((self.point+1)/30.0)
-        if dur > 60000:
-            dur = 60000
+            dur = 5000+((self.point)/10.0)
+        if dur > 10000:
+            dur = 10000+((self.point)/30.0)
+        if dur > 20000:
+            dur = 20000
         return dur
     def Use(self, target1, target2, targets):
         Skill.Use(self,target1,target2,targets)
         if self.player.curMP >= self.CalcManaCost():
             self.player.SetMP(self.player.curMP-self.CalcManaCost())
             target2.Stun(self.CalcDmg())
+        else:
+            self.NotEnoughMana()
 
     def OnLDown(self):
-        if self.Ready() and GameWSt.curTarget:
+        if self.IsReady() and GameWSt.curTarget:
             self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+        elif not self.IsReady():
+            self.NotReady()
+        elif self.IsReady() and not GameWSt.curTarget:
+            self.NoTarget()
 
 class SuperAttack(Skill):
     def __init__(self, player):
@@ -656,7 +677,7 @@ class SuperAttack(Skill):
         self.SetDesc()
 
     def SetFooter(self):
-        self.footer = u"현재 포인트: %d\n데미지: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
+        self.footer = u"현재 포인트: %d\n공격력: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
 
     def AddPoint(self, amt):
         self.point += amt
@@ -670,10 +691,16 @@ class SuperAttack(Skill):
         if self.player.curMP >= self.CalcManaCost():
             self.player.SetMP(self.player.curMP-self.CalcManaCost())
             target2.TakeDmg(self.CalcDmg())
+        else:
+            self.NotEnoughMana()
 
     def OnLDown(self):
-        if self.Ready() and GameWSt.curTarget:
+        if self.IsReady() and GameWSt.curTarget:
             self.Use(GameWSt.char, GameWSt.curTarget, GameWSt.mobs)
+        elif not self.IsReady():
+            self.NotReady()
+        elif self.IsReady() and not GameWSt.curTarget:
+            self.NoTarget()
 
 class BetterSuperAttack(SuperAttack):
     def __init__(self, player):
@@ -690,7 +717,7 @@ class BetterSuperAttack(SuperAttack):
     def CalcDmg(self):
         return int(self.player.CalcAtk()*2.3*(self.point+1))
     def SetFooter(self):
-        self.footer = u"현재 포인트: %d\n데미지: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
+        self.footer = u"현재 포인트: %d\n공격력: %d\n마나사용: %d\n쿨타임: %.2f초" % (self.point, self.CalcDmg(), self.CalcManaCost(), self.delay/1000.0)
 
 class Item(object):
     def __init__(self, short, title, desc, x,y, isEmpty=False):
@@ -849,6 +876,11 @@ class Character(object):
         self.stunned = False
         self.stunWait = 0
         self.stunDur = 0
+
+
+
+
+
 
     def CalcMaxHP(self):
         return ((self.hpPoint/2)+1) * self.hp
@@ -1026,6 +1058,11 @@ class MyGameWindow(pyglet.window.Window):
 
         self.popupWindow = None
 
+
+
+        arial = pyglet.font.load('Arial', 12, bold=True, italic=False)
+        self.fps = pyglet.clock.ClockDisplay(font=arial)
+
     def BuyItem(self, item):
         self.DoMsg(u"아이템을 샀습니다.")
         return True
@@ -1176,6 +1213,7 @@ class MyGameWindow(pyglet.window.Window):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(self.bgColor[0]/255.0, self.bgColor[1]/255.0, self.bgColor[2]/255.0, 1.0)
+        glLoadIdentity()
         self.clear()
         DrawQuadWithBorder(W-self.sideMenuW, 0, self.sideMenuW, self.posMenuH, (0, 78, 196, 255), self.bgColor, 5) # zone menu
         DrawQuadWithBorder(W-self.sideMenuW, self.posMenuH-5, self.sideMenuW, H-self.posMenuH+5, (153, 210, 0, 255), self.bgColor, 5) # char menu
@@ -1189,7 +1227,6 @@ class MyGameWindow(pyglet.window.Window):
 
         self.output.Render()
 
-        self.label.draw()
         for txt in self.texts:
             txt.draw()
 
@@ -1211,6 +1248,8 @@ class MyGameWindow(pyglet.window.Window):
 
 
         self.char.Render()
+        glTranslatef(0, 0, 0.0)
+        self.fps.draw()
 
 
 
@@ -1365,7 +1404,7 @@ class MyGameWindow(pyglet.window.Window):
 
     def on_tick(self):
         tick = pyglet.clock.tick() # time passed since previous frame
-        self.label.text = u"안녕세상" + `tick`
+        #self.label.text = u"안녕세상" + `tick`
 
         for slot in self.qSlot:
             slot.skill.OnTick(tick*100000)
@@ -1465,4 +1504,9 @@ if __name__ == "__main__":
 쿨다운 중에 아이콘에 오버레이를 씌워서 점점 게이지가 올라차고 끝나면 게이지가 사라져서 쿨다운중임을 알린다.
 마나가 부족하면 배경이 회색으로 되어 사용할 수 없음을 알린다.
 
+스턴은 20초 이상은 기절시키지 못하도록 포인트를 넣을 수 있는 것에 제한을 둔다.
+
+포인트를 넣을 수도 있지만 뺄 수도 있다.
+
+아이템의 가격은 살 때와 팔 때가 동일하다.
 """
