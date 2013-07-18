@@ -1041,7 +1041,7 @@ class MyGameWindow(pyglet.window.Window):
         self.rooms = GetRooms()
         self.dungeons = {}
 
-        self.output = OutputWindow(10, 20+H-self.bottomMenuH-self.midMenuH-self.qSlotH+5, W-self.sideMenuW-20, self.midMenuH-20)
+        self.output = OutputWindow(10, 22+H-self.bottomMenuH-self.midMenuH-self.qSlotH+5, W-self.sideMenuW-20, self.midMenuH-10)
         self.DoSysOutput(u"TextAdventure에 오신 것을 환영합ㅂㅂㅂ")
         self.DoSysOutput(u"이 게임은 만들다 말았음zz")
 
@@ -1081,6 +1081,8 @@ class MyGameWindow(pyglet.window.Window):
 
         arial = pyglet.font.load('Arial', 12, bold=True, italic=False)
         self.fps = pyglet.clock.ClockDisplay(font=arial)
+
+        self.draw = False
 
     def BuyItem(self, item):
         self.DoMsg(u"아이템을 샀습니다.")
@@ -1229,6 +1231,9 @@ class MyGameWindow(pyglet.window.Window):
 
     def on_draw(self):
         self.on_tick()
+        self.draw = not self.draw
+        if self.draw:
+            return
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(self.bgColor[0]/255.0, self.bgColor[1]/255.0, self.bgColor[2]/255.0, 1.0)
