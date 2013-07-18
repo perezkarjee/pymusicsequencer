@@ -182,6 +182,260 @@ class OutputWindow(object):
         for text in self.texts:
             text.draw()
 
+class Upgrade(Button):
+    def __init__(self, name, leftname,rightname,x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
+        Button.__init__(self, x,y,100,25, name, self.OnClick)
+        self.label = DrawText(x+100/2, y+25/2, name, 'center', 'center', color=(80,51,62,255))
+        self.menuVisible = False
+
+        w = W-GameWSt.sideMenuW+10
+        self.text1 = DrawText(10, 10, leftname, 'left', 'top', color=(0,0,0,255))
+        self.text2 = DrawText(w/2+5, 10, rightname, 'left', 'top', color=(0,0,0,255))
+        self.text3 = DrawText(w-22-1, 5+1, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
+
+        self.left = False
+        self.idx = -1
+
+    def OnLDown(self, x,y):
+        if not self.visible:
+            return
+
+        y = H-y
+        if InRect(*(self.rect+[x,y])):
+            self.func()
+
+
+        if not self.menuVisible:
+            return
+        
+        w = W-GameWSt.sideMenuW+10
+        if InRect(w-30,0,25,25,x,y):
+            self.OffMenu()
+
+
+
+        # left part of shop
+        self.left = False
+        self.idx = -1
+        idx = 0
+        for yy in range(13):
+            for xx in range(10):
+                if InRect(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5), GameWSt.itemW, GameWSt.itemH, x, y):
+                    self.left = True
+                    self.idx = idx
+                idx += 1
+
+        # right part of sho
+        idx = 0
+        for yy in range(13):
+            for xx in range(10):
+                if InRect(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5), GameWSt.itemW, GameWSt.itemH, x, y):
+                    self.left = False
+                    self.idx = idx
+                idx += 1
+
+
+
+
+    def OffMenu(self):
+        if GameWSt.draggingIdx != -1:
+            GameWSt.draggingItem.isDragging = False
+            GameWSt.draggingContainer[GameWSt.draggingIdx] = GameWSt.draggingItem
+
+            idx = targetIdx = GameWSt.draggingIdx
+            targetC = GameWSt.draggingContainer
+            if targetC == GameWSt.inventory:
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+            else:
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+
+            GameWSt.draggingContainer = None
+            GameWSt.draggingIdx = -1
+            GameWSt.draggingItem = None
+        GameWSt.menuVis = False
+        GameWSt.menu = None
+        self.menuVisible = False
+    def OnMenu(self):
+        if GameWSt.menu:
+            GameWSt.menu.OffMenu()
+        GameWSt.menuVis = True
+        GameWSt.menu = self
+        self.menuVisible = True
+
+    def OnClick(self):
+        self.menuVisible = not self.menuVisible
+        if self.menuVisible:
+            self.OnMenu()
+        else:
+            self.OffMenu()
+    def Render(self):
+        if not self.visible:
+            return
+        x,y,w,h = self.rect
+        DrawQuadWithBorder(x,y,w,h,[223,185,200,255],[120,0,48,255], 3)
+        glColor4ub(0,46,116,255)
+        self.label.draw()
+
+        if not self.menuVisible:
+            return
+        w = W-GameWSt.sideMenuW+10
+        DrawQuadWithBorder(0,0,w/2,H-GameWSt.bottomMenuH+5-GameWSt.qSlotH+5,[0, 196,166,255],GameWSt.bgColor, 5)
+        DrawQuadWithBorder(w/2-5,0,w/2,H-GameWSt.bottomMenuH+5-GameWSt.qSlotH+5,[0, 196,166,255],GameWSt.bgColor, 5)
+        DrawQuadWithBorder(w-30,0,25,25,[66, 236,180,255],GameWSt.bgColor, 5)
+        self.text1.draw()
+        self.text2.draw()
+        self.text3.draw()
+
+        for item in GameWSt.inventory:
+            item.Render()
+
+    def OnDragStart(self, container, idx):
+        itemToDrag = container[idx]
+        if itemToDrag.isEmpty:
+            return
+
+        if container == GameWSt.inventory:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        container[idx] = GameWSt.NewEmptyItem(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+        else:
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        container[idx] = GameWSt.NewEmptyItem(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+
+        GameWSt.draggingItem = itemToDrag
+        GameWSt.draggingItem.isDragging = True
+        GameWSt.draggingIdx = idx
+        GameWSt.draggingContainer = container
+
+    def OnDrop(self, targetC, targetIdx, sourceC, sourceIdx, draggingItem):
+        toDrag = targetC[targetIdx]
+
+        idx = targetIdx
+        if targetC == GameWSt.inventory:
+            # buy if has enough point else place draggingitem into original source
+            if self.buySell and not GameWSt.BuyItem(draggingItem):
+                GameWSt.draggingItem.isDragging = False
+                GameWSt.draggingContainer[GameWSt.draggingIdx] = GameWSt.draggingItem
+
+                idx = targetIdx = GameWSt.draggingIdx
+                targetC = GameWSt.draggingContainer
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+
+                GameWSt.draggingContainer = None
+                GameWSt.draggingIdx = -1
+                GameWSt.draggingItem = None
+                return
+
+            targetC[targetIdx] = draggingItem
+            targetC[targetIdx].isDragging = False
+            idx2 = 0
+            found = False
+            for yy in range(13):
+                for xx in range(10):
+                    if idx == idx2:
+                        targetC[targetIdx].SetPos(GameWSt.invX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                        found = True
+                        break
+                    idx2 += 1
+                if found:
+                    break
+        else:
+            # sell right now and don't pick it up again
+            if not self.buySell:
+                targetC[targetIdx] = draggingItem
+                targetC[targetIdx].isDragging = False
+                idx2 = 0
+                found = False
+                for yy in range(13):
+                    for xx in range(10):
+                        if idx == idx2:
+                            targetC[targetIdx].SetPos(GameWSt.leftX+xx*(GameWSt.itemW-5), GameWSt.invY+yy*(GameWSt.itemH-5))
+                            found = True
+                            break
+                        idx2 += 1
+                    if found:
+                        break
+            else:
+                GameWSt.SellItem(draggingItem)
+
+
+
+
+        if toDrag.isEmpty or self.buySell: # don't pick it up again if buySell
+            GameWSt.draggingIdx = -1
+            GameWSt.draggingContainer = None
+            GameWSt.draggingItem = None
+        else:
+            GameWSt.draggingItem = toDrag
+            GameWSt.draggingItem.isDragging = True
+    def OnItemClick(self, container, idx):
+        if GameWSt.draggingIdx == -1:
+            self.OnDragStart(container, idx)
+        else:
+            self.OnDrop(container, idx, GameWSt.draggingContainer, GameWSt.draggingIdx, GameWSt.draggingItem)
+
+        if GameWSt.draggingItem:
+            x, y = GameWSt.lastMouseDown['l']
+            GameWSt.draggingItem.SetPos(x-GameWSt.itemW/2,H-(y+GameWSt.itemH/2))
+
+    def OnLDown2(self,x,y):
+        if not self.menuVisible or not self.visible:
+            return
+        idx = self.idx
+        if self.left and self.idx != -1:
+            self.OnItemClick(self.container, idx)
+        if not self.left and self.idx != -1:
+            self.OnItemClick(GameWSt.inventory, idx)
+
+
+
 class Shop(Button):
     def __init__(self, name, leftname,rightname,x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Button.__init__(self, x,y,100,25, name, self.OnClick)
