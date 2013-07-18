@@ -17,7 +17,7 @@ W = 1020
 H = 720
 VSYNC = True
 
-G_vbo = [] # 나중엔 vbo로 하게 한다.
+
 def DrawQuad(x,y,w,h, color):
     glColor4ub(*color)
     pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
@@ -771,7 +771,7 @@ class QuickSlot(object):
 GameWSt = None
 
 
-class PopupWindow(object):
+class PopupWindowClass(object):
     def __init__(self, title, desc, x,y, ident):
         self.x = x
         self.y = y
@@ -795,7 +795,6 @@ class PopupWindow(object):
     def Render(self):
         DrawQuadWithBorder(self.x, self.y, self.w, self.h, (200, 200, 200, 230), (30,30,30,150), 0) # zone menu
         self.text.draw()
-'''
 G_popupWindow = PopupWindowClass(u"", u"", 0, 0, None)
 def PopupWindow(title, desc, x, y, ident):
     global G_popupWindow
@@ -808,10 +807,9 @@ def PopupWindow(title, desc, x, y, ident):
     G_popupWindow.desc = header + text + footer
     G_popupWindow.ident = ident
     G_popupWindow.text.text = G_popupWindow.desc
-    G_popupWindow.x = x+G_popupWindow.margin
-    G_popupWindow.y = H-(y+G_popupWindow.margin+13)
+    G_popupWindow.text.x = x+G_popupWindow.margin
+    G_popupWindow.text.y = H-(y+G_popupWindow.margin+13)
     return G_popupWindow
-'''
 
 
 class Element(object): # 아이템의 속성
@@ -1245,6 +1243,7 @@ class MyGameWindow(pyglet.window.Window):
         for i in range(20):
             DrawQuadWithBorder(x, H-self.bottomMenuH-self.qSlotH+5, self.qSlotH+4, self.qSlotH, (196, 166, 0, 255), self.bgColor, 5)
             x += self.qSlotH-5+4
+        self.char.Render()
 
         self.output.Render()
 
@@ -1268,7 +1267,6 @@ class MyGameWindow(pyglet.window.Window):
             self.draggingItem.Render()
 
 
-        self.char.Render()
         glTranslatef(0, 0, 0.0)
         self.fps.draw()
 
