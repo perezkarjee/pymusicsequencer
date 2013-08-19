@@ -183,15 +183,20 @@ class OutputWindow(object):
             text.draw()
 
 class Upgrade(Button):
+    # 체력마력공격방어
+    # 각스킬 업글
+    #
+    # +1 버튼 -1버튼.
+    # +10, +100을 따로 만들지 말고 Unit이라는 에딧컨트롤을 만들어서 단위를 지정해서 플러스/마이너스 할 수 있게 한다?
+    # 플러스 마이너스를 하게 하느니 그냥 유닛을 타이핑해서 지정할 수 있게 한다.
+    #
     def __init__(self, name, leftname,rightname,x=0,y=0): # x,y는 bottomMenu의 텍스트 버튼 위치
         Button.__init__(self, x,y,100,25, name, self.OnClick)
         self.label = DrawText(x+100/2, y+25/2, name, 'center', 'center', color=(80,51,62,255))
         self.menuVisible = False
 
         w = W-GameWSt.sideMenuW+10
-        self.text1 = DrawText(10, 10, leftname, 'left', 'top', color=(0,0,0,255))
-        self.text2 = DrawText(w/2+5, 10, rightname, 'left', 'top', color=(0,0,0,255))
-        self.text3 = DrawText(w-22-1, 5+1, u"X", 'left', 'top', color=(0,0,0,255),bold=True)
+        #self.text1 = DrawText(10, 10, leftname, 'left', 'top', color=(0,0,0,255))
 
         self.left = False
         self.idx = -1
