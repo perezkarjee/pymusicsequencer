@@ -66,9 +66,36 @@ for txt in text:
 
 bible += [curBook]
 
-header = u"""\
+indexHeader = u"""\
 <html>
 <head>
+<style>
+body
+{
+    font-size: 80%%;
+    font-family:Arial,Helvetica,sans-serif;
+    line-height: 200%%;
+    color: #453804;
+    
+background-color:#CACABE;
+}
+div.hr {
+  height: 3px;
+  background: #363427;
+}
+div.hr hr {
+  display: none;
+}
+
+A:link{text-decoration:none; color:#594805;}
+A:visited{text-decoration:none; color:#097067;}
+A:active{text-decoration:none; color:#591E05;}
+A:hover{text-decoration:underline; color:#594805;}
+h1 { color: #363427;}
+h2 { color: #363427;}
+h3 { color: #363427;margin-bottom:0px;}
+</style>
+
 <meta http-equiv="Content-Type" content="text/html; charset=utf8">
 <title>%s</title>
 </head>
@@ -77,21 +104,116 @@ header = u"""\
 %s
 </h1>
 """
+header = u"""\
+<html>
+<head>
+<style>
+body
+{
+    font-size: 80%%;
+    font-family:Arial,Helvetica,sans-serif;
+    line-height: 200%%;
+    color: #453804;
+    margin:0;
+    padding:0;
+    word-wrap:break-word; 
+    
+background-color:#CACABE;
+}
+div.hr {
+  height: 3px;
+  background: #363427;
+}
+div.hr hr {
+  display: none;
+}
+
+A:link{text-decoration:none; color:#594805;}
+A:visited{text-decoration:none; color:#097067;}
+A:active{text-decoration:none; color:#591E05;}
+A:hover{text-decoration:underline; color:#594805;}
+h1 { color: #363427;}
+h2 { color: #363427;}
+h3 { color: #363427;margin-bottom:0px;}
+
+#wrap {
+width:950px;
+margin:0 auto;
+padding:10px;
+background:#CACABE;
+}
+#header {
+padding:5px 10px;
+background:#CACABE;
+}
+#nav {
+padding:5px 10px;
+background:#CACABE;
+}
+#main {
+float:left;
+width:700px;
+background:#CACABE;
+}
+#sidebar {
+float:right;
+padding:10px;
+width:200px;
+background:#CACABE;
+}
+#footer {
+clear:both;
+padding:5px 10px;
+background:#CACABE;
+}
+* html #footer {
+height:1px;
+}
+
+
+</style>
+
+<meta http-equiv="Content-Type" content="text/html; charset=utf8">
+<title>%s</title>
+</head>
+<body>
+<div id="wrap">
+<div id="header">
+    <a href="index.html">목록으로</a>
+    <h1>
+    %s
+    </h1>
+</div>
+<div id="nav"></div>
+<div id="main">
+
+"""
 footer = u"""\
+</div>
+<div id="sidebar">%s</div>
+<div id="footer">
+    <a href="index.html">목록으로</a>
+</div>
+</div>
 </body>
 </html>
 """
+indexFooter = u"""\
+</body>
+</html>
+"""
+
 if mode == NEWHANGUL:
     indexFile = codecs.open("./newhangul/index.html", "w", "utf-8")
-    indexFile.write(header % (u"개역한글 성경", u"개역한글 성경"))
+    indexFile.write(indexHeader % (u"개역한글 성경", u"개역한글 성경"))
 elif mode == EASYBIBLE:
     indexFile = codecs.open("./easy_bible/index.html", "w", "utf-8")
-    indexFile.write(header % (u"쉬운 성경", u"쉬운 성경"))
+    indexFile.write(indexHeader % (u"쉬운 성경", u"쉬운 성경"))
 elif mode == NLT:
     indexFile = codecs.open("./nlt/index.html", "w", "utf-8")
-    indexFile.write(header % (u"New Living Translation", u"New Living Translation"))
+    indexFile.write(indexHeader % (u"New Living Translation", u"New Living Translation"))
 indexFile.write(u"<h2>구약 성경</h2>")
-indexFile.write(u"<hr/>")
+indexFile.write(u"<div class=\"hr\"><hr/></div>")
 
 bookNum = 1
 for book in bible:
@@ -107,6 +229,20 @@ for book in bible:
 
     chapterNum = 1
     indexFile.write(u'''<h3>%s</h3>''' % (names[bookNum-1]))
+    menuItem = []
+
+    for chapter in book: # EASYKOREAN - Old Testament - 창세기 - 1장.html
+        if mode == NEWHANGUL:
+            fileName = u"NEWHANGUL KOREAN - %s - %s - %d.html" % (oldNewStr, names[bookNum-1], chapterNum)
+        elif mode == EASYBIBLE:
+            fileName = u"EASYBIBLE KOREAN - %s - %s - %d.html" % (oldNewStr, names[bookNum-1], chapterNum)
+        elif mode == NLT:
+            fileName = u"New Living Translation - %s - %s - %d.html" % (oldNewStr, names[bookNum-1], chapterNum)
+
+        menuItem += [u'''<a href="%s">%s</a> ''' % (fileName, `chapterNum`+u"장")]
+        chapterNum += 1
+
+    chapterNum = 1
     for chapter in book: # EASYKOREAN - Old Testament - 창세기 - 1장.html
         if mode == NEWHANGUL:
             fileName = u"NEWHANGUL KOREAN - %s - %s - %d.html" % (oldNewStr, names[bookNum-1], chapterNum)
@@ -124,6 +260,8 @@ for book in bible:
 
         windowTitle = u"%s %d장" % (names[bookNum-1], chapterNum)
         f.write(header % (windowTitle, windowTitle)) # 창세기 1장
+        #f.write(prevNext)
+        #f.write(chapterLinks)
 
         for verse in chapter:
             f.write(u"%d절 " % verseNum)
@@ -131,7 +269,7 @@ for book in bible:
             f.write("<br/>")
             verseNum += 1
 
-        f.write(footer)
+        f.write(footer % " ".join(menuItem))
         chapterNum += 1
         f.close()
     print u"%d/%d" % (bookNum, len(bible))
