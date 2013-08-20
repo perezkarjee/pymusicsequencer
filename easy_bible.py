@@ -63,7 +63,7 @@ for txt in text:
             curChapter = []
 
         curChapter += [verse]
-
+curBook += [curChapter]
 bible += [curBook]
 
 indexHeader = u"""\
