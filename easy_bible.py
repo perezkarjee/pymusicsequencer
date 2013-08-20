@@ -112,7 +112,7 @@ body
 {
     font-size: 80%%;
     font-family:Arial,Helvetica,sans-serif;
-    line-height: 200%%;
+    line-height: 120%%;
     color: #453804;
     margin:0;
     padding:0;
@@ -161,6 +161,12 @@ padding:10px;
 width:200px;
 background:#CACABE;
 }
+#sidebarF {
+    line-height: 180%%;
+position:fixed;
+top: 20px;
+width:165px;
+};
 #footer {
 clear:both;
 padding:5px 10px;
@@ -179,7 +185,6 @@ height:1px;
 <body>
 <div id="wrap">
 <div id="header">
-    <a href="index.html">목록으로</a>
     <h1>
     %s
     </h1>
@@ -190,10 +195,11 @@ height:1px;
 """
 footer = u"""\
 </div>
-<div id="sidebar">%s</div>
-<div id="footer">
-    <a href="index.html">목록으로</a>
-</div>
+<div id="sidebar"><div id="sidebarF">
+%s<br/>
+<a href="index.html">목록으로</a><br/>
+%s
+</div></div>
 </div>
 </body>
 </html>
@@ -240,6 +246,8 @@ for book in bible:
             fileName = u"New Living Translation - %s - %s - %d.html" % (oldNewStr, names[bookNum-1], chapterNum)
 
         menuItem += [u'''<a href="%s">%s</a> ''' % (fileName, `chapterNum`+u"장")]
+        if not (chapterNum % 4):
+            menuItem += [u"<br/>"]
         chapterNum += 1
 
     chapterNum = 1
@@ -266,10 +274,10 @@ for book in bible:
         for verse in chapter:
             f.write(u"%d절 " % verseNum)
             f.write(verse)
-            f.write("<br/>")
+            f.write("<br/><br/>")
             verseNum += 1
 
-        f.write(footer % " ".join(menuItem))
+        f.write(footer % (windowTitle, " ".join(menuItem)))
         chapterNum += 1
         f.close()
     print u"%d/%d" % (bookNum, len(bible))
