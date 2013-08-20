@@ -197,6 +197,7 @@ footer = u"""\
 </div>
 <div id="sidebar"><div id="sidebarF">
 %s<br/>
+%s<br/>
 <a href="index.html">목록으로</a><br/>
 %s
 </div></div>
@@ -222,6 +223,7 @@ indexFile.write(u"<h2>구약 성경</h2>")
 indexFile.write(u"<div class=\"hr\"><hr/></div>")
 
 bookNum = 1
+
 for book in bible:
     isNT = bookNum > len(otNames)
     if not isNT:
@@ -277,7 +279,42 @@ for book in bible:
             f.write("<br/><br/>")
             verseNum += 1
 
-        f.write(footer % (windowTitle, " ".join(menuItem)))
+        def GetFileNameWithBookNumAndChapterNum(bookNum_, chapterNum_):
+            isNT_ = bookNum_ > len(otNames)
+            if not isNT_:
+                oldNewStr_ = u"Old Testament"
+            else:
+                oldNewStr_ = u"New Testament"
+            if mode == NEWHANGUL:
+                fileName_ = u"NEWHANGUL KOREAN - %s - %s - %d.html" % (oldNewStr_, names[bookNum_-1], chapterNum_)
+            elif mode == EASYBIBLE:
+                fileName_ = u"EASYBIBLE KOREAN - %s - %s - %d.html" % (oldNewStr_, names[bookNum_-1], chapterNum_)
+            elif mode == NLT:
+                fileName_ = u"New Living Translation - %s - %s - %d.html" % (oldNewStr_, names[bookNum_-1], chapterNum_)
+            return fileName_
+
+        prevCN = chapterNum - 1
+        prevBN = bookNum
+        if prevCN <= 0:
+            prevBN -= 1
+            if prevBN <= 0:
+                prevBN = 66
+            prevCN = len(bible[prevBN-1])
+        prev = GetFileNameWithBookNumAndChapterNum(prevBN, prevCN)
+
+        nextCN = chapterNum + 1
+        nextBN = bookNum
+        if nextCN > len(bible[nextBN-1]):
+            nextBN += 1
+            if nextBN > 66:
+                nextBN = 1
+            nextCN = 1
+        next = GetFileNameWithBookNumAndChapterNum(nextBN, nextCN)
+
+
+        prevNext = u'''<a href="%s">이전</a> | <a href="%s">다음</a>''' % (prev, next)
+
+        f.write(footer % (windowTitle, prevNext, " ".join(menuItem)))
         chapterNum += 1
         f.close()
     print u"%d/%d" % (bookNum, len(bible))
