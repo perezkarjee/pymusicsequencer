@@ -2,7 +2,7 @@
 NEWHANGUL = 1
 EASYBIBLE = 2
 NLT = 3
-mode = NLT
+mode = EASYBIBLE
 
 
 import codecs
@@ -233,7 +233,7 @@ for book in bible:
 
     if bookNum == len(otNames)+1:
         indexFile.write(u'''<h2>신약성경</h2>''')
-        indexFile.write(u"<hr/>")
+        indexFile.write(u"<div class=\"hr\"><hr/></div>")
 
     chapterNum = 1
     indexFile.write(u'''<h3>%s</h3>''' % (names[bookNum-1]))
