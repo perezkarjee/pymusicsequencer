@@ -110,7 +110,6 @@ class GameObject(object):
         #txt = json.dumps(['foo', {'bar': ('baz', None, 1.0, 2)}])
         try:
             obj = json.loads(buffer)
-            print obj
             self.msgs += [obj]
         except:
             self.game.lock.release()
