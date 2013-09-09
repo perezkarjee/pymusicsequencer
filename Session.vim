@@ -64,7 +64,7 @@ noremap <Plug>Traditional :call EnhancedCommentify('', 'guess')
 noremap <Plug>DeComment :call EnhancedCommentify('', 'decomment')
 noremap <Plug>Comment :call EnhancedCommentify('', 'comment')
 map <F4> <F4>
-map <F9> :w:!D:\python26\python "%"
+map <F9> :w:!C:\python27_64\python "%"
 map <F3> :mks!
 map <F2> :w!
 nnoremap <silent> <Plug>NetrwBrowseX :call netrw#NetBrowseX(expand("<cWORD>"),0)
@@ -275,12 +275,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 108 - ((25 * winheight(0) + 27) / 55)
+let s:l = 72 - ((32 * winheight(0) + 27) / 55)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-108
-normal! 039|
+72
+normal! 059|
 lcd C:\drumsynth
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
