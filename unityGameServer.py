@@ -21,48 +21,6 @@ class Lobby(object):
         for client in self.clients:
             client.push(data)
  
-class Client(asynchat.async_chat):
-    def __init__(self, conn, addr, lobby, game, gameObject):
-        asynchat.async_chat.__init__(self, sock=conn)
-        self.in_buffer = ""
-        self.set_terminator(chr(127)+chr(64)+chr(127)+chr(64)+chr(127)+chr(64))
-        self.addr = addr
- 
-        self.lobby = lobby
-        self.lobby.Join(self)
-
-        self.game = game
-        self.gameObject = gameObject
-        self.gameObject.client = self
-
-        self.isDestroyed = False
-
-
-    def OnConnect(self):
-        print "Client object created"
- 
-    def collect_incoming_data(self, data):
-        self.in_buffer += data
-        if len(self.in_buffer) > 1000:
-            print "Receiving too much data without terminator! -> Closing..."
-            self.lobby.Leave(self)
-            self.close()
- 
-    def found_terminator(self):
-        """
-        if self.in_buffer.rstrip() == "QUIT":
-            self.lobby.leave(self)
-            self.close_when_done()
-        else:
-        """
-        self.lobby.Broadcast(self.in_buffer + self.terminator)
-        self.gameObject.ProcessLine(self.in_buffer)
-        self.in_buffer = ""
-
-    def handle_close(self):
-        if not self.isDestroyed:
-            self.isDestroyed = True
-            self.lobby.Leave(self)
  
 class Server(asynchat.async_chat):
     def __init__(self):
@@ -93,6 +51,48 @@ class Server(asynchat.async_chat):
         gameObject.OnConnect()
         self.game.lock.release()
         
+class Client(asynchat.async_chat):
+    def __init__(self, conn, addr, lobby, game, gameObject):
+        asynchat.async_chat.__init__(self, sock=conn)
+        self.in_buffer = ""
+        self.set_terminator(chr(127)+chr(64)+chr(127)+chr(64)+chr(127)+chr(64))
+        self.addr = addr
+ 
+        self.lobby = lobby
+        self.lobby.Join(self)
+
+        self.game = game
+        self.gameObject = gameObject
+        self.gameObject.client = self
+
+        self.isDestroyed = False
+
+
+    def OnConnect(self):
+        print "Client object created for " + str(self.addr)
+ 
+    def collect_incoming_data(self, data):
+        self.in_buffer += data
+        if len(self.in_buffer) > 1000:
+            print "Receiving too much data without terminator! -> Closing..."
+            self.lobby.Leave(self)
+            self.close()
+ 
+    def found_terminator(self):
+        """
+        if self.in_buffer.rstrip() == "QUIT":
+            self.lobby.leave(self)
+            self.close_when_done()
+        else:
+        """
+        self.lobby.Broadcast(self.in_buffer + self.terminator)
+        self.gameObject.ProcessLine(self.in_buffer)
+        self.in_buffer = ""
+
+    def handle_close(self):
+        if not self.isDestroyed:
+            self.isDestroyed = True
+            self.lobby.Leave(self)
 
 class GameObject(object):
     def __init__(self):
@@ -101,12 +101,11 @@ class GameObject(object):
         self.msgs = []
 
     def OnConnect(self):
-        print "Game object created"
+        print "Game object created for " + str(self.client.addr)
 
     def ProcessLine(self, buffer):
         self.game.lock.acquire()
         buffer = unicode(buffer, "utf8")
-        print buffer
         #txt = json.dumps(['foo', {'bar': ('baz', None, 1.0, 2)}])
         try:
             obj = json.loads(buffer)
@@ -115,8 +114,13 @@ class GameObject(object):
             self.game.lock.release()
             print "Data inconsistency found! --> Closing."
             self.client.close()
+
+        if "msgtype" in obj and obj["msgtype"] == "txt" and "txt" in obj:
+            self.OnRawTxt(obj["txt"])
         self.game.lock.release()
 
+    def OnRawTxt(self, txt):
+        print txt
     def Tick(self):
         pass
 
