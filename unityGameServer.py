@@ -81,7 +81,7 @@ class Client(asynchat.async_chat):
         self.hsed = False
 
 
-        self.dataPerSec = 3000
+        self.dataPerSec = 3000 # in bytes
         self.dataDown = 0
         self.prevTime = time.clock()
         self.wait = 0
@@ -93,7 +93,7 @@ class Client(asynchat.async_chat):
     def Send(self, msgTxt):
         self.push(msgTxt + self.terminator)
     def OnConnect(self):
-        print "Client object created for " + str(self.addr)
+        #print "Client object created for " + str(self.addr)
         self.SendHandshake()
 
     def collect_incoming_data(self, data):
@@ -183,17 +183,46 @@ class GameObject(object):
         self.msgs = []
 
     def OnConnect(self):
-        print "Game object created for " + str(self.client.addr)
+        pass
+        #print "Game object created for " + str(self.client.addr)
 
     def PushMsg(self, msg):
         self.msgs += [msg]
-    def OnRawTxt(self, txt):
-        print txt
+    def CheckMsg1(self,msg):
+        if "msgtype" not in msg:
+            return False
+        return True
+    def CheckMsg2(self, msg,args):
+        for arg in args:
+            if arg not in msg:
+                return False
+        return True
+
+
     def Tick(self):
+        funcTable = {
+            "txt": [self.OnRawTxt, "txt"], # msgtype: [HandlerFunc, arg1, arg2, ..., argN]
+            "login": [self.OnLogin, "acc", "pw"],
+            "txtpluslevel": [self.OnStruct, "txt", "level"],
+        }
+
         for msg in self.msgs:
-            if "msgtype" in msg and msg["msgtype"] == "txt" and "txt" in msg:
-                self.OnRawTxt(msg["txt"])
+            if self.CheckMsg1(msg):
+                typ = msg["msgtype"]
+                for func in funcTable:
+                    if typ == func and self.CheckMsg2(msg, funcTable[func][1:]):
+                        funcTable[func][0](msg)
+
         self.msgs = []
+
+    def OnStruct(self, msg):
+        print msg["txt"], msg["level"]
+    def OnRawTxt(self, msg):
+        print msg["txt"]
+    def OnLogin(self, msg):
+        acc = msg["acc"]
+        pw = msg["pw"]
+        print acc, pw
 
 class SQLite3Utils(object):
     def __init__(self):
