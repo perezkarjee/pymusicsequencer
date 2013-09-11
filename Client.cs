@@ -15,6 +15,11 @@ public class Client: MonoBehaviour {
     {
         public string name;
         public int level;
+        public TestStruct(string name, int level)
+        {
+            this.name = name;
+            this.level = level;
+        }
     };
 
     private UILabel guiConsole;
@@ -54,51 +59,56 @@ public class Client: MonoBehaviour {
 
 
     }      
+    public KeyValuePair<string, JSONCon> KV(string key, int val)
+    {
+        return new KeyValuePair<string, JSONCon>(key, Int(val));
+    }
+    public KeyValuePair<string, JSONCon> KV(string key, string val)
+    {
+        return new KeyValuePair<string, JSONCon>(key, Str(val));
+    }
+    public KeyValuePair<string, JSONCon> KV(string key, float val)
+    {
+        return new KeyValuePair<string, JSONCon>(key, Float(val));
+    }
+    public KeyValuePair<string, JSONCon> KV(string key, JSONCon val)
+    {
+        return new KeyValuePair<string, JSONCon>(key, val);
+    }
     public void Test1() // 걍 텍스트 에코 테스트
     {
-        JSONCon dict = Dict();
-        dict.Set("msgtype", Str("txt"));
-        dict.Set("txt", Str("텍스트"));
-        JSONCon list = List();
-        list.Add(Int(1));
-        list.Add(Int(2));
-        list.Add(Int(3));
-        list.Add(Int(4));
-        list.Add(Int(5));
-        dict.Set("testList", list);
-
+        JSONCon dict = Dict(
+                KV("msgtype", "txt"),
+                KV("txt", "텍스트"),
+                KV("testList", List(1, 2, 3, 4.4f, "asd"))
+        );
         Send(dict);
-
     }
-        //ConsoleMessage(dataStr);
-        /*bgm = (AudioClip)Resources.Load("BGM");
-        audio.clip = bgm;
-        audio.Play();
-        */
     public void Test2()
     {
-        JSONCon dict = Dict();
-        dict.Set("msgtype", Str("login"));
-        dict.Set("acc", Str("아이디"));
-        dict.Set("pw", Str("비번"));
-
+        JSONCon dict = Dict(
+                KV("msgtype", "login"),
+                KV("acc", "아이디"),
+                KV("pw", "비번")
+        );
         Send(dict);
 
-        TestStruct ts = new TestStruct();
-        ts.name = "이름";
-        ts.level = 10;
-        JSONCon dict2 = Dict();
-        dict2.Set("msgtype", Str("txtpluslevel"));
-        dict2.Set("txt", Str(ts.name));
-        dict2.Set("level", Int(ts.level));
+        TestStruct ts = new TestStruct("이름", 10);
+
+        JSONCon dict2 = Dict(
+            KV("msgtype", "txtpluslevel"),
+            KV("txt", Str(ts.name)),
+            KV("level", ts.level)
+        );
         Send(dict2);
     }
     public void SendHandshake()
     {
         string hsMsg = "THEPGAMERPG";
-        JSONCon dict = Dict();
-        dict.Set("msgtype", Str("handshake"));
-        dict.Set("hs", Str(hsMsg));
+        JSONCon dict = Dict(
+                KV("msgtype", "handshake"),
+                KV("hs", hsMsg)
+        );
         Send(dict);
     }
 
@@ -106,15 +116,28 @@ public class Client: MonoBehaviour {
     {
         return JSONCon.ConvertToJSON(data);
     }
-    JSONCon Dict()
+    JSONCon Dict(params KeyValuePair<string, JSONCon>[] items)
     {
-        return JSONCon.GetDict();
+        return JSONCon.GetDict(items);
     }
-    JSONCon List()
+    JSONCon List(params object[] items)
     {
-        return JSONCon.GetList();
+        JSONCon[] newItems = new JSONCon[items.Length];
+        int idx=0;
+        foreach(object item in items)
+        {
+            Type t = item.GetType();
+            if(t == typeof(int))
+                newItems[idx] = Int((int)item);
+            else if(t == typeof(float))
+                newItems[idx] = Float((float)item);
+            else if(t == typeof(string))
+                newItems[idx] = Str((string)item);
+            idx += 1;
+        }
+        return JSONCon.GetList(newItems);
     }
-    JSONCon Float(int val)
+    JSONCon Float(float val)
     {
         return JSONCon.GetFloat(val);
     }
@@ -239,6 +262,8 @@ public class Client: MonoBehaviour {
     {
         try
         {
+            // 보통 서버는 제대로 된 메시지를 보내므로 굳이 확인할 필요는 없다능...
+            
             //ConsoleMessage(Encoding.UTF8.GetString(line));
             var n = JSON.Parse(Encoding.UTF8.GetString(line));
             //ConsoleMessage(n["msgtype"] + ", " + n["txt"]);
@@ -264,29 +289,6 @@ public class Client: MonoBehaviour {
             ConsoleMessage( "JSON Parse Error, " + "Exception: " + e.Message );
             Shutdown();
         }
-        /*
-        if (line[0] == 0)
-        {
-            string strTxt = Encoding.UTF8.GetString(line, 1, line.Length-1);
-            ConsoleMessage(String.Format("에코: " + strTxt));
-        }
-        else if (line[0] == 1)
-        {
-
-            byte[] levelb = new byte[4];
-            Buffer.BlockCopy(line, 1, levelb, 0, 4); 
-            int level = BitConverter.ToInt32(levelb, 0);
-
-            byte[] strLenb = new byte[4];
-            Buffer.BlockCopy(line, 1+4, strLenb, 0, 4); 
-            int strLen = BitConverter.ToInt32(strLenb, 0);
-
-            byte[] txt = new byte[line.Length-1-4-4];
-            Buffer.BlockCopy(line, 1+4+4, txt, 0, strLen); 
-            string strTxt = Encoding.UTF8.GetString(txt);
-
-            ConsoleMessage(String.Format("레벨: {0} 문자열길이(byte): {1} 문자열: {2}", level, strLen, strTxt));
-        }*/
     }
     private void SendComplete( IAsyncResult ar ) // 보내기 완료시 불리는 이벤트
     {
@@ -363,4 +365,8 @@ public class Client: MonoBehaviour {
 }
 
 /*
- */
+ *        //ConsoleMessage(dataStr);
+        /*bgm = (AudioClip)Resources.Load("BGM");
+        audio.clip = bgm;
+        audio.Play();
+        */

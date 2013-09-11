@@ -200,6 +200,7 @@ class GameObject(object):
 
 
     def Tick(self):
+        # XXX: 메시지 처리
         funcTable = {
             "txt": [self.OnRawTxt, "txt"], # msgtype: [HandlerFunc, arg1, arg2, ..., argN]
             "login": [self.OnLogin, "acc", "pw"],
